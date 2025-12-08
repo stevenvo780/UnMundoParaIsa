@@ -12,7 +12,7 @@ import {
   SimulationMetrics,
   Particle,
   idx,
-} from '@shared/types.js';
+} from '../types.js';
 
 export class World {
   readonly width: number;

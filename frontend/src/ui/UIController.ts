@@ -4,7 +4,7 @@
 
 import { Renderer } from '../render/Renderer';
 import { WebSocketClient } from '../network/WebSocketClient';
-import { SimulationMetrics, FieldType } from '@shared/types';
+import { SimulationMetrics, FieldType } from '../types';
 
 export class UIController {
   private renderer: Renderer;

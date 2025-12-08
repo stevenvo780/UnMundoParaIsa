@@ -3,7 +3,7 @@
  */
 
 import { Application, Container, Graphics } from 'pixi.js';
-import { Particle, FieldType, WORLD } from '@shared/types';
+import { Particle, FieldType, WORLD } from '../types';
 
 interface FieldLayer {
   graphics: Graphics;

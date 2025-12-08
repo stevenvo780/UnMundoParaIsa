@@ -3,7 +3,7 @@
  * Implementa difusión, decay y crecimiento logístico
  */
 
-import { FieldConfig, idx } from '@shared/types.js';
+import { FieldConfig, idx } from '../types.js';
 
 export class Field {
   readonly width: number;

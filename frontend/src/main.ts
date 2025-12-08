@@ -21,7 +21,7 @@ async function main() {
   await renderer.init();
   
   // Conectar al backend
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3002';
   const client = new WebSocketClient(wsUrl);
   
   // Inicializar UI

@@ -2,7 +2,7 @@
  * Cliente WebSocket para comunicación con el backend
  */
 
-import { ServerMessage, ClientMessage, FieldType } from '@shared/types';
+import { ServerMessage, ClientMessage, FieldType } from '../types';
 
 type EventHandler = (data: ServerMessage) => void;
 

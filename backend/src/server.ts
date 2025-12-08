@@ -11,7 +11,7 @@ import {
   FieldType,
   SimulationConfig,
   Particle,
-} from '@shared/types.js';
+} from './types.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const TICK_MS = parseInt(process.env.TICK_MS || '50', 10);
