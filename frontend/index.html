@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Un Mundo Para Isa</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+    
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #header {
+      height: 40px;
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid #333;
+    }
+    
+    #header h1 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #e94560;
+    }
+    
+    #header .status {
+      margin-left: auto;
+      font-size: 12px;
+      color: #888;
+    }
+    
+    #header .status.connected {
+      color: #4ade80;
+    }
+    
+    #main {
+      flex: 1;
+      display: flex;
+    }
+    
+    #canvas-container {
+      flex: 1;
+      position: relative;
+    }
+    
+    #world-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    
+    #sidebar {
+      width: 280px;
+      background: #16213e;
+      border-left: 1px solid #333;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    
+    .panel {
+      margin-bottom: 16px;
+    }
+    
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #e94560;
+      margin-bottom: 8px;
+    }
+    
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 4px 0;
+      border-bottom: 1px solid #222;
+    }
+    
+    .metric-label {
+      color: #888;
+    }
+    
+    .metric-value {
+      color: #fff;
+      font-family: monospace;
+    }
+    
+    #controls {
+      margin-top: 16px;
+    }
+    
+    button {
+      width: 100%;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background: #ff6b6b;
+    }
+    
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #333;
+      border-top-color: #e94560;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>🌍 Un Mundo Para Isa</h1>
+      <span id="connection-status" class="status">Desconectado</span>
+    </div>
+    
+    <div id="main">
+      <div id="canvas-container">
+        <canvas id="world-canvas"></canvas>
+        <div id="loading" class="loading">
+          <div class="loading-spinner"></div>
+          <div>Conectando con el mundo...</div>
+        </div>
+      </div>
+      
+      <div id="sidebar">
+        <div class="panel">
+          <div class="panel-title">Simulación</div>
+          <div class="metric">
+            <span class="metric-label">Tick</span>
+            <span class="metric-value" id="tick-count">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Tick Time</span>
+            <span class="metric-value" id="tick-time">0 ms</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">FPS</span>
+            <span class="metric-value" id="fps">0</span>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <div class="panel-title">Mundo</div>
+          <div class="metric">
+            <span class="metric-label">Tamaño</span>
+            <span class="metric-value" id="world-size">-</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Chunks Activos</span>
+            <span class="metric-value" id="active-chunks">0</span>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <div class="panel-title">Población</div>
+          <div class="metric">
+            <span class="metric-label">Partículas</span>
+            <span class="metric-value" id="particle-count">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Densidad Total</span>
+            <span class="metric-value" id="total-density">0</span>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <div class="panel-title">Campos</div>
+          <div class="metric">
+            <span class="metric-label">Food Avg</span>
+            <span class="metric-value" id="food-avg">0.00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Water Avg</span>
+            <span class="metric-value" id="water-avg">0.00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Trail Max</span>
+            <span class="metric-value" id="trail-max">0.00</span>
+          </div>
+        </div>
+        
+        <div id="controls">
+          <div class="panel-title">Controles</div>
+          <button id="btn-pause">⏸ Pausar</button>
+          <button id="btn-reset">🔄 Reiniciar</button>
+          <button id="btn-spawn">➕ Añadir Partículas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
