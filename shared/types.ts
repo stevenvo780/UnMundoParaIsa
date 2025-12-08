@@ -91,6 +91,8 @@ export interface GradientWeights {
   trail: number;
   danger: number;
   cost: number;
+  crowding: number;  // Peso negativo para evitar zonas densas (population)
+  exploration: number; // Bonus por explorar zonas nuevas (bajo trail)
 }
 
 export interface SimulationConfig {
@@ -118,9 +120,11 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   weights: {
     food: 1.0,
     water: 0.5,
-    trail: 0.3,
+    trail: 0.2,     // Reducido para menos agrupamiento
     danger: -2.0,
     cost: -0.5,
+    crowding: -0.8, // Evitar zonas densas (fuerte presión de dispersión)
+    exploration: 0.4, // Bonus por zonas nuevas (bajo trail)
   },
 };
 

@@ -2,6 +2,7 @@ import './style.css';
 import { Renderer } from './render/Renderer';
 import { WebSocketClient } from './network/WebSocketClient';
 import { UIController } from './ui/UIController';
+import { ViewportData, ChunkSnapshot } from './types';
 
 // ============================================
 // Punto de entrada principal
@@ -35,6 +36,14 @@ async function main() {
   const ui = new UIController(renderer, client);
   ui.init();
   
+  // Registrar callback de viewport para chunks dinámicos
+  renderer.onViewportUpdate((viewport: ViewportData) => {
+    client.send({
+      type: 'viewport_update',
+      viewport,
+    });
+  });
+  
   // Conectar eventos
   client.on('tick', (data) => {
     if (data.particles) {
@@ -48,6 +57,21 @@ async function main() {
   client.on('field_update', (data) => {
     if (data.fields) {
       renderer.updateFields(data.fields as Record<string, number[]>);
+    }
+  });
+  
+  // Nuevo: manejar chunks dinámicos
+  client.on('chunk_data', (data) => {
+    if (data.chunks) {
+      console.log(`[App] Recibidos ${(data.chunks as ChunkSnapshot[]).length} chunks`);
+      renderer.handleChunks(data.chunks as ChunkSnapshot[]);
+    }
+  });
+  
+  client.on('chunk_unload', (data: unknown) => {
+    const unloadData = data as { cx?: number; cy?: number };
+    if (unloadData.cx !== undefined && unloadData.cy !== undefined) {
+      renderer.handleChunkUnload(unloadData.cx, unloadData.cy);
     }
   });
   
@@ -69,6 +93,13 @@ async function main() {
     if (data.particles) {
       renderer.updateParticles(data.particles);
     }
+    
+    // Enviar viewport inicial para recibir chunks
+    const viewport = renderer.getViewport();
+    client.send({
+      type: 'viewport_update',
+      viewport,
+    });
   });
   
   // Conectar

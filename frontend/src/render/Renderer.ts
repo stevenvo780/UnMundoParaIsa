@@ -1,10 +1,14 @@
 import { Application, Container, Graphics, Sprite } from 'pixi.js';
-import { Particle, FieldType, WORLD } from '../types';
+import { Particle, FieldType, WORLD, ChunkSnapshot, ViewportData } from '../types';
 import { AssetLoader, LoadedAssets } from './AssetLoader';
+import { ChunkRenderer } from './ChunkRenderer';
 
 const TILE_SIZE = 32;
 const TREE_DENSITY = 0.15;
 const WATER_THRESHOLD = 0.4;
+
+// Throttle para viewport updates
+const VIEWPORT_UPDATE_THROTTLE_MS = 100;
 
 interface FieldLayer {
   graphics: Graphics;
@@ -19,6 +23,9 @@ export class Renderer {
   private container: HTMLElement;
   private assetLoader: AssetLoader;
   private assets: LoadedAssets | null = null;
+  
+  // Nuevo sistema de chunks
+  private chunkRenderer: ChunkRenderer | null = null;
   
   private worldContainer: Container | null = null;
   private terrainLayer: Container | null = null;
@@ -47,6 +54,13 @@ export class Renderer {
   private isDragging = false;
   private lastMouseX = 0;
   private lastMouseY = 0;
+  
+  // Tracking de viewport para chunks dinámicos
+  private lastViewportUpdate = 0;
+  private onViewportChange?: (viewport: ViewportData) => void;
+  
+  // Modo chunks dinámicos - ACTIVADO
+  private useChunks = true;
   
   constructor(container: HTMLElement) {
     this.container = container;
@@ -93,13 +107,16 @@ export class Renderer {
     this.worldContainer.addChild(this.particleLayer);
     this.app.stage.addChild(this.uiLayer);
     
+    // Inicializar ChunkRenderer
+    this.chunkRenderer = new ChunkRenderer(this.terrainLayer, this.assetLoader);
+    
     this.setupCameraControls();
     
     this.panX = -this.worldWidth / 2 + this.container.clientWidth / 2;
     this.panY = -this.worldHeight / 2 + this.container.clientHeight / 2;
     this.updateTransform();
     
-    console.log('[Renderer] Inicializado');
+    console.log('[Renderer] Inicializado con chunks dinámicos');
   }
   
   private initFieldLayers(): void {
@@ -177,6 +194,69 @@ export class Renderer {
     if (!this.worldContainer) return;
     this.worldContainer.scale.set(this.zoom);
     this.worldContainer.position.set(this.panX, this.panY);
+    
+    // Notificar cambio de viewport
+    this.notifyViewportChange();
+  }
+  
+  /**
+   * Notificar cambio de viewport para cargar chunks
+   */
+  private notifyViewportChange(): void {
+    const now = Date.now();
+    if (now - this.lastViewportUpdate < VIEWPORT_UPDATE_THROTTLE_MS) return;
+    this.lastViewportUpdate = now;
+    
+    if (this.onViewportChange) {
+      const viewport = this.getViewport();
+      this.onViewportChange(viewport);
+    }
+  }
+  
+  /**
+   * Obtener datos actuales del viewport
+   */
+  getViewport(): ViewportData {
+    const centerX = (-this.panX + this.container.clientWidth / 2) / this.zoom;
+    const centerY = (-this.panY + this.container.clientHeight / 2) / this.zoom;
+    
+    return {
+      centerX,
+      centerY,
+      zoom: this.zoom,
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
+    };
+  }
+  
+  /**
+   * Registrar callback para cambios de viewport
+   */
+  onViewportUpdate(callback: (viewport: ViewportData) => void): void {
+    this.onViewportChange = callback;
+  }
+  
+  /**
+   * Recibir y renderizar chunks del backend
+   */
+  handleChunks(chunks: ChunkSnapshot[]): void {
+    if (!this.chunkRenderer || !this.useChunks) return;
+    
+    for (const chunk of chunks) {
+      this.chunkRenderer.renderChunk(chunk);
+    }
+    
+    const stats = this.chunkRenderer.getStats();
+    console.log(`[Renderer] Chunks: ${stats.loaded} loaded, ${stats.sprites} sprites`);
+  }
+  
+  /**
+   * Notificar que un chunk fue descargado
+   */
+  handleChunkUnload(cx: number, cy: number): void {
+    if (this.chunkRenderer) {
+      this.chunkRenderer.unloadChunk(cx, cy);
+    }
   }
   
   private generateTerrain(): void {
@@ -336,13 +416,16 @@ export class Renderer {
       if (food) this.foodField = food;
       if (water) this.waterField = water;
       
-      if (this.terrainSprites.length === 0 && this.foodField) {
-        this.generateTerrain();
-        this.generateTrees();
-      }
-      
-      if (this.waterSprites.length === 0 && this.waterField) {
-        this.generateWater();
+      // Generar terreno legacy solo si NO usamos chunks dinámicos
+      if (!this.useChunks) {
+        if (this.terrainSprites.length === 0 && this.foodField) {
+          this.generateTerrain();
+          this.generateTrees();
+        }
+        
+        if (this.waterSprites.length === 0 && this.waterField) {
+          this.generateWater();
+        }
       }
       
       state.fields.forEach((data, type) => {
@@ -522,16 +605,18 @@ export class Renderer {
       }
     }
     
-    // Generar terreno la primera vez (solo una vez)
-    if (!this._terrainGenerated && this.foodField) {
-      this._terrainGenerated = true;
-      this.generateTerrain();
-      this.generateTrees();
-    }
-    
-    if (!this._waterGenerated && this.waterField) {
-      this._waterGenerated = true;
-      this.generateWater();
+    // Generar terreno legacy la primera vez (solo si NO usamos chunks dinámicos)
+    if (!this.useChunks) {
+      if (!this._terrainGenerated && this.foodField) {
+        this._terrainGenerated = true;
+        this.generateTerrain();
+        this.generateTrees();
+      }
+      
+      if (!this._waterGenerated && this.waterField) {
+        this._waterGenerated = true;
+        this.generateWater();
+      }
     }
     
     // Actualizar capas de campos

@@ -38,11 +38,16 @@ import { MaterializationManager } from '../narrative/Materialization.js';
 import { FlowFieldManager } from '../scale/FlowFields.js';
 import { LODManager } from '../scale/LOD.js';
 import { ThermostatBank, WorldBalancer } from '../scale/Thermostats.js';
+import { InfiniteChunkManager } from './InfiniteChunkManager.js';
+import { CHUNK_SIZE } from './Chunk.js';
 
 export class World {
   readonly width: number;
   readonly height: number;
   readonly config: SimulationConfig;
+  
+  // Referencia al chunk manager infinito (inyectado desde server)
+  private infiniteChunks?: InfiniteChunkManager;
   
   // Core
   private fields: Map<FieldType, Field> = new Map();
@@ -527,6 +532,80 @@ export class World {
   }
   
   /**
+   * Inyectar InfiniteChunkManager para soporte de mundo infinito
+   */
+  setInfiniteChunkManager(manager: InfiniteChunkManager): void {
+    this.infiniteChunks = manager;
+    console.log('[World] InfiniteChunkManager inyectado para soporte de mundo infinito');
+  }
+  
+  /**
+   * Obtener valor de campo en cualquier coordenada (soporta infinito)
+   * Si está fuera del campo original, consulta al chunk manager
+   */
+  getFieldValueAt(type: FieldType, x: number, y: number): number {
+    // Primero intentar en el campo local
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      const field = this.fields.get(type);
+      return field ? field.get(x, y) : 0;
+    }
+    
+    // Fuera del rango local: consultar chunk infinito
+    if (this.infiniteChunks) {
+      const chunk = this.infiniteChunks.getChunkAt(x, y);
+      if (chunk) {
+        const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        return chunk.getValue(type, localX, localY);
+      }
+      // Si no hay chunk, generarlo
+      const newChunk = this.infiniteChunks.ensureChunkActive(
+        Math.floor(x / CHUNK_SIZE),
+        Math.floor(y / CHUNK_SIZE)
+      );
+      const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      return newChunk.getValue(type, localX, localY);
+    }
+    
+    return 0;
+  }
+  
+  /**
+   * Establecer valor de campo en cualquier coordenada (soporta infinito)
+   */
+  setFieldValueAt(type: FieldType, x: number, y: number, value: number): void {
+    // En campo local
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      const field = this.fields.get(type);
+      if (field) field.set(x, y, value);
+      return;
+    }
+    
+    // En chunk infinito
+    if (this.infiniteChunks) {
+      const chunk = this.infiniteChunks.ensureChunkActive(
+        Math.floor(x / CHUNK_SIZE),
+        Math.floor(y / CHUNK_SIZE)
+      );
+      const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      chunk.setValue(type, localX, localY, value);
+    }
+  }
+  
+  /**
+   * Verificar si una posición es válida para movimiento
+   * Con chunks infinitos, cualquier posición es válida
+   */
+  isValidPosition(x: number, y: number): boolean {
+    // Con mundo infinito, todo es válido
+    if (this.infiniteChunks) return true;
+    // Sin mundo infinito, limitar al área original
+    return x >= 0 && x < this.width && y >= 0 && y < this.height;
+  }
+  
+  /**
    * Generar mundo inicial con oases
    */
   generate(seed: number = this.config.seed): void {
@@ -662,6 +741,7 @@ export class World {
     }
   }  /**
    * Actualizar todas las partículas
+   * NOTA: Usa getFieldValueAt para soporte de mundo infinito
    */
   private updateParticles(): void {
     const food = this.getField('food')!;
@@ -672,7 +752,7 @@ export class World {
     
     const { weights, lifecycle } = this.config;
     
-    // Buffer de consumo
+    // Buffer de consumo (solo para área local)
     const consumption = new Float32Array(this.width * this.height);
     
     for (const p of this.particles) {
@@ -691,13 +771,21 @@ export class World {
         continue;
       }
       
-      // Consumir recursos
-      const foodHere = food.get(p.x, p.y);
-      const waterHere = water.get(p.x, p.y);
+      // Consumir recursos - usar getFieldValueAt para soporte infinito
+      const foodHere = this.getFieldValueAt('food', p.x, p.y);
+      const waterHere = this.getFieldValueAt('water', p.x, p.y);
       
       const consume = Math.min(0.1, foodHere) * lifecycle.consumptionEfficiency;
       p.energy += consume;
-      consumption[idx(p.x, p.y, this.width)] += consume / lifecycle.consumptionEfficiency;
+      
+      // Solo actualizar buffer de consumo si está en área local
+      if (p.x >= 0 && p.x < this.width && p.y >= 0 && p.y < this.height) {
+        consumption[idx(p.x, p.y, this.width)] += consume / lifecycle.consumptionEfficiency;
+      } else {
+        // En chunks infinitos, reducir directamente el valor
+        const newFoodValue = Math.max(0, foodHere - consume / lifecycle.consumptionEfficiency);
+        this.setFieldValueAt('food', p.x, p.y, newFoodValue);
+      }
       
       // También necesita agua
       if (waterHere < 0.1) {
@@ -707,20 +795,21 @@ export class World {
       // Clamp energía
       p.energy = Math.min(1.0, p.energy);
       
-      // Movimiento por gradiente
-      const dir = this.chooseDirection(p, weights, food, water, trail0, danger, cost);
+      // Movimiento por gradiente - ahora usa chooseDirectionInfinite
+      const dir = this.chooseDirectionInfinite(p, weights);
       
       if (dir.dx !== 0 || dir.dy !== 0) {
         const newX = p.x + dir.dx;
         const newY = p.y + dir.dy;
         
-        if (newX >= 0 && newX < this.width && newY >= 0 && newY < this.height) {
+        // Permitir movimiento infinito
+        if (this.isValidPosition(newX, newY)) {
           p.x = newX;
           p.y = newY;
           p.energy -= lifecycle.movementCost;
           
           // Depositar trail
-          this.depositTrail(p);
+          this.depositTrailInfinite(p);
         }
       }
       
@@ -784,6 +873,69 @@ export class World {
   }
   
   /**
+   * Elegir dirección de movimiento por gradiente - versión infinita
+   * Usa getFieldValueAt para consultar campos fuera del área local
+   * Incluye presión de crowding (evitar zonas densas) y exploration (buscar nuevas)
+   */
+  private chooseDirectionInfinite(
+    p: Particle,
+    weights: SimulationConfig['weights']
+  ): { dx: number; dy: number } {
+    const DIRS = [
+      { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 },
+      { dx: -1, dy: 0 },                      { dx: 1, dy: 0 },
+      { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 },
+    ];
+    
+    let bestScore = -Infinity;
+    let bestDir = { dx: 0, dy: 0 };
+    
+    // Factor de presión: cuando energía baja, aumenta exploración
+    const energyPressure = 1.0 - p.energy;  // 0 cuando lleno, 1 cuando hambriento
+    const explorationBonus = weights.exploration * (1 + energyPressure);
+    
+    for (const dir of DIRS) {
+      const nx = p.x + dir.dx;
+      const ny = p.y + dir.dy;
+      
+      // No limitar a bordes del mundo - ahora es infinito
+      if (!this.isValidPosition(nx, ny)) {
+        continue;
+      }
+      
+      // Obtener valores de campo
+      const foodVal = this.getFieldValueAt('food', nx, ny);
+      const waterVal = this.getFieldValueAt('water', nx, ny);
+      const trailVal = this.getFieldValueAt('trail0', nx, ny);
+      const dangerVal = this.getFieldValueAt('danger', nx, ny);
+      const costVal = this.getFieldValueAt('cost', nx, ny);
+      const populationVal = this.getFieldValueAt('population', nx, ny);
+      
+      // Calcular score con crowding y exploration
+      // - crowding: evitar zonas con alta densidad de población
+      // - exploration: bonus por bajo trail (zonas no visitadas)
+      const explorationVal = 1.0 - Math.min(1, trailVal * 2);  // 1 si no hay trail, 0 si hay mucho
+      
+      const score =
+        weights.food * foodVal +
+        weights.water * waterVal +
+        weights.trail * trailVal +
+        weights.danger * dangerVal +
+        weights.cost * costVal +
+        weights.crowding * populationVal +  // Negativo: evitar zonas pobladas
+        explorationBonus * explorationVal + // Positivo: buscar zonas nuevas
+        this.noise(p.seed, nx, ny) * 0.3;   // Aumentado ruido para dispersión
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestDir = dir;
+      }
+    }
+    
+    return bestDir;
+  }
+  
+  /**
    * Depositar trail según la firma de la partícula
    */
   private depositTrail(p: Particle): void {
@@ -797,6 +949,37 @@ export class World {
     
     for (let c = 0; c < 4; c++) {
       trailFields[c].add(p.x, p.y, sig[c] * 0.1);
+    }
+  }
+  
+  /**
+   * Depositar trail en el mundo infinito
+   * Si está dentro del área local, usa los fields locales
+   * Si está fuera, actualiza el chunk correspondiente
+   */
+  private depositTrailInfinite(p: Particle): void {
+    // Si está dentro del área local, usar método normal
+    if (p.x >= 0 && p.x < this.width && p.y >= 0 && p.y < this.height) {
+      this.depositTrail(p);
+      return;
+    }
+    
+    // Fuera del área local: depositar en chunk infinito
+    if (this.infiniteChunks) {
+      const sig = this.getSignature(p.seed);
+      const chunkX = Math.floor(p.x / CHUNK_SIZE);
+      const chunkY = Math.floor(p.y / CHUNK_SIZE);
+      const chunk = this.infiniteChunks.ensureChunkActive(chunkX, chunkY);
+      
+      // Calcular coordenadas locales dentro del chunk
+      const localX = ((p.x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((p.y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      
+      // Añadir trail a los 4 canales del chunk usando Field.add()
+      chunk.getField('trail0')?.add(localX, localY, sig[0] * 0.1);
+      chunk.getField('trail1')?.add(localX, localY, sig[1] * 0.1);
+      chunk.getField('trail2')?.add(localX, localY, sig[2] * 0.1);
+      chunk.getField('trail3')?.add(localX, localY, sig[3] * 0.1);
     }
   }
   

@@ -1,16 +1,20 @@
 /**
  * Servidor WebSocket para Un Mundo Para Isa
  * Transmite estado de simulación al frontend
+ * Soporta chunks dinámicos para mundo infinito
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { World } from './core/World.js';
+import { InfiniteChunkManager } from './core/InfiniteChunkManager.js';
 import { 
   ServerMessage, 
   ClientMessage, 
   FieldType,
   SimulationConfig,
   Particle,
+  ChunkSnapshot,
+  ViewportData,
 } from './types.js';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
@@ -21,10 +25,18 @@ const TICK_MS = parseInt(process.env.TICK_MS || '50', 10);
 // ============================================
 
 const world = new World();
+const infiniteChunks = new InfiniteChunkManager({ seed: world.config.seed });
+
+// Inyectar InfiniteChunkManager en World para movimiento infinito de partículas
+world.setInfiniteChunkManager(infiniteChunks);
+
 const clients = new Set<WebSocket>();
 
 // Campos suscritos por cliente
 const subscriptions = new Map<WebSocket, Set<FieldType>>();
+
+// Viewports por cliente
+const clientViewports = new Map<WebSocket, ViewportData>();
 
 // ============================================
 // WebSocket Server
@@ -59,12 +71,14 @@ wss.on('connection', (ws: WebSocket) => {
     console.log('[Server] Client disconnected');
     clients.delete(ws);
     subscriptions.delete(ws);
+    clientViewports.delete(ws);
   });
   
   ws.on('error', (err) => {
     console.error('[Server] WebSocket error:', err);
     clients.delete(ws);
     subscriptions.delete(ws);
+    clientViewports.delete(ws);
   });
 });
 
@@ -119,10 +133,46 @@ function handleClientMessage(ws: WebSocket, msg: ClientMessage): void {
         subscriptions.set(ws, subs);
       }
       break;
+    
+    case 'viewport_update':
+      if (msg.viewport) {
+        clientViewports.set(ws, msg.viewport);
+        // Generar chunks visibles y enviarlos
+        const newChunks = infiniteChunks.updateFromViewport(msg.viewport);
+        if (newChunks.length > 0) {
+          sendChunkData(ws, newChunks);
+        }
+      }
+      break;
+    
+    case 'request_chunks':
+      if (msg.chunkRequests) {
+        const chunks: ChunkSnapshot[] = [];
+        for (const coord of msg.chunkRequests) {
+          const chunk = infiniteChunks.ensureChunkActive(coord.cx, coord.cy);
+          chunks.push(infiniteChunks.serializeChunk(chunk));
+        }
+        sendChunkData(ws, chunks);
+      }
+      break;
   }
 }
 
 function sendInit(ws: WebSocket): void {
+  // Generar chunks iniciales alrededor del centro
+  const initialViewport: ViewportData = {
+    centerX: 256,
+    centerY: 256,
+    zoom: 1,
+    width: 800,
+    height: 600,
+  };
+  
+  console.log(`[Server] Getting all visible chunks for viewport center (${initialViewport.centerX}, ${initialViewport.centerY})`);
+  // Usar getChunksForViewport para obtener TODOS los chunks visibles, no solo los nuevos
+  const initialChunks = infiniteChunks.getChunksForViewport(initialViewport);
+  console.log(`[Server] Got ${initialChunks.length} chunks for initial viewport`);
+  
   const msg: ServerMessage = {
     type: 'init',
     tick: world.getTick(),
@@ -131,6 +181,12 @@ function sendInit(ws: WebSocket): void {
   };
   
   send(ws, msg);
+  
+  // Enviar chunks iniciales
+  if (initialChunks.length > 0) {
+    console.log(`[Server] Sending ${initialChunks.length} initial chunks: ${initialChunks.slice(0, 5).map(c => `(${c.cx},${c.cy})`).join(', ')}...`);
+    sendChunkData(ws, initialChunks);
+  }
   
   // Enviar campos iniciales
   sendFieldUpdates(ws);
@@ -174,6 +230,42 @@ function sendFieldUpdates(ws: WebSocket): void {
   send(ws, msg);
 }
 
+function sendChunkData(ws: WebSocket, chunks: ChunkSnapshot[]): void {
+  // Enviar en batches para evitar mensajes demasiado grandes
+  const BATCH_SIZE = 10;
+  
+  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+    const batch = chunks.slice(i, i + BATCH_SIZE);
+    
+    // Serializar chunks para JSON
+    const serializedChunks = batch.map(chunk => ({
+      ...chunk,
+      fields: Object.fromEntries(
+        Object.entries(chunk.fields).map(([key, buffer]) => [
+          key,
+          buffer ? Array.from(new Float32Array(buffer)) : []
+        ])
+      ),
+    }));
+    
+    const msg: ServerMessage = {
+      type: 'chunk_data',
+      tick: world.getTick(),
+      chunks: serializedChunks as unknown as ChunkSnapshot[],
+    };
+    
+    send(ws, msg);
+  }
+  
+  console.log(`[Server] Sent ${chunks.length} chunks in ${Math.ceil(chunks.length / BATCH_SIZE)} batches`);
+}
+
+function broadcastChunks(chunks: ChunkSnapshot[]): void {
+  for (const client of clients) {
+    sendChunkData(client, chunks);
+  }
+}
+
 // ============================================
 // Game Loop
 // ============================================
@@ -187,11 +279,22 @@ function gameLoop(): void {
   // Solo ejecutar si no está pausado
   if (!world.isPaused()) {
     world.step();
+    infiniteChunks.step();
     tickCount++;
     
-    // Broadcast tick cada tick
+    // Actualizar chunks desde posición de partículas
     const particles = world.getParticles();
+    const newChunksFromParticles = infiniteChunks.updateFromParticles(particles);
+    if (newChunksFromParticles.length > 0) {
+      broadcastChunks(newChunksFromParticles);
+    }
     
+    // Limpiar chunks antiguos cada 100 ticks
+    if (world.getTick() % 100 === 0) {
+      infiniteChunks.cleanup();
+    }
+    
+    // Broadcast tick cada tick
     const tickMsg: ServerMessage = {
       type: 'tick',
       tick: world.getTick(),

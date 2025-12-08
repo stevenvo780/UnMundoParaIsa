@@ -52,6 +52,10 @@ export class WebSocketClient {
     this.ws.onmessage = (event) => {
       try {
         const msg: ServerMessage = JSON.parse(event.data);
+        // Debug: Log chunk messages
+        if (msg.type === 'chunk_data') {
+          console.log(`[WS] Recibido chunk_data con ${(msg as { chunks?: unknown[] }).chunks?.length ?? 0} chunks`);
+        }
         this.emit(msg.type, msg);
       } catch (e) {
         console.error('[WS] Error parseando mensaje:', e);
