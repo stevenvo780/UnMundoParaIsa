@@ -7,21 +7,22 @@
 ## 📊 Estado Actual
 
 ```
-FASE ACTUAL: 6 - Escala (INTEGRACIÓN COMPLETA ✅)
-SUBTAREA ACTUAL: Testing y pulido visual
-ÚLTIMO COMMIT: (pendiente)
-TIMESTAMP: 2025-12-10 10:25 AM
-ESTADO: ~85% implementación, ~70% integración funcional
+FASE ACTUAL: 6 - Escala (INTEGRACIÓN COMPLETA + TESTING ✅)
+SUBTAREA ACTUAL: Pulido final y visualizaciones
+ÚLTIMO COMMIT: test: Suite de tests unitarios (48 tests)
+TIMESTAMP: 2025-12-10 10:52 AM
+ESTADO: ~90% implementación, ~85% testing
 ```
 
 ### 📊 Métricas del Codebase (2025-12-10 ACTUALIZADO)
 ```
-ARCHIVOS:       32+ archivos TypeScript
-LÍNEAS TOTALES: 9,500+ líneas
-ERRORES:        0 errores de compilación (backend y frontend)
+ARCHIVOS:       38+ archivos TypeScript
+LÍNEAS TOTALES: 11,000+ líneas
+ERRORES:        0 errores de compilación
+TESTS:          48 tests (5 suites) - 100% pasan
 ESTADO:         ✅ SERVIDOR CORRIENDO - SIMULACIÓN FUNCIONANDO
                 ✅ WebSocket conectado
-                ✅ ~20,000 partículas activas
+                ✅ ~11,000 partículas activas
                 ✅ Nacimientos/Muertes dinámicos
                 ✅ FPS: 41-44
 ```
@@ -155,7 +156,7 @@ UnMundoParaIsa/
 - [x] 4.2 FamilyDetection - Parentesco (en Communities.ts)
 - [x] 4.3 Communities.ts - Detección de clusters (380 líneas)
 - [x] 4.4 Tension.ts - Cálculo de tensión (316 líneas)
-- [ ] 4.5 Conflict.ts - Procesamiento de conflictos ⬜ (secundario)
+- [x] 4.5 Conflict.ts - Procesamiento de conflictos ✅ CREADO
 - [x] 4.6 **Integración en World.updateSocial()** ✅ IMPLEMENTADO
 - [x] 4.7 Visualización social en frontend ✅ (capas de comunidades/tensión)
 - [ ] 4.8 Commit "Fase 4 completa"
@@ -166,7 +167,7 @@ UnMundoParaIsa/
 - [x] 5.3 Artifacts.ts - Objetos descubribles (359 líneas)
 - [x] 5.4 Events.ts - Triggers (387 líneas)
 - [x] 5.5 Materialization.ts - Personajes/Héroes (391 líneas)
-- [ ] 5.6 DialogUI.ts - Mostrar fragmentos en frontend ⬜ (secundario)
+- [x] 5.6 DialogUI.ts - Mostrar fragmentos en frontend ✅ CREADO
 - [x] 5.7 **Integración en World.updateNarrative()** ✅ IMPLEMENTADO
 - [ ] 5.8 Commit "Fase 5 completa"
 
@@ -176,25 +177,32 @@ UnMundoParaIsa/
 - [ ] 6.3 GPU Kernels (si WebGL disponible) ⬜ (secundario)
 - [ ] 6.4 ChunkStreaming.ts - Carga dinámica ⬜ (secundario)
 - [x] 6.5 Thermostats.ts - Auto-tuning (511 líneas)
-- [ ] 6.6 Metrics.ts - Dashboard ⬜ (secundario)
+- [x] 6.6 Metrics.ts - Dashboard ✅ CREADO
 - [x] 6.7 **Integración en World.updateScale()** ✅ IMPLEMENTADO
 - [ ] 6.8 Docker final
 - [ ] 6.9 Playwright tests ⬜
 - [ ] 6.10 Commit "Fase 6 completa - MVP"
 
+### FASE 7: Testing ✅ COMPLETA
+- [x] 7.1 Field.test.ts - 14 tests
+- [x] 7.2 Particle.test.ts - 6 tests  
+- [x] 7.3 Economy.test.ts - 11 tests (DemandField, DemandManager)
+- [x] 7.4 Social.test.ts - 8 tests (Signatures, CommunityDetector)
+- [x] 7.5 Narrative.test.ts - 9 tests (EventManager)
+- [ ] 7.6 Integration tests para World ⬜
+- [ ] 7.7 Playwright E2E tests ⬜
+
 ---
 
 ## 🚨 TRABAJO PENDIENTE (SECUNDARIO)
 
-### 1. Módulos Secundarios (BAJA PRIORIDAD)
-Los siguientes son **"nice-to-have"** pero no críticos:
-- [ ] Carriers.ts - Transporte de recursos
-- [ ] Conflict.ts - Procesamiento de conflictos  
-- [ ] DialogUI.ts - Mostrar fragmentos de chat
-- [ ] Metrics.ts - Dashboard de métricas avanzado
-- [ ] GPU Kernels - Optimización WebGL
-
-**Estimación:** 4-5 horas
+### 1. Módulos Secundarios ✅ COMPLETADOS
+~~Los siguientes son **"nice-to-have"** pero no críticos:~~
+- [x] Carriers.ts - Transporte de recursos ✅
+- [x] Conflict.ts - Procesamiento de conflictos ✅
+- [x] DialogUI.ts - Mostrar fragmentos de chat ✅
+- [x] Metrics.ts - Dashboard de métricas avanzado ✅
+- [ ] GPU Kernels - Optimización WebGL ⬜ (opcional)
 
 ### 2. Bug Visual - Spinner No Desaparece
 El mensaje "Conectando con el mundo..." no se oculta tras conexión exitosa.
