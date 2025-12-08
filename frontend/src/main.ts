@@ -10,10 +10,16 @@ import { UIController } from './ui/UIController';
 async function main() {
   console.log('[App] Un Mundo Para Isa - Iniciando...');
   
-  // Crear canvas
-  const container = document.getElementById('app');
+  // Obtener el canvas-container específico para el renderer
+  const container = document.getElementById('canvas-container');
   if (!container) {
-    throw new Error('No se encontró el contenedor #app');
+    throw new Error('No se encontró el contenedor #canvas-container');
+  }
+  
+  // Remover el canvas placeholder existente (será reemplazado por PixiJS)
+  const existingCanvas = document.getElementById('world-canvas');
+  if (existingCanvas) {
+    existingCanvas.remove();
   }
   
   // Inicializar renderer
