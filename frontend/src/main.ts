@@ -53,6 +53,13 @@ async function main() {
   
   client.on('init', (data) => {
     console.log('[App] Recibido estado inicial');
+    
+    // Ocultar pantalla de carga
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      loadingEl.style.display = 'none';
+    }
+    
     if (data.particles) {
       renderer.updateParticles(data.particles);
     }
