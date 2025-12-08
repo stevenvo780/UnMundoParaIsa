@@ -636,12 +636,18 @@ export class World {
     
     // 5. Limpiar partículas muertas
     this.cleanDeadParticles();
-    
+
     this.tick++;
     this.lastTickTime = performance.now() - startTime;
-  }
-  
-  /**
+    
+    // Log cada 100 ticks para monitoreo
+    if (this.tick % 100 === 0) {
+      const alive = this.particles.filter(p => p.alive).length;
+      const avgEnergy = this.particles.reduce((s, p) => s + (p.alive ? p.energy : 0), 0) / Math.max(1, alive);
+      const foodSum = this.getField('food')?.getSum() ?? 0;
+      console.log(`[World] Tick ${this.tick} | Alive: ${alive} | AvgEnergy: ${avgEnergy.toFixed(3)} | Food: ${foodSum.toFixed(0)} | Births: ${this.births} | Deaths: ${this.deaths}`);
+    }
+  }  /**
    * Actualizar todas las partículas
    */
   private updateParticles(): void {
@@ -666,6 +672,9 @@ export class World {
       if (p.energy <= 0) {
         p.alive = false;
         this.deaths++;
+        if (this.tick % 100 === 0 || this.deaths <= 3) {
+          console.log(`[Death] Particle ${p.id} died at (${p.x},${p.y}) - tick ${this.tick}`);
+        }
         continue;
       }
       
@@ -814,8 +823,9 @@ export class World {
     const cy = Math.floor(parent.y + Math.sin(angle) * dist);
     
     if (cx >= 0 && cx < this.width && cy >= 0 && cy < this.height) {
+      const newId = this.particleIdCounter++;
       this.particles.push({
-        id: this.particleIdCounter++,
+        id: newId,
         x: cx,
         y: cy,
         energy: lifecycle.reproductionCost * 0.8,
@@ -823,6 +833,9 @@ export class World {
         alive: true,
       });
       this.births++;
+      if (this.tick % 100 === 0 || this.births <= 3) {
+        console.log(`[Birth] Particle ${newId} born at (${cx},${cy}) from parent ${parent.id} - tick ${this.tick}`);
+      }
     }
   }
   

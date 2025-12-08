@@ -5,6 +5,7 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "./dist",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,14 +13,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "baseUrl": "..",
-    "paths": {
-      "@shared/*": ["shared/*"]
-    }
+    "sourceMap": true
   },
-  "include": ["src/**/*", "../shared/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

@@ -20,8 +20,9 @@ async function main() {
   const renderer = new Renderer(container);
   await renderer.init();
   
-  // Conectar al backend
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3002';
+  // Conectar al backend - usa /ws relativo para funcionar via nginx proxy
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
   const client = new WebSocketClient(wsUrl);
   
   // Inicializar UI
