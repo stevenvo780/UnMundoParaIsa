@@ -210,3 +210,46 @@ export interface WorldState {
   particles: Particle[];
   fields: Record<FieldType, Float32Array>;
 }
+
+// ============================================
+// Tipos adicionales para visualización
+// ============================================
+
+export interface Community {
+  id: number;
+  centerX: number;
+  centerY: number;
+  radius: number;
+  population: number;
+  dominantSignature: [number, number, number, number];
+}
+
+export interface ConflictZone {
+  x: number;
+  y: number;
+  tension: number;
+}
+
+export interface Artifact {
+  id: number;
+  type: string;
+  x: number;
+  y: number;
+  discovered: boolean;
+}
+
+export interface Character {
+  id: number;
+  name: string;
+  x: number;
+  y: number;
+  type: 'character' | 'hero';
+}
+
+export interface ExtendedWorldState extends WorldState {
+  communities?: Community[];
+  conflicts?: ConflictZone[];
+  artifacts?: Artifact[];
+  characters?: Character[];
+  tensionField?: Float32Array;
+}

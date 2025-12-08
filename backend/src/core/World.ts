@@ -24,14 +24,14 @@ import { ResourceFlowSystem } from '../economy/Advection.js';
 import { StockpileManager } from '../economy/Stockpiles.js';
 
 // Social
-import { getSignature } from '../social/Signatures.js';
+import { getSignature, SignatureField } from '../social/Signatures.js';
 import { CommunityDetector } from '../social/Communities.js';
 import { TensionField } from '../social/Tension.js';
 
 // Narrative
 import { SemanticFieldManager } from '../narrative/SemanticFields.js';
 import { ArtifactManager } from '../narrative/Artifacts.js';
-import { EventManager } from '../narrative/Events.js';
+import { EventManager, WorldState } from '../narrative/Events.js';
 import { MaterializationManager } from '../narrative/Materialization.js';
 
 // Scale
@@ -190,38 +190,297 @@ export class World {
   
   /**
    * Actualizar economía (MEDIUM rate)
-   * TODO: Integrar métodos reales cuando APIs estén finalizadas
+   * Integra: Demand, Reactions, Advection, Stockpiles
    */
   private updateEconomy(): void {
-    // Placeholder - integración pendiente
-    // Los managers están inicializados pero sus APIs necesitan refinamiento
+    // 1. Obtener campos necesarios
+    const populationField = this.getField('population')?.getBuffer();
+    const laborField = this.getField('labor')?.getBuffer();
+    const foodField = this.getField('food');
+    const waterField = this.getField('water');
+    
+    if (!populationField || !foodField || !waterField) return;
+    
+    // 2. Actualizar campos de demanda
+    const resourceFields = new Map<string, Float32Array>();
+    resourceFields.set('food', foodField.getBuffer());
+    resourceFields.set('water', waterField.getBuffer());
+    
+    const treesField = this.getField('trees');
+    const stoneField = this.getField('stone');
+    if (treesField) resourceFields.set('trees', treesField.getBuffer());
+    if (stoneField) resourceFields.set('stone', stoneField.getBuffer());
+    
+    this.demandManager.update(populationField, resourceFields);
+    
+    // 3. Procesar reacciones donde hay labor
+    if (laborField) {
+      // Crear snapshot de recursos locales
+      for (let y = 0; y < this.height; y += 8) {  // Muestreo cada 8 celdas
+        for (let x = 0; x < this.width; x += 8) {
+          const i = y * this.width + x;
+          if (laborField[i] > 0.1) {
+            // Crear contexto de recursos locales
+            const localResources: Record<string, number> = {
+              food: foodField.get(x, y),
+              water: waterField.get(x, y),
+            };
+            
+            const labor = laborField[i];
+            const buildings = new Set<string>();  // TODO: sistema de edificios
+            const population = populationField[i];
+            const fieldValues: Record<string, number> = { ...localResources };
+            
+            // Probar cada reacción
+            for (const reaction of this.reactionProcessor.getReactions()) {
+              if (this.reactionProcessor.canExecute(
+                reaction, localResources, labor, buildings, population, fieldValues
+              )) {
+                // Ejecutar y aplicar outputs
+                const result = this.reactionProcessor.execute(reaction, localResources, labor);
+                if (result.executed) {
+                  for (const [resource, amount] of Object.entries(result.produced)) {
+                    const field = this.getField(resource as FieldType);
+                    if (field) {
+                      field.add(x, y, (amount as number) * 0.01);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 4. Advección de recursos (flujo hacia demanda)
+    const foodDemand = this.demandManager.getDemandField('food');
+    if (foodDemand) {
+      // Construir arrays de gradiente
+      const size = this.width * this.height;
+      const gradX = new Float32Array(size);
+      const gradY = new Float32Array(size);
+      
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const i = y * this.width + x;
+          const grad = foodDemand.getGradient(x, y);
+          gradX[i] = grad.gx;
+          gradY[i] = grad.gy;
+        }
+      }
+      
+      const advectedFood = this.resourceFlow.updateFlow(
+        'food',
+        gradX,
+        gradY,
+        foodField.getBuffer()
+      );
+      // Copiar valores advectados de vuelta al campo
+      const buffer = foodField.getBuffer();
+      for (let i = 0; i < advectedFood.length; i++) {
+        buffer[i] = advectedFood[i];
+      }
+    }
   }
   
   /**
    * Actualizar sistemas sociales (MEDIUM rate)
+   * Integra: Signatures, Communities, Tension
    */
   private updateSocial(): void {
-    // Placeholder - integración pendiente
-    // CommunityDetector y TensionField tienen APIs específicas
+    // 1. Obtener campos necesarios
+    const populationField = this.getField('population')?.getBuffer();
+    const foodField = this.getField('food')?.getBuffer();
+    const waterField = this.getField('water')?.getBuffer();
+    
+    if (!populationField || !foodField || !waterField) return;
+    
+    // 2. Construir SignatureField desde partículas
+    const signatureField = this.buildSignatureField();
+    
+    // 3. Detectar comunidades
+    this.communities.detect(
+      this.particles,
+      populationField,
+      this.width,
+      this.height
+    );
+    
+    // 4. Calcular tensión social
+    this.tension.calculate(
+      signatureField,
+      populationField,
+      { food: foodField, water: waterField }
+    );
+    
+    // 5. Detectar y procesar conflictos si hay alta tensión
+    const conflicts = this.tension.detectConflicts(this.tick);
+    for (const conflict of conflicts) {
+      // Dispersar partículas en zona de conflicto
+      const radius = 5;
+      for (const particle of this.particles) {
+        if (!particle.alive) continue;
+        const dx = particle.x - conflict.x;
+        const dy = particle.y - conflict.y;
+        if (Math.sqrt(dx * dx + dy * dy) < radius) {
+          // Dispersar: mover hacia afuera
+          const angle = Math.atan2(dy, dx);
+          particle.x += Math.cos(angle) * 2;
+          particle.y += Math.sin(angle) * 2;
+          particle.energy -= 0.1 * conflict.tension;  // Desgaste por conflicto
+        }
+      }
+    }
+  }
+  
+  /**
+   * Construir SignatureField desde partículas
+   * Crea una estructura compatible con TensionField.calculate()
+   */
+  private buildSignatureField(): SignatureField {
+    const field = new SignatureField(this.width, this.height);
+    
+    // Depositar firmas de partículas
+    for (const p of this.particles) {
+      if (!p.alive) continue;
+      const x = Math.floor(p.x);
+      const y = Math.floor(p.y);
+      if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+      
+      // Convertir seed a signature
+      const signature = getSignature(p.seed);
+      field.deposit(x, y, signature, 1.0);
+    }
+    
+    return field;
   }
   
   /**
    * Actualizar narrativa (SLOW rate)
+   * Integra: SemanticFields, Artifacts, Events, Materialization
    */
   private updateNarrative(): void {
-    // Placeholder - integración pendiente
-    // SemanticFields, Artifacts, Materialization conectados
+    // 1. Actualizar campos semánticos
+    this.semanticFields.step();
+    
+    // 2. Actualizar artefactos
+    this.artifacts.update();
+    
+    // 3. Construir estado actual para eventos
+    const allCommunities = this.communities.getAll();
+    const tensionStats = this.tension.getStats();
+    const conflicts = this.tension.getRecentConflicts();
+    
+    const worldState: WorldState = {
+      tick: this.tick,
+      particles: this.particles,
+      births: this.births,
+      deaths: this.deaths,
+      communities: allCommunities.map(c => ({
+        id: c.id,
+        population: c.population,
+        x: c.centerX,
+        y: c.centerY,
+      })),
+      conflicts: conflicts.map(c => ({
+        x: c.x,
+        y: c.y,
+        tension: c.tension,
+      })),
+      artifacts: this.artifacts.getAll(),
+    };
+    
+    // 4. Procesar eventos narrativos
+    const events = this.events.process(worldState, this.previousWorldState || worldState);
+    this.previousWorldState = worldState;
+    
+    // 5. Materializar personajes de partículas longevas
+    this.materialization.setTick(this.tick);
+    for (const particle of this.particles) {
+      if (!particle.alive) continue;
+      
+      // Usar tick actual como estimación de edad (tick - estimated birth)
+      const estimatedAge = Math.floor(particle.energy * 1000);  // Aproximación
+      if (this.materialization.canMaterialize(particle, estimatedAge)) {
+        const character = this.materialization.materialize(particle, estimatedAge);
+        console.log(`[Narrative] Personaje materializado: ${character.name}`);
+      }
+    }
+    
+    // 6. Aplicar efectos semánticos al mundo
+    this.applySemanticEffects();
+  }
+  
+  // Estado anterior para comparación de eventos
+  private previousWorldState?: WorldState;
+  
+  /**
+   * Aplicar efectos de campos semánticos al mundo
+   */
+  private applySemanticEffects(): void {
+    const joyField = this.semanticFields.getField('joy');
+    const nostalgiaField = this.semanticFields.getField('nostalgia');
+    
+    if (!joyField || !nostalgiaField) return;
+    
+    // Joy aumenta reproducción, nostalgia reduce movimiento
+    for (const particle of this.particles) {
+      if (!particle.alive) continue;
+      
+      const x = Math.floor(particle.x);
+      const y = Math.floor(particle.y);
+      
+      const joy = joyField.get(x, y);
+      const nostalgia = nostalgiaField.get(x, y);
+      
+      // Bonus de energía por joy
+      if (joy > 0.5) {
+        particle.energy += 0.01 * joy;
+      }
+      
+      // Reducir velocidad por nostalgia (simulado con energía)
+      if (nostalgia > 0.5) {
+        // Las partículas en zonas nostálgicas tienden a quedarse
+        particle.energy = Math.min(particle.energy, 0.8);  // Cap de energía
+      }
+    }
   }
   
   /**
    * Actualizar sistemas de escala (SLOW rate)
+   * Integra: FlowFields, LOD
    */
   private updateScale(): void {
-    // LOD y FlowFields update
+    // 1. Actualizar FlowFields desde campos de recursos
     const food = this.getField('food');
+    const water = this.getField('water');
+    
     if (food) {
       this.flowFields.updateFromField('food', food.getBuffer());
     }
+    if (water) {
+      this.flowFields.updateFromField('water', water.getBuffer());
+    }
+    
+    // 2. Actualizar LOD (Level of Detail)
+    // Agregar puntos de foco basados en comunidades activas
+    this.lod.clearFocusPoints();
+    
+    const communities = this.communities.getAll();
+    for (const community of communities) {
+      if (community.population > 5) {
+        this.lod.addFocusPoint({
+          x: community.centerX,
+          y: community.centerY,
+          radius: community.radius * 2,
+          weight: Math.min(1, community.population / 20),
+        });
+      }
+    }
+    
+    // Recalcular niveles LOD
+    this.lod.updateLevels();
   }
   
   /**

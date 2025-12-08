@@ -2,8 +2,8 @@
  * Renderer con PixiJS para visualizar la simulación
  */
 
-import { Application, Container, Graphics } from 'pixi.js';
-import { Particle, FieldType, WORLD } from '../types';
+import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Particle, FieldType, WORLD, Community, ConflictZone, Artifact, Character } from '../types';
 
 interface FieldLayer {
   graphics: Graphics;
@@ -26,6 +26,19 @@ export class Renderer {
   // Partículas
   private particleGraphics: Graphics[] = [];
   private particles: Particle[] = [];
+  
+  // Nuevos sistemas de visualización
+  private communities: Community[] = [];
+  private conflicts: ConflictZone[] = [];
+  private artifacts: Artifact[] = [];
+  private characters: Character[] = [];
+  private tensionField: Float32Array | null = null;
+  
+  // Capas adicionales
+  private communityLayer: Container | null = null;
+  private tensionLayer: Container | null = null;
+  private artifactLayer: Container | null = null;
+  private characterLayer: Container | null = null;
   
   // Estado
   private zoom = 1;
@@ -58,11 +71,19 @@ export class Renderer {
     
     // Crear capas
     this.backgroundLayer = new Container();
+    this.tensionLayer = new Container();
+    this.communityLayer = new Container();
+    this.artifactLayer = new Container();
     this.particleLayer = new Container();
+    this.characterLayer = new Container();
     this.uiLayer = new Container();
     
     this.app.stage.addChild(this.backgroundLayer);
+    this.app.stage.addChild(this.tensionLayer);
+    this.app.stage.addChild(this.communityLayer);
+    this.app.stage.addChild(this.artifactLayer);
     this.app.stage.addChild(this.particleLayer);
+    this.app.stage.addChild(this.characterLayer);
     this.app.stage.addChild(this.uiLayer);
     
     // Inicializar capas de campo
@@ -175,13 +196,22 @@ export class Renderer {
   private updateTransform(): void {
     if (!this.backgroundLayer || !this.particleLayer) return;
     
-    this.backgroundLayer.x = this.panX;
-    this.backgroundLayer.y = this.panY;
-    this.backgroundLayer.scale.set(this.zoom);
+    const layers = [
+      this.backgroundLayer,
+      this.tensionLayer,
+      this.communityLayer,
+      this.artifactLayer,
+      this.particleLayer,
+      this.characterLayer,
+    ];
     
-    this.particleLayer.x = this.panX;
-    this.particleLayer.y = this.panY;
-    this.particleLayer.scale.set(this.zoom);
+    for (const layer of layers) {
+      if (layer) {
+        layer.x = this.panX;
+        layer.y = this.panY;
+        layer.scale.set(this.zoom);
+      }
+    }
   }
   
   /**
@@ -234,14 +264,61 @@ export class Renderer {
   }
   
   /**
+   * Actualizar comunidades
+   */
+  updateCommunities(communities: Community[]): void {
+    this.communities = communities;
+  }
+  
+  /**
+   * Actualizar zonas de conflicto
+   */
+  updateConflicts(conflicts: ConflictZone[]): void {
+    this.conflicts = conflicts;
+  }
+  
+  /**
+   * Actualizar artefactos
+   */
+  updateArtifacts(artifacts: Artifact[]): void {
+    this.artifacts = artifacts;
+  }
+  
+  /**
+   * Actualizar personajes
+   */
+  updateCharacters(characters: Character[]): void {
+    this.characters = characters;
+  }
+  
+  /**
+   * Actualizar campo de tensión
+   */
+  updateTensionField(tensionField: Float32Array): void {
+    this.tensionField = tensionField;
+  }
+  
+  /**
    * Render frame
    */
   render(): void {
     // Render fields
     this.renderFields();
     
+    // Render tension overlay
+    this.renderTension();
+    
+    // Render communities
+    this.renderCommunities();
+    
+    // Render artifacts
+    this.renderArtifacts();
+    
     // Render particles
     this.renderParticles();
+    
+    // Render characters
+    this.renderCharacters();
   }
   
   /**
@@ -313,6 +390,171 @@ export class Renderer {
     }
     
     this.particleLayer.addChild(graphics);
+  }
+  
+  /**
+   * Renderizar campo de tensión como overlay rojo
+   */
+  private renderTension(): void {
+    if (!this.tensionLayer || !this.tensionField) return;
+    
+    // Limpiar capa
+    while (this.tensionLayer.children.length > 0) {
+      this.tensionLayer.removeChildAt(0);
+    }
+    
+    const graphics = new Graphics();
+    const cellSize = 8;  // Más grande para performance
+    
+    for (let y = 0; y < WORLD.HEIGHT; y += cellSize) {
+      for (let x = 0; x < WORLD.WIDTH; x += cellSize) {
+        const idx = y * WORLD.WIDTH + x;
+        const tension = this.tensionField[idx];
+        
+        if (tension > 0.1) {
+          graphics.rect(x, y, cellSize, cellSize);
+          graphics.fill({ color: 0xff0000, alpha: tension * 0.4 });
+        }
+      }
+    }
+    
+    this.tensionLayer.addChild(graphics);
+  }
+  
+  /**
+   * Renderizar comunidades como círculos con colores basados en firma
+   */
+  private renderCommunities(): void {
+    if (!this.communityLayer) return;
+    
+    // Limpiar capa
+    while (this.communityLayer.children.length > 0) {
+      this.communityLayer.removeChildAt(0);
+    }
+    
+    const graphics = new Graphics();
+    
+    for (const community of this.communities) {
+      // Color basado en firma dominante
+      const sig = community.dominantSignature;
+      const color = this.signatureToColor(sig);
+      
+      // Círculo exterior (borde de comunidad)
+      graphics.circle(community.centerX, community.centerY, community.radius);
+      graphics.stroke({ color, width: 2, alpha: 0.6 });
+      
+      // Relleno semi-transparente
+      graphics.circle(community.centerX, community.centerY, community.radius);
+      graphics.fill({ color, alpha: 0.1 });
+      
+      // Centro
+      graphics.circle(community.centerX, community.centerY, 3);
+      graphics.fill({ color, alpha: 0.8 });
+    }
+    
+    this.communityLayer.addChild(graphics);
+  }
+  
+  /**
+   * Renderizar artefactos como íconos
+   */
+  private renderArtifacts(): void {
+    if (!this.artifactLayer) return;
+    
+    // Limpiar capa
+    while (this.artifactLayer.children.length > 0) {
+      this.artifactLayer.removeChildAt(0);
+    }
+    
+    const graphics = new Graphics();
+    
+    for (const artifact of this.artifacts) {
+      const color = artifact.discovered ? 0xffd700 : 0x888888;  // Oro si descubierto
+      const size = 5;
+      
+      // Diamante shape
+      graphics.moveTo(artifact.x, artifact.y - size);
+      graphics.lineTo(artifact.x + size, artifact.y);
+      graphics.lineTo(artifact.x, artifact.y + size);
+      graphics.lineTo(artifact.x - size, artifact.y);
+      graphics.closePath();
+      graphics.fill({ color, alpha: 0.9 });
+      
+      // Glow si no descubierto
+      if (!artifact.discovered) {
+        graphics.circle(artifact.x, artifact.y, size * 2);
+        graphics.fill({ color: 0xffff00, alpha: 0.1 });
+      }
+    }
+    
+    this.artifactLayer.addChild(graphics);
+  }
+  
+  /**
+   * Renderizar personajes y héroes
+   */
+  private renderCharacters(): void {
+    if (!this.characterLayer) return;
+    
+    // Limpiar capa
+    while (this.characterLayer.children.length > 0) {
+      this.characterLayer.removeChildAt(0);
+    }
+    
+    const graphics = new Graphics();
+    
+    for (const char of this.characters) {
+      const isHero = char.type === 'hero';
+      const size = isHero ? 8 : 5;
+      const color = isHero ? 0xff00ff : 0x00ffff;
+      
+      // Personajes como estrellas pequeñas
+      if (isHero) {
+        // Estrella para héroes
+        this.drawStar(graphics, char.x, char.y, 5, size, size * 0.5);
+        graphics.fill({ color, alpha: 1.0 });
+        
+        // Aura
+        graphics.circle(char.x, char.y, size * 2);
+        graphics.fill({ color, alpha: 0.2 });
+      } else {
+        // Triángulo para personajes normales
+        graphics.moveTo(char.x, char.y - size);
+        graphics.lineTo(char.x + size, char.y + size);
+        graphics.lineTo(char.x - size, char.y + size);
+        graphics.closePath();
+        graphics.fill({ color, alpha: 0.9 });
+      }
+    }
+    
+    this.characterLayer.addChild(graphics);
+  }
+  
+  /**
+   * Dibujar estrella
+   */
+  private drawStar(graphics: Graphics, cx: number, cy: number, points: number, outer: number, inner: number): void {
+    const step = Math.PI / points;
+    
+    graphics.moveTo(cx, cy - outer);
+    
+    for (let i = 0; i < points * 2; i++) {
+      const radius = i % 2 === 0 ? outer : inner;
+      const angle = i * step - Math.PI / 2;
+      graphics.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+    }
+    
+    graphics.closePath();
+  }
+  
+  /**
+   * Convertir firma a color
+   */
+  private signatureToColor(sig: [number, number, number, number]): number {
+    const r = Math.floor(sig[0] * 255);
+    const g = Math.floor(sig[1] * 255);
+    const b = Math.floor(sig[2] * 255);
+    return (r << 16) + (g << 8) + b;
   }
   
   /**
