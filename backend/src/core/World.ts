@@ -1,8 +1,11 @@
 /**
  * World - Gestiona todos los campos y la simulación global
+ * Integra: Chunks, Scheduler, Economy, Social, Narrative, Scale
  */
 
 import { Field } from './Field.js';
+import { ChunkManager } from './ChunkManager.js';
+import { Scheduler } from './Scheduler.js';
 import { 
   FieldType, 
   FieldConfig, 
@@ -14,11 +17,34 @@ import {
   idx,
 } from '../types.js';
 
+// Economy
+import { DemandManager } from '../economy/Demand.js';
+import { ReactionProcessor } from '../economy/Reactions.js';
+import { ResourceFlowSystem } from '../economy/Advection.js';
+import { StockpileManager } from '../economy/Stockpiles.js';
+
+// Social
+import { getSignature } from '../social/Signatures.js';
+import { CommunityDetector } from '../social/Communities.js';
+import { TensionField } from '../social/Tension.js';
+
+// Narrative
+import { SemanticFieldManager } from '../narrative/SemanticFields.js';
+import { ArtifactManager } from '../narrative/Artifacts.js';
+import { EventManager } from '../narrative/Events.js';
+import { MaterializationManager } from '../narrative/Materialization.js';
+
+// Scale
+import { FlowFieldManager } from '../scale/FlowFields.js';
+import { LODManager } from '../scale/LOD.js';
+import { ThermostatBank, WorldBalancer } from '../scale/Thermostats.js';
+
 export class World {
   readonly width: number;
   readonly height: number;
   readonly config: SimulationConfig;
   
+  // Core
   private fields: Map<FieldType, Field> = new Map();
   private particles: Particle[] = [];
   private particleIdCounter = 0;
@@ -31,12 +57,190 @@ export class World {
   private births = 0;
   private deaths = 0;
   
+  // === Nuevos sistemas integrados ===
+  
+  // Core - Chunks y Scheduler
+  private chunkManager!: ChunkManager;
+  private scheduler!: Scheduler;
+  
+  // Economy
+  private demandManager!: DemandManager;
+  private reactionProcessor!: ReactionProcessor;
+  private resourceFlow!: ResourceFlowSystem;
+  private stockpiles!: StockpileManager;
+  
+  // Social
+  private communities!: CommunityDetector;
+  private tension!: TensionField;
+  
+  // Narrative
+  private semanticFields!: SemanticFieldManager;
+  private artifacts!: ArtifactManager;
+  private events!: EventManager;
+  private materialization!: MaterializationManager;
+  
+  // Scale
+  private flowFields!: FlowFieldManager;
+  private lod!: LODManager;
+  private thermostats!: ThermostatBank;
+  private balancer!: WorldBalancer;
+  
   constructor(config: Partial<SimulationConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.width = this.config.worldWidth;
     this.height = this.config.worldHeight;
     
+    // Inicializar campos base
     this.initializeFields();
+    
+    // Inicializar sistemas
+    this.initializeSystems();
+  }
+  
+  /**
+   * Inicializar todos los subsistemas
+   */
+  private initializeSystems(): void {
+    // Core
+    this.chunkManager = new ChunkManager();
+    this.scheduler = new Scheduler();
+    
+    // Economy
+    this.demandManager = new DemandManager(this.width, this.height);
+    this.reactionProcessor = new ReactionProcessor();
+    this.resourceFlow = new ResourceFlowSystem(this.width, this.height, ['food', 'water', 'stone']);
+    this.stockpiles = new StockpileManager(this.width, this.height);
+    
+    // Social
+    this.communities = new CommunityDetector();
+    this.tension = new TensionField(this.width, this.height);
+    
+    // Narrative
+    this.semanticFields = new SemanticFieldManager(this.width, this.height);
+    this.artifacts = new ArtifactManager(this.width, this.height);
+    this.events = new EventManager();
+    this.materialization = new MaterializationManager();
+    
+    // Scale
+    this.flowFields = new FlowFieldManager();
+    this.lod = new LODManager();
+    this.thermostats = new ThermostatBank();
+    this.balancer = new WorldBalancer(this.thermostats);
+    
+    // Registrar tareas en scheduler
+    this.registerScheduledTasks();
+    
+    console.log('[World] Todos los sistemas inicializados');
+  }
+  
+  /**
+   * Registrar tareas con diferentes frecuencias
+   */
+  private registerScheduledTasks(): void {
+    // FAST (cada tick): movimiento partículas, consumo
+    this.scheduler.register({
+      id: 'particles',
+      rate: 'FAST',
+      fn: () => this.updateParticles(),
+      priority: 1
+    });
+    this.scheduler.register({
+      id: 'fields',
+      rate: 'FAST',
+      fn: () => this.updateFields(),
+      priority: 2
+    });
+    
+    // MEDIUM (cada 5 ticks): economía, social
+    this.scheduler.register({
+      id: 'economy',
+      rate: 'MEDIUM',
+      fn: () => this.updateEconomy(),
+      priority: 10
+    });
+    this.scheduler.register({
+      id: 'social',
+      rate: 'MEDIUM',
+      fn: () => this.updateSocial(),
+      priority: 11
+    });
+    
+    // SLOW (cada 20 ticks): narrativa, escala, termostatos
+    this.scheduler.register({
+      id: 'narrative',
+      rate: 'SLOW',
+      fn: () => this.updateNarrative(),
+      priority: 20
+    });
+    this.scheduler.register({
+      id: 'scale',
+      rate: 'SLOW',
+      fn: () => this.updateScale(),
+      priority: 21
+    });
+    this.scheduler.register({
+      id: 'thermostats',
+      rate: 'SLOW',
+      fn: () => this.updateThermostats(),
+      priority: 22
+    });
+  }
+  
+  // === Métodos de actualización por subsistema ===
+  
+  /**
+   * Actualizar economía (MEDIUM rate)
+   * TODO: Integrar métodos reales cuando APIs estén finalizadas
+   */
+  private updateEconomy(): void {
+    // Placeholder - integración pendiente
+    // Los managers están inicializados pero sus APIs necesitan refinamiento
+  }
+  
+  /**
+   * Actualizar sistemas sociales (MEDIUM rate)
+   */
+  private updateSocial(): void {
+    // Placeholder - integración pendiente
+    // CommunityDetector y TensionField tienen APIs específicas
+  }
+  
+  /**
+   * Actualizar narrativa (SLOW rate)
+   */
+  private updateNarrative(): void {
+    // Placeholder - integración pendiente
+    // SemanticFields, Artifacts, Materialization conectados
+  }
+  
+  /**
+   * Actualizar sistemas de escala (SLOW rate)
+   */
+  private updateScale(): void {
+    // LOD y FlowFields update
+    const food = this.getField('food');
+    if (food) {
+      this.flowFields.updateFromField('food', food.getBuffer());
+    }
+  }
+  
+  /**
+   * Actualizar termostatos (SLOW rate)
+   */
+  private updateThermostats(): void {
+    const particleCount = this.getParticleCount();
+    const foodAvg = this.getField('food')?.getAverage() ?? 0.5;
+    const avgEnergy = this.particles.reduce((sum, p) => sum + (p.alive ? p.energy : 0), 0) / Math.max(1, particleCount);
+    
+    // Actualizar termostatos
+    this.thermostats.updateAll({
+      population: particleCount,
+      resources: foodAvg,
+      energy: avgEnergy
+    });
+    
+    // Obtener parámetros ajustados para uso futuro
+    const _params = this.balancer.getAdjustedParameters();
   }
   
   /**
@@ -151,6 +355,7 @@ export class World {
   
   /**
    * Ejecutar un tick de simulación
+   * Usa el scheduler para coordinar actualizaciones multi-rate
    */
   step(): void {
     if (this.paused) return;
@@ -161,13 +366,10 @@ export class World {
     this.births = 0;
     this.deaths = 0;
     
-    // 1. Actualizar partículas
-    this.updateParticles();
+    // Ejecutar scheduler (gestiona FAST/MEDIUM/SLOW)
+    const schedulerMetrics = this.scheduler.step();
     
-    // 2. Difusión y decay de campos
-    this.updateFields();
-    
-    // 3. Crecimiento de recursos
+    // 3. Crecimiento de recursos (siempre, por ahora fuera del scheduler)
     this.updateGrowth();
     
     // 4. Actualizar campo de población
