@@ -6,3 +6,4 @@ export * from './Demand.js';
 export * from './Reactions.js';
 export * from './Advection.js';
 export * from './Stockpiles.js';
+export * from './Carriers.js';

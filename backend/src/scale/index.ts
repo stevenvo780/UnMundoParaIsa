@@ -31,3 +31,13 @@ export {
   type WorldParameters,
   WorldBalancer
 } from './Thermostats.js';
+
+// Metrics - Dashboard y monitoreo
+export {
+  type MetricSample,
+  type MetricDefinition,
+  type MetricSnapshot,
+  type DashboardData,
+  MetricsCollector,
+  metrics
+} from './Metrics.js';
