@@ -221,9 +221,10 @@ export class Field {
    */
   addOasis(cx: number, cy: number, radius: number, value: number): void {
     const r2 = radius * radius;
+    let pixelsWritten = 0;
     
-    for (let y = Math.max(0, cy - radius); y < Math.min(this.height, cy + radius); y++) {
-      for (let x = Math.max(0, cx - radius); x < Math.min(this.width, cx + radius); x++) {
+    for (let y = Math.max(0, Math.floor(cy - radius)); y < Math.min(this.height, Math.ceil(cy + radius)); y++) {
+      for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(this.width, Math.ceil(cx + radius)); x++) {
         const dx = x - cx;
         const dy = y - cy;
         const d2 = dx * dx + dy * dy;
@@ -232,9 +233,17 @@ export class Field {
           // Gradient suave desde el centro
           const factor = 1 - Math.sqrt(d2) / radius;
           const i = y * this.width + x;
-          this.current[i] = Math.max(this.current[i], value * factor);
+          const newVal = value * factor;
+          if (newVal > this.current[i]) {
+            this.current[i] = newVal;
+            pixelsWritten++;
+          }
         }
       }
+    }
+    
+    if (pixelsWritten === 0) {
+      console.log(`[Field] addOasis WARNING: cx=${cx}, cy=${cy}, r=${radius}, field=${this.width}x${this.height} - 0 pixels written!`);
     }
   }
   

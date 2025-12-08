@@ -12,6 +12,7 @@ export const WORLD = {
   HEIGHT: 512,
   CHUNK_SIZE: 64,
   TICK_MS: 50,  // 20 ticks por segundo
+  GRID_SIZE: 64, // Tamaño del grid para campos
 } as const;
 
 // ============================================

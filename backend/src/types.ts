@@ -179,7 +179,9 @@ export type ClientMessageType =
   | 'reset'
   | 'set_config'
   | 'spawn_particles'
-  | 'subscribe_field';
+  | 'subscribe_field'
+  | 'request_chunks'       // Solicitar chunks por viewport
+  | 'viewport_update';      // Actualizar posición/zoom de cámara
 
 export interface ServerMessage {
   type: ServerMessageType;
@@ -189,6 +191,7 @@ export interface ServerMessage {
   metrics?: SimulationMetrics;
   config?: SimulationConfig;
   error?: string;
+  chunks?: ChunkSnapshot[];  // Datos de chunks
 }
 
 export interface ClientMessage {
@@ -196,6 +199,35 @@ export interface ClientMessage {
   config?: Partial<SimulationConfig>;
   spawn?: { x: number; y: number; count: number };
   subscribeFields?: FieldType[];
+  viewport?: ViewportData;    // Datos de viewport para chunks
+  chunkRequests?: ChunkCoord[]; // Chunks específicos a solicitar
+}
+
+// ============================================
+// Chunks dinámicos
+// ============================================
+
+export interface ChunkCoord {
+  cx: number;  // Coordenada X del chunk (puede ser negativa)
+  cy: number;  // Coordenada Y del chunk (puede ser negativa)
+}
+
+export interface ViewportData {
+  centerX: number;  // Centro del viewport en coordenadas mundo
+  centerY: number;
+  zoom: number;     // Nivel de zoom (1 = normal)
+  width: number;    // Ancho del viewport en pixels
+  height: number;   // Alto del viewport en pixels
+}
+
+export interface ChunkSnapshot {
+  cx: number;
+  cy: number;
+  worldX: number;
+  worldY: number;
+  size: number;
+  fields: Partial<Record<FieldType, ArrayBuffer>>;
+  generated: boolean;  // true si se acaba de generar
 }
 
 export interface FieldSnapshot {

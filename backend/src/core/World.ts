@@ -564,13 +564,26 @@ export class World {
     
     foodField.initWithOases(oases);
     
-    // Agua en algunos oases
-    const waterOases = oases.slice(0, 3).map(o => ({
-      ...o,
-      radius: o.radius * 0.7,
-      value: 0.9,
-    }));
+    // Debug food
+    const foodSum = foodField.getSum();
+    const foodMax = foodField.getMax();
+    console.log(`[World] Food field: sum=${foodSum.toFixed(2)}, max=${foodMax.toFixed(3)}, size=${foodField.width}x${foodField.height}`);
+    
+    // Agua en algunos oases - usar oases más grandes
+    const waterOases = oases.slice(0, 3).map(o => {
+      console.log(`[World] Water oasis: x=${o.x}, y=${o.y}, radius=${(o.radius * 0.7).toFixed(1)} (field size: ${waterField.width}x${waterField.height})`);
+      return {
+        ...o,
+        radius: Math.max(20, o.radius * 0.7), // Mínimo 20 de radio
+        value: 0.9,
+      };
+    });
     waterField.initWithOases(waterOases);
+    
+    // Debug: verificar agua
+    const waterSum = waterField.getSum();
+    const waterMax = waterField.getMax();
+    console.log(`[World] Water field: sum=${waterSum.toFixed(2)}, max=${waterMax.toFixed(3)}, oases=${waterOases.length}`);
     
     // Árboles dispersos
     treesField.initWithNoise(0.3, 0.3, seed + 1000);

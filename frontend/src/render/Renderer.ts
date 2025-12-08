@@ -1,9 +1,10 @@
-/**
- * Renderer con PixiJS para visualizar la simulación
- */
+import { Application, Container, Graphics, Sprite } from 'pixi.js';
+import { Particle, FieldType, WORLD } from '../types';
+import { AssetLoader, LoadedAssets } from './AssetLoader';
 
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { Particle, FieldType, WORLD, Community, ConflictZone, Artifact, Character } from '../types';
+const TILE_SIZE = 32;
+const TREE_DENSITY = 0.15;
+const WATER_THRESHOLD = 0.4;
 
 interface FieldLayer {
   graphics: Graphics;
@@ -16,31 +17,30 @@ interface FieldLayer {
 export class Renderer {
   private app: Application | null = null;
   private container: HTMLElement;
+  private assetLoader: AssetLoader;
+  private assets: LoadedAssets | null = null;
   
-  // Capas
-  private backgroundLayer: Container | null = null;
+  private worldContainer: Container | null = null;
+  private terrainLayer: Container | null = null;
+  private waterLayer: Container | null = null;
+  private treeLayer: Container | null = null;
   private fieldLayers: Map<FieldType, FieldLayer> = new Map();
   private particleLayer: Container | null = null;
   private uiLayer: Container | null = null;
   
-  // Partículas
-  private particleGraphics: Graphics[] = [];
+  private terrainSprites: Sprite[] = [];
+  private waterSprites: Sprite[] = [];
+  private treeSprites: Sprite[] = [];
+  private particleSprites: Map<number, Sprite> = new Map();
+  
+  private foodField: Float32Array | null = null;
+  private waterField: Float32Array | null = null;
   private particles: Particle[] = [];
+  private currentTick = 0;
   
-  // Nuevos sistemas de visualización
-  private communities: Community[] = [];
-  private conflicts: ConflictZone[] = [];
-  private artifacts: Artifact[] = [];
-  private characters: Character[] = [];
-  private tensionField: Float32Array | null = null;
+  private worldWidth = WORLD.WIDTH;
+  private worldHeight = WORLD.HEIGHT;
   
-  // Capas adicionales
-  private communityLayer: Container | null = null;
-  private tensionLayer: Container | null = null;
-  private artifactLayer: Container | null = null;
-  private characterLayer: Container | null = null;
-  
-  // Estado
   private zoom = 1;
   private panX = 0;
   private panY = 0;
@@ -50,12 +50,15 @@ export class Renderer {
   
   constructor(container: HTMLElement) {
     this.container = container;
+    this.assetLoader = AssetLoader.getInstance();
   }
   
-  /**
-   * Inicializar PixiJS
-   */
   async init(): Promise<void> {
+    console.log('[Renderer] Cargando assets...');
+    this.assets = await this.assetLoader.load((progress) => {
+      console.log('[AssetLoader] Progreso: ' + Math.round(progress * 100) + '%');
+    });
+    
     this.app = new Application();
     
     await this.app.init({
@@ -67,80 +70,86 @@ export class Renderer {
       autoDensity: true,
     });
     
-    this.container.appendChild(this.app.canvas);
+    while (this.container.firstChild) {
+      this.container.removeChild(this.container.firstChild);
+    }
+    this.container.appendChild(this.app.canvas as HTMLCanvasElement);
     
-    // Crear capas
-    this.backgroundLayer = new Container();
-    this.tensionLayer = new Container();
-    this.communityLayer = new Container();
-    this.artifactLayer = new Container();
+    this.worldContainer = new Container();
+    this.app.stage.addChild(this.worldContainer);
+    
+    this.terrainLayer = new Container();
+    this.waterLayer = new Container();
+    this.treeLayer = new Container();
     this.particleLayer = new Container();
-    this.characterLayer = new Container();
     this.uiLayer = new Container();
     
-    this.app.stage.addChild(this.backgroundLayer);
-    this.app.stage.addChild(this.tensionLayer);
-    this.app.stage.addChild(this.communityLayer);
-    this.app.stage.addChild(this.artifactLayer);
-    this.app.stage.addChild(this.particleLayer);
-    this.app.stage.addChild(this.characterLayer);
-    this.app.stage.addChild(this.uiLayer);
+    this.worldContainer.addChild(this.terrainLayer);
+    this.worldContainer.addChild(this.waterLayer);
+    this.worldContainer.addChild(this.treeLayer);
     
-    // Inicializar capas de campo
     this.initFieldLayers();
     
-    // Eventos de input
-    this.setupInputHandlers();
+    this.worldContainer.addChild(this.particleLayer);
+    this.app.stage.addChild(this.uiLayer);
     
-    // Resize
-    window.addEventListener('resize', () => this.handleResize());
+    this.setupCameraControls();
     
-    // Centrar vista
-    this.centerView();
+    this.panX = -this.worldWidth / 2 + this.container.clientWidth / 2;
+    this.panY = -this.worldHeight / 2 + this.container.clientHeight / 2;
+    this.updateTransform();
     
     console.log('[Renderer] Inicializado');
   }
   
-  /**
-   * Inicializar capas de campos
-   */
   private initFieldLayers(): void {
-    const fieldConfigs: Array<{ type: FieldType; color: number; alpha: number }> = [
-      { type: 'food', color: 0x4caf50, alpha: 0.6 },
-      { type: 'water', color: 0x2196f3, alpha: 0.5 },
-      { type: 'trail0', color: 0xffeb3b, alpha: 0.3 },
-      { type: 'trail1', color: 0xff9800, alpha: 0.3 },
-      { type: 'trail2', color: 0xe91e63, alpha: 0.3 },
-      { type: 'trail3', color: 0x9c27b0, alpha: 0.3 },
-      { type: 'danger', color: 0xf44336, alpha: 0.5 },
-      { type: 'trees', color: 0x2e7d32, alpha: 0.4 },
-      { type: 'population', color: 0xffffff, alpha: 0.2 },
+    const fieldConfigs: { type: FieldType; color: number; alpha: number }[] = [
+      { type: 'food', color: 0x00ff00, alpha: 0.2 },
+      { type: 'water', color: 0x0088ff, alpha: 0.2 },
+      { type: 'trail0', color: 0xffff00, alpha: 0.15 },
     ];
     
     for (const config of fieldConfigs) {
       const graphics = new Graphics();
-      this.backgroundLayer?.addChild(graphics);
-      
       this.fieldLayers.set(config.type, {
         graphics,
         data: null,
-        visible: ['food', 'water', 'trail0'].includes(config.type),
+        visible: false,
         color: config.color,
         alpha: config.alpha,
       });
+      
+      if (this.worldContainer) {
+        this.worldContainer.addChild(graphics);
+      }
     }
   }
   
-  /**
-   * Setup de handlers de input
-   */
-  private setupInputHandlers(): void {
+  private setupCameraControls(): void {
     if (!this.app) return;
     
-    const canvas = this.app.canvas;
+    const canvas = this.app.canvas as HTMLCanvasElement;
     
-    // Pan
-    canvas.addEventListener('mousedown', (e: MouseEvent) => {
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const worldXBefore = (mouseX - this.panX) / this.zoom;
+      const worldYBefore = (mouseY - this.panY) / this.zoom;
+      
+      this.zoom = Math.max(0.1, Math.min(5, this.zoom * zoomFactor));
+      
+      this.panX = mouseX - worldXBefore * this.zoom;
+      this.panY = mouseY - worldYBefore * this.zoom;
+      
+      this.updateTransform();
+    });
+    
+    canvas.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
         this.isDragging = true;
         this.lastMouseX = e.clientX;
@@ -148,7 +157,7 @@ export class Renderer {
       }
     });
     
-    canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    canvas.addEventListener('mousemove', (e) => {
       if (this.isDragging) {
         const dx = e.clientX - this.lastMouseX;
         const dy = e.clientY - this.lastMouseY;
@@ -160,433 +169,383 @@ export class Renderer {
       }
     });
     
-    canvas.addEventListener('mouseup', () => {
-      this.isDragging = false;
-    });
-    
-    canvas.addEventListener('mouseleave', () => {
-      this.isDragging = false;
-    });
-    
-    // Zoom
-    canvas.addEventListener('wheel', (e: WheelEvent) => {
-      e.preventDefault();
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(10, this.zoom * zoomFactor));
-      
-      // Zoom hacia el cursor
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      const worldX = (mouseX - this.panX) / this.zoom;
-      const worldY = (mouseY - this.panY) / this.zoom;
-      
-      this.zoom = newZoom;
-      this.panX = mouseX - worldX * this.zoom;
-      this.panY = mouseY - worldY * this.zoom;
-      
-      this.updateTransform();
-    });
+    canvas.addEventListener('mouseup', () => { this.isDragging = false; });
+    canvas.addEventListener('mouseleave', () => { this.isDragging = false; });
   }
   
-  /**
-   * Actualizar transformación
-   */
   private updateTransform(): void {
-    if (!this.backgroundLayer || !this.particleLayer) return;
+    if (!this.worldContainer) return;
+    this.worldContainer.scale.set(this.zoom);
+    this.worldContainer.position.set(this.panX, this.panY);
+  }
+  
+  private generateTerrain(): void {
+    if (!this.assets || !this.terrainLayer) return;
     
-    const layers = [
-      this.backgroundLayer,
-      this.tensionLayer,
-      this.communityLayer,
-      this.artifactLayer,
-      this.particleLayer,
-      this.characterLayer,
-    ];
+    this.terrainSprites.forEach(s => s.destroy());
+    this.terrainSprites = [];
     
-    for (const layer of layers) {
-      if (layer) {
-        layer.x = this.panX;
-        layer.y = this.panY;
-        layer.scale.set(this.zoom);
+    const tilesX = Math.ceil(this.worldWidth / TILE_SIZE);
+    const tilesY = Math.ceil(this.worldHeight / TILE_SIZE);
+    
+    for (let ty = 0; ty < tilesY; ty++) {
+      for (let tx = 0; tx < tilesX; tx++) {
+        const worldX = tx * TILE_SIZE;
+        const worldY = ty * TILE_SIZE;
+        const foodValue = this.getFieldValue(this.foodField, worldX, worldY);
+        
+        const texture = this.assetLoader.getTerrainTile(tx, ty, foodValue);
+        const sprite = new Sprite(texture);
+        sprite.x = worldX;
+        sprite.y = worldY;
+        sprite.width = TILE_SIZE + 1;
+        sprite.height = TILE_SIZE + 1;
+        
+        this.terrainLayer.addChild(sprite);
+        this.terrainSprites.push(sprite);
       }
     }
+    console.log('[Renderer] Generado terreno: ' + tilesX + 'x' + tilesY + ' tiles');
   }
   
-  /**
-   * Centrar vista
-   */
-  centerView(): void {
-    if (!this.app) return;
+  private generateWater(): void {
+    if (!this.assets || !this.waterLayer || !this.waterField) return;
     
-    const canvasWidth = this.app.screen.width;
-    const canvasHeight = this.app.screen.height;
+    this.waterSprites.forEach(s => s.destroy());
+    this.waterSprites = [];
     
-    this.zoom = Math.min(canvasWidth / WORLD.WIDTH, canvasHeight / WORLD.HEIGHT) * 0.9;
-    this.panX = (canvasWidth - WORLD.WIDTH * this.zoom) / 2;
-    this.panY = (canvasHeight - WORLD.HEIGHT * this.zoom) / 2;
+    const tilesX = Math.ceil(this.worldWidth / TILE_SIZE);
+    const tilesY = Math.ceil(this.worldHeight / TILE_SIZE);
     
-    this.updateTransform();
-  }
-  
-  /**
-   * Handle resize
-   */
-  private handleResize(): void {
-    if (!this.app) return;
+    // Debug: mostrar algunos valores del campo water
+    let debugCount = 0;
+    const debugSamples: string[] = [];
     
-    this.app.renderer.resize(
-      this.container.clientWidth,
-      this.container.clientHeight
-    );
-    
-    this.centerView();
-  }
-  
-  /**
-   * Actualizar campos desde el servidor
-   */
-  updateFields(fields: Partial<Record<FieldType, number[]>>): void {
-    for (const [fieldType, data] of Object.entries(fields)) {
-      const layer = this.fieldLayers.get(fieldType as FieldType);
-      if (layer && data) {
-        layer.data = new Float32Array(data);
-      }
-    }
-  }
-  
-  /**
-   * Actualizar partículas
-   */
-  updateParticles(particles: Particle[]): void {
-    this.particles = particles;
-  }
-  
-  /**
-   * Actualizar comunidades
-   */
-  updateCommunities(communities: Community[]): void {
-    this.communities = communities;
-  }
-  
-  /**
-   * Actualizar zonas de conflicto
-   */
-  updateConflicts(conflicts: ConflictZone[]): void {
-    this.conflicts = conflicts;
-  }
-  
-  /**
-   * Actualizar artefactos
-   */
-  updateArtifacts(artifacts: Artifact[]): void {
-    this.artifacts = artifacts;
-  }
-  
-  /**
-   * Actualizar personajes
-   */
-  updateCharacters(characters: Character[]): void {
-    this.characters = characters;
-  }
-  
-  /**
-   * Actualizar campo de tensión
-   */
-  updateTensionField(tensionField: Float32Array): void {
-    this.tensionField = tensionField;
-  }
-  
-  /**
-   * Render frame
-   */
-  render(): void {
-    // Render fields
-    this.renderFields();
-    
-    // Render tension overlay
-    this.renderTension();
-    
-    // Render communities
-    this.renderCommunities();
-    
-    // Render artifacts
-    this.renderArtifacts();
-    
-    // Render particles
-    this.renderParticles();
-    
-    // Render characters
-    this.renderCharacters();
-  }
-  
-  /**
-   * Renderizar campos
-   */
-  private renderFields(): void {
-    const cellSize = 4; // Tamaño de celda para optimización
-    
-    for (const [fieldType, layer] of this.fieldLayers) {
-      if (!layer.visible || !layer.data) continue;
-      
-      const graphics = layer.graphics;
-      graphics.clear();
-      
-      const { color, alpha, data } = layer;
-      
-      // Renderizar en bloques para optimización
-      for (let y = 0; y < WORLD.HEIGHT; y += cellSize) {
-        for (let x = 0; x < WORLD.WIDTH; x += cellSize) {
-          // Valor promedio en el bloque
-          let sum = 0;
-          let count = 0;
+    for (let ty = 0; ty < tilesY; ty++) {
+      for (let tx = 0; tx < tilesX; tx++) {
+        const worldX = tx * TILE_SIZE;
+        const worldY = ty * TILE_SIZE;
+        const waterValue = this.getFieldValue(this.waterField, worldX, worldY);
+        
+        // Debug primeras 5 muestras no-cero
+        if (waterValue > 0 && debugCount < 5) {
+          debugSamples.push(`(${tx},${ty})=${waterValue.toFixed(3)}`);
+          debugCount++;
+        }
+        
+        if (waterValue > WATER_THRESHOLD) {
+          const texture = this.assetLoader.getWaterTile(tx, ty);
+          const sprite = new Sprite(texture);
+          sprite.x = worldX;
+          sprite.y = worldY;
+          sprite.width = TILE_SIZE + 1;
+          sprite.height = TILE_SIZE + 1;
+          sprite.alpha = Math.min(1, waterValue);
           
-          for (let dy = 0; dy < cellSize && y + dy < WORLD.HEIGHT; dy++) {
-            for (let dx = 0; dx < cellSize && x + dx < WORLD.WIDTH; dx++) {
-              const idx = (y + dy) * WORLD.WIDTH + (x + dx);
-              sum += data[idx];
-              count++;
-            }
-          }
-          
-          const value = sum / count;
-          if (value > 0.01) {
-            graphics.rect(x, y, cellSize, cellSize);
-            graphics.fill({ color, alpha: alpha * value });
-          }
+          this.waterLayer.addChild(sprite);
+          this.waterSprites.push(sprite);
         }
       }
     }
+    console.log(`[Renderer] Water samples: ${debugSamples.join(', ') || 'NONE'}`);
+    console.log(`[Renderer] Water field length: ${this.waterField.length}, expected: ${WORLD.GRID_SIZE * WORLD.GRID_SIZE}`);
+    console.log('[Renderer] Generados ' + this.waterSprites.length + ' tiles de agua');
   }
   
-  /**
-   * Renderizar partículas
-   */
-  private renderParticles(): void {
-    if (!this.particleLayer) return;
+  private generateTrees(): void {
+    if (!this.assets || !this.treeLayer || !this.foodField) return;
     
-    // Limpiar partículas anteriores
-    while (this.particleLayer.children.length > 0) {
-      this.particleLayer.removeChildAt(0);
+    this.treeSprites.forEach(s => s.destroy());
+    this.treeSprites = [];
+    
+    const tilesX = Math.ceil(this.worldWidth / TILE_SIZE);
+    const tilesY = Math.ceil(this.worldHeight / TILE_SIZE);
+    
+    // Debug: mostrar algunos valores del campo food
+    let debugCount = 0;
+    const debugSamples: string[] = [];
+    let totalHighFood = 0;
+    
+    for (let ty = 0; ty < tilesY; ty++) {
+      for (let tx = 0; tx < tilesX; tx++) {
+        const worldX = tx * TILE_SIZE;
+        const worldY = ty * TILE_SIZE;
+        const foodValue = this.getFieldValue(this.foodField, worldX, worldY);
+        
+        // Contar valores altos
+        if (foodValue > 0.3) totalHighFood++;
+        
+        // Debug primeras 5 muestras no-cero
+        if (foodValue > 0 && debugCount < 5) {
+          debugSamples.push(`(${tx},${ty})=${foodValue.toFixed(3)}`);
+          debugCount++;
+        }
+        
+        const pseudoRandom = Math.abs(Math.sin(tx * 12.9898 + ty * 78.233) * 43758.5453) % 1;
+        
+        if (foodValue > 0.3 && pseudoRandom < TREE_DENSITY) {
+          const isForest = foodValue > 0.5;
+          const texture = this.assetLoader.getTreeTexture(tx, ty, isForest);
+          const sprite = new Sprite(texture);
+          
+          const offsetX = (pseudoRandom - 0.5) * TILE_SIZE * 0.5;
+          const offsetY = ((pseudoRandom * 2) % 1 - 0.5) * TILE_SIZE * 0.5;
+          
+          sprite.x = worldX + TILE_SIZE / 2 + offsetX;
+          sprite.y = worldY + TILE_SIZE + offsetY;
+          sprite.anchor.set(0.5, 1);
+          
+          const scale = 0.3 + foodValue * 0.3;
+          sprite.scale.set(scale);
+          
+          this.treeLayer.addChild(sprite);
+          this.treeSprites.push(sprite);
+        }
+      }
     }
+    console.log(`[Renderer] Food samples: ${debugSamples.join(', ') || 'NONE'}`);
+    console.log(`[Renderer] Tiles with food>0.3: ${totalHighFood}/${tilesX*tilesY}`);
+    console.log('[Renderer] Generados ' + this.treeSprites.length + ' arboles');
+  }
+  
+  private getFieldValue(field: Float32Array | null, worldX: number, worldY: number): number {
+    if (!field || field.length === 0) return 0;
     
-    // Dibujar partículas
-    const graphics = new Graphics();
+    // Calcular grid size real basado en el tamaño del array
+    const actualGridSize = Math.sqrt(field.length);
+    const cellSize = this.worldWidth / actualGridSize;
+    const gridX = Math.floor(worldX / cellSize);
+    const gridY = Math.floor(worldY / cellSize);
+    
+    if (gridX < 0 || gridX >= actualGridSize || gridY < 0 || gridY >= actualGridSize) return 0;
+    
+    const index = gridY * actualGridSize + gridX;
+    return field[index];
+  }
+  
+  private _debugGetFieldValueOnce = false;
+  
+  update(state: { tick: number; particles: Particle[]; fields?: Map<FieldType, Float32Array> }): void {
+    this.currentTick = state.tick;
+    this.particles = state.particles;
+    
+    if (state.fields) {
+      const food = state.fields.get('food');
+      const water = state.fields.get('water');
+      
+      if (food) this.foodField = food;
+      if (water) this.waterField = water;
+      
+      if (this.terrainSprites.length === 0 && this.foodField) {
+        this.generateTerrain();
+        this.generateTrees();
+      }
+      
+      if (this.waterSprites.length === 0 && this.waterField) {
+        this.generateWater();
+      }
+      
+      state.fields.forEach((data, type) => {
+        const layer = this.fieldLayers.get(type);
+        if (layer) layer.data = data;
+      });
+    }
+  }
+  
+  render(): void {
+    if (!this.app || !this.particleLayer || !this.assets) return;
+    this.renderParticles();
+    this.renderFieldOverlays();
+  }
+  
+  private renderParticles(): void {
+    if (!this.particleLayer || !this.assets) return;
+    
+    const currentIds = new Set<number>();
+    
+    // Debug: mostrar energía promedio (solo una vez cada 100 frames)
+    if (this.particles.length > 0 && this.currentTick % 100 === 0) {
+      const avgEnergy = this.particles.reduce((sum, p) => sum + (p.energy || 0), 0) / this.particles.length;
+      console.log(`[Renderer] Avg energy: ${avgEnergy.toFixed(1)}, particles: ${this.particles.length}`);
+    }
     
     for (const p of this.particles) {
       if (!p.alive) continue;
       
-      // Color basado en energía y seed
-      const hue = (p.seed % 360);
-      const saturation = 70 + p.energy * 30;
-      const lightness = 40 + p.energy * 30;
+      currentIds.add(p.id);
       
-      const color = this.hslToHex(hue, saturation, lightness);
-      const size = 2 + p.energy * 2;
+      let sprite = this.particleSprites.get(p.id);
       
-      graphics.circle(p.x, p.y, size);
-      graphics.fill({ color, alpha: 0.8 + p.energy * 0.2 });
+      if (!sprite) {
+        const isFemale = p.seed % 2 === 0;
+        const texture = this.assetLoader.getCharacterFrame(p.seed, this.currentTick, isFemale);
+        sprite = new Sprite(texture);
+        sprite.anchor.set(0.5, 1);
+        this.particleLayer.addChild(sprite);
+        this.particleSprites.set(p.id, sprite);
+      }
+      
+      sprite.x = p.x;
+      sprite.y = p.y;
+      
+      const isFemale = p.seed % 2 === 0;
+      sprite.texture = this.assetLoader.getCharacterFrame(p.seed, this.currentTick, isFemale);
+      
+      // La energía viene normalizada (0-1), escalar a porcentaje para visualización
+      const energyPercent = (p.energy || 0) * 100;
+      const healthScale = 0.8 + (energyPercent / 100) * 0.4;
+      sprite.scale.set(healthScale);
+      
+      if (energyPercent < 30) {
+        sprite.tint = 0xff6666;
+      } else if (energyPercent < 60) {
+        sprite.tint = 0xffff66;
+      } else {
+        sprite.tint = 0xffffff;
+      }
+      
+      sprite.visible = true;
     }
     
-    this.particleLayer.addChild(graphics);
-  }
-  
-  /**
-   * Renderizar campo de tensión como overlay rojo
-   */
-  private renderTension(): void {
-    if (!this.tensionLayer || !this.tensionField) return;
-    
-    // Limpiar capa
-    while (this.tensionLayer.children.length > 0) {
-      this.tensionLayer.removeChildAt(0);
-    }
-    
-    const graphics = new Graphics();
-    const cellSize = 8;  // Más grande para performance
-    
-    for (let y = 0; y < WORLD.HEIGHT; y += cellSize) {
-      for (let x = 0; x < WORLD.WIDTH; x += cellSize) {
-        const idx = y * WORLD.WIDTH + x;
-        const tension = this.tensionField[idx];
-        
-        if (tension > 0.1) {
-          graphics.rect(x, y, cellSize, cellSize);
-          graphics.fill({ color: 0xff0000, alpha: tension * 0.4 });
+    this.particleSprites.forEach((sprite, id) => {
+      if (!currentIds.has(id)) {
+        sprite.visible = false;
+        if (this.particleSprites.size > this.particles.length * 2) {
+          sprite.destroy();
+          this.particleSprites.delete(id);
         }
       }
-    }
-    
-    this.tensionLayer.addChild(graphics);
+    });
   }
   
-  /**
-   * Renderizar comunidades como círculos con colores basados en firma
-   */
-  private renderCommunities(): void {
-    if (!this.communityLayer) return;
-    
-    // Limpiar capa
-    while (this.communityLayer.children.length > 0) {
-      this.communityLayer.removeChildAt(0);
-    }
-    
-    const graphics = new Graphics();
-    
-    for (const community of this.communities) {
-      // Color basado en firma dominante
-      const sig = community.dominantSignature;
-      const color = this.signatureToColor(sig);
+  private renderFieldOverlays(): void {
+    this.fieldLayers.forEach((layer) => {
+      if (!layer.visible || !layer.data || !layer.graphics) return;
       
-      // Círculo exterior (borde de comunidad)
-      graphics.circle(community.centerX, community.centerY, community.radius);
-      graphics.stroke({ color, width: 2, alpha: 0.6 });
+      layer.graphics.clear();
       
-      // Relleno semi-transparente
-      graphics.circle(community.centerX, community.centerY, community.radius);
-      graphics.fill({ color, alpha: 0.1 });
+      const cellWidth = this.worldWidth / WORLD.GRID_SIZE;
+      const cellHeight = this.worldHeight / WORLD.GRID_SIZE;
       
-      // Centro
-      graphics.circle(community.centerX, community.centerY, 3);
-      graphics.fill({ color, alpha: 0.8 });
-    }
-    
-    this.communityLayer.addChild(graphics);
+      for (let y = 0; y < WORLD.GRID_SIZE; y++) {
+        for (let x = 0; x < WORLD.GRID_SIZE; x++) {
+          const value = layer.data[y * WORLD.GRID_SIZE + x];
+          if (value > 0.05) {
+            const alpha = Math.min(layer.alpha, value * layer.alpha);
+            layer.graphics.rect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+            layer.graphics.fill({ color: layer.color, alpha });
+          }
+        }
+      }
+    });
   }
   
-  /**
-   * Renderizar artefactos como íconos
-   */
-  private renderArtifacts(): void {
-    if (!this.artifactLayer) return;
+  setFieldVisible(type: FieldType, visible: boolean): void {
+    const layer = this.fieldLayers.get(type);
+    if (layer) {
+      layer.visible = visible;
+      layer.graphics.visible = visible;
+    }
+  }
+  
+  isFieldVisible(type: FieldType): boolean {
+    return this.fieldLayers.get(type)?.visible ?? false;
+  }
+  
+  toggleFieldVisibility(type: FieldType): void {
+    const visible = this.isFieldVisible(type);
+    this.setFieldVisible(type, !visible);
+  }
+  
+  regenerateWorld(): void {
+    this.generateTerrain();
+    this.generateWater();
+    this.generateTrees();
+  }
+  
+  resize(): void {
+    if (!this.app) return;
+    this.app.renderer.resize(this.container.clientWidth, this.container.clientHeight);
+  }
+  
+  destroy(): void {
+    if (this.app) {
+      this.app.destroy(true, { children: true });
+      this.app = null;
+    }
+  }
+  
+  getApp(): Application | null {
+    return this.app;
+  }
+  
+  // Métodos de compatibilidad con main.ts
+  
+  updateParticles(particles: Particle[]): void {
+    this.particles = particles;
+  }
+  
+  updateFields(fields: Record<string, number[]>): void {
+    const fieldMap = new Map<FieldType, Float32Array>();
     
-    // Limpiar capa
-    while (this.artifactLayer.children.length > 0) {
-      this.artifactLayer.removeChildAt(0);
+    for (const [key, data] of Object.entries(fields)) {
+      fieldMap.set(key as FieldType, new Float32Array(data));
     }
     
-    const graphics = new Graphics();
+    // Actualizar campos internos
+    const food = fieldMap.get('food');
+    const water = fieldMap.get('water');
     
-    for (const artifact of this.artifacts) {
-      const color = artifact.discovered ? 0xffd700 : 0x888888;  // Oro si descubierto
-      const size = 5;
-      
-      // Diamante shape
-      graphics.moveTo(artifact.x, artifact.y - size);
-      graphics.lineTo(artifact.x + size, artifact.y);
-      graphics.lineTo(artifact.x, artifact.y + size);
-      graphics.lineTo(artifact.x - size, artifact.y);
-      graphics.closePath();
-      graphics.fill({ color, alpha: 0.9 });
-      
-      // Glow si no descubierto
-      if (!artifact.discovered) {
-        graphics.circle(artifact.x, artifact.y, size * 2);
-        graphics.fill({ color: 0xffff00, alpha: 0.1 });
+    if (food) {
+      this.foodField = food;
+      // Debug: mostrar rango de valores (sin spread para evitar stack overflow)
+      if (!this._foodDebugShown) {
+        let min = Infinity, max = -Infinity;
+        for (let i = 0; i < food.length; i++) {
+          if (food[i] < min) min = food[i];
+          if (food[i] > max) max = food[i];
+        }
+        console.log(`[Renderer] Food field range: ${min.toFixed(3)} - ${max.toFixed(3)}`);
+        this._foodDebugShown = true;
+      }
+    }
+    if (water) {
+      this.waterField = water;
+      if (!this._waterDebugShown) {
+        let min = Infinity, max = -Infinity;
+        for (let i = 0; i < water.length; i++) {
+          if (water[i] < min) min = water[i];
+          if (water[i] > max) max = water[i];
+        }
+        console.log(`[Renderer] Water field range: ${min.toFixed(3)} - ${max.toFixed(3)}`);
+        this._waterDebugShown = true;
       }
     }
     
-    this.artifactLayer.addChild(graphics);
-  }
-  
-  /**
-   * Renderizar personajes y héroes
-   */
-  private renderCharacters(): void {
-    if (!this.characterLayer) return;
-    
-    // Limpiar capa
-    while (this.characterLayer.children.length > 0) {
-      this.characterLayer.removeChildAt(0);
+    // Generar terreno la primera vez (solo una vez)
+    if (!this._terrainGenerated && this.foodField) {
+      this._terrainGenerated = true;
+      this.generateTerrain();
+      this.generateTrees();
     }
     
-    const graphics = new Graphics();
-    
-    for (const char of this.characters) {
-      const isHero = char.type === 'hero';
-      const size = isHero ? 8 : 5;
-      const color = isHero ? 0xff00ff : 0x00ffff;
-      
-      // Personajes como estrellas pequeñas
-      if (isHero) {
-        // Estrella para héroes
-        this.drawStar(graphics, char.x, char.y, 5, size, size * 0.5);
-        graphics.fill({ color, alpha: 1.0 });
-        
-        // Aura
-        graphics.circle(char.x, char.y, size * 2);
-        graphics.fill({ color, alpha: 0.2 });
-      } else {
-        // Triángulo para personajes normales
-        graphics.moveTo(char.x, char.y - size);
-        graphics.lineTo(char.x + size, char.y + size);
-        graphics.lineTo(char.x - size, char.y + size);
-        graphics.closePath();
-        graphics.fill({ color, alpha: 0.9 });
-      }
+    if (!this._waterGenerated && this.waterField) {
+      this._waterGenerated = true;
+      this.generateWater();
     }
     
-    this.characterLayer.addChild(graphics);
+    // Actualizar capas de campos
+    fieldMap.forEach((data, type) => {
+      const layer = this.fieldLayers.get(type);
+      if (layer) layer.data = data;
+    });
   }
   
-  /**
-   * Dibujar estrella
-   */
-  private drawStar(graphics: Graphics, cx: number, cy: number, points: number, outer: number, inner: number): void {
-    const step = Math.PI / points;
-    
-    graphics.moveTo(cx, cy - outer);
-    
-    for (let i = 0; i < points * 2; i++) {
-      const radius = i % 2 === 0 ? outer : inner;
-      const angle = i * step - Math.PI / 2;
-      graphics.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-    }
-    
-    graphics.closePath();
-  }
+  private _terrainGenerated = false;
+  private _waterGenerated = false;
+  private _foodDebugShown = false;
+  private _waterDebugShown = false;
   
-  /**
-   * Convertir firma a color
-   */
-  private signatureToColor(sig: [number, number, number, number]): number {
-    const r = Math.floor(sig[0] * 255);
-    const g = Math.floor(sig[1] * 255);
-    const b = Math.floor(sig[2] * 255);
-    return (r << 16) + (g << 8) + b;
-  }
-  
-  /**
-   * Convertir HSL a hex
-   */
-  private hslToHex(h: number, s: number, l: number): number {
-    s /= 100;
-    l /= 100;
-    
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
-    const m = l - c / 2;
-    
-    let r = 0, g = 0, b = 0;
-    
-    if (h < 60) { r = c; g = x; }
-    else if (h < 120) { r = x; g = c; }
-    else if (h < 180) { g = c; b = x; }
-    else if (h < 240) { g = x; b = c; }
-    else if (h < 300) { r = x; b = c; }
-    else { r = c; b = x; }
-    
-    r = Math.round((r + m) * 255);
-    g = Math.round((g + m) * 255);
-    b = Math.round((b + m) * 255);
-    
-    return (r << 16) + (g << 8) + b;
-  }
-  
-  /**
-   * Iniciar render loop
-   */
   startRenderLoop(): void {
     if (!this.app) return;
     
@@ -595,36 +554,16 @@ export class Renderer {
     });
   }
   
-  /**
-   * Toggle visibilidad de campo
-   */
-  toggleFieldVisibility(fieldType: FieldType): void {
-    const layer = this.fieldLayers.get(fieldType);
-    if (layer) {
-      layer.visible = !layer.visible;
-      if (!layer.visible) {
-        layer.graphics.clear();
-      }
-    }
-  }
-  
-  /**
-   * Obtener coordenadas del mundo desde posición de pantalla
-   */
   screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
-    return {
-      x: Math.floor((screenX - this.panX) / this.zoom),
-      y: Math.floor((screenY - this.panY) / this.zoom),
-    };
+    const worldX = (screenX - this.panX) / this.zoom;
+    const worldY = (screenY - this.panY) / this.zoom;
+    return { x: worldX, y: worldY };
   }
   
-  /**
-   * Destruir renderer
-   */
-  destroy(): void {
-    if (this.app) {
-      this.app.destroy(true);
-      this.app = null;
-    }
+  centerView(): void {
+    this.panX = -this.worldWidth / 2 + this.container.clientWidth / 2;
+    this.panY = -this.worldHeight / 2 + this.container.clientHeight / 2;
+    this.zoom = 1;
+    this.updateTransform();
   }
 }
