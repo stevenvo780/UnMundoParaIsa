@@ -1,10 +1,11 @@
 /**
  * ChunkRenderer - Renderiza chunks dinámicos con PixiJS
  * Maneja terreno, agua, árboles por chunk individual
+ * Soporta biomas con colores distintivos
  */
 
 import { Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { ChunkSnapshot, WORLD, FieldType } from '../types';
+import { ChunkSnapshot, WORLD, FieldType, BiomeType, BIOME_COLORS, BIOME_ORDER } from '../types';
 import { AssetLoader } from './AssetLoader';
 
 const TILE_SIZE = 32;
@@ -96,22 +97,31 @@ export class ChunkRenderer {
   }
   
   /**
-   * Generar terreno para un chunk
+   * Generar terreno para un chunk con colores de bioma
    */
   private generateTerrain(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
     const foodField = snapshot.fields.food;
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
+    const biomes = snapshot.biomes;
     
     for (let ty = 0; ty < tilesPerChunk; ty++) {
       for (let tx = 0; tx < tilesPerChunk; tx++) {
         const localX = tx * TILE_SIZE;
         const localY = ty * TILE_SIZE;
         
+        // Obtener bioma para este tile
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
+        const biomeColor = BIOME_COLORS[biome] || 0x7CB342;
+        
         const foodValue = this.getFieldValue(foodField, tx, ty, snapshot.size);
+        
+        // Seleccionar textura base según bioma
+        const isForest = biome === BiomeType.FOREST || biome === BiomeType.SWAMP;
         const texture = this.assetLoader.getTerrainTile(
           snapshot.cx * tilesPerChunk + tx,
           snapshot.cy * tilesPerChunk + ty,
-          foodValue
+          isForest ? 0.5 : foodValue
         );
         
         const sprite = new Sprite(texture);
@@ -121,6 +131,14 @@ export class ChunkRenderer {
         sprite.height = TILE_SIZE + 1;
         sprite.zIndex = 0;
         
+        // Aplicar tint del bioma
+        sprite.tint = biomeColor;
+        
+        // Biomas de agua tienen alpha diferente
+        if (biome === BiomeType.OCEAN || biome === BiomeType.LAKE) {
+          sprite.alpha = 0.9;
+        }
+        
         chunk.container.addChild(sprite);
         chunk.terrainSprites.push(sprite);
       }
@@ -128,11 +146,35 @@ export class ChunkRenderer {
   }
   
   /**
-   * Generar agua para un chunk
+   * Obtener índice de bioma para un tile
+   */
+  private getBiomeIndex(
+    biomes: number[] | undefined,
+    tileX: number,
+    tileY: number,
+    chunkSize: number
+  ): number {
+    if (!biomes || biomes.length === 0) return 0; // Default to GRASSLAND
+    
+    const tilesPerChunk = Math.ceil(chunkSize / TILE_SIZE);
+    
+    // Mapear tile a índice en el array de biomas
+    // biomes tiene un valor por cada unidad (64x64 = 4096 valores)
+    const biomesPerRow = Math.sqrt(biomes.length);
+    const fx = Math.floor(tileX * biomesPerRow / tilesPerChunk);
+    const fy = Math.floor(tileY * biomesPerRow / tilesPerChunk);
+    
+    const index = fy * biomesPerRow + fx;
+    return biomes[Math.min(index, biomes.length - 1)] || 0;
+  }
+  
+  /**
+   * Generar agua para un chunk (basado en biomas de agua)
    */
   private generateWater(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
     const waterField = snapshot.fields.water;
-    if (!waterField) return;
+    const biomes = snapshot.biomes;
+    if (!waterField && !biomes) return;
     
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
     
@@ -141,9 +183,15 @@ export class ChunkRenderer {
         const localX = tx * TILE_SIZE;
         const localY = ty * TILE_SIZE;
         
+        // Verificar si el bioma es agua
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
+        const isWaterBiome = biome === BiomeType.OCEAN || biome === BiomeType.LAKE || biome === BiomeType.RIVER;
+        
         const waterValue = this.getFieldValue(waterField, tx, ty, snapshot.size);
         
-        if (waterValue > WATER_THRESHOLD) {
+        // Renderizar agua si el campo de agua es alto O si es bioma de agua
+        if (waterValue > WATER_THRESHOLD || isWaterBiome) {
           const texture = this.assetLoader.getWaterTile(
             snapshot.cx * tilesPerChunk + tx,
             snapshot.cy * tilesPerChunk + ty
@@ -154,7 +202,16 @@ export class ChunkRenderer {
           sprite.y = localY;
           sprite.width = TILE_SIZE + 1;
           sprite.height = TILE_SIZE + 1;
-          sprite.alpha = Math.min(1, waterValue);
+          
+          // Alpha basado en tipo de agua
+          if (isWaterBiome) {
+            sprite.alpha = biome === BiomeType.OCEAN ? 1.0 : 0.85;
+            // Tint para distinguir océano de lago
+            sprite.tint = BIOME_COLORS[biome];
+          } else {
+            sprite.alpha = Math.min(1, waterValue);
+          }
+          
           sprite.zIndex = 1;
           
           chunk.container.addChild(sprite);
@@ -165,12 +222,12 @@ export class ChunkRenderer {
   }
   
   /**
-   * Generar árboles para un chunk
+   * Generar árboles para un chunk (basado en biomas)
    */
   private generateTrees(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
     const foodField = snapshot.fields.food;
     const treesField = snapshot.fields.trees;
-    if (!foodField) return;
+    const biomes = snapshot.biomes;
     
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
     
@@ -182,15 +239,34 @@ export class ChunkRenderer {
         const localX = tx * TILE_SIZE;
         const localY = ty * TILE_SIZE;
         
+        // Obtener bioma
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
+        
+        // No poner árboles en biomas sin vegetación
+        const noTreeBiomes = [
+          BiomeType.OCEAN, BiomeType.LAKE, BiomeType.BEACH, 
+          BiomeType.DESERT, BiomeType.MOUNTAIN
+        ];
+        if (noTreeBiomes.includes(biome)) continue;
+        
         const foodValue = this.getFieldValue(foodField, tx, ty, snapshot.size);
         const treeValue = treesField ? this.getFieldValue(treesField, tx, ty, snapshot.size) : 0;
         
+        // Densidad de árboles por bioma
+        let biomeDensity = TREE_DENSITY;
+        if (biome === BiomeType.FOREST) biomeDensity = 0.4;
+        else if (biome === BiomeType.SWAMP) biomeDensity = 0.25;
+        else if (biome === BiomeType.WETLAND) biomeDensity = 0.15;
+        else if (biome === BiomeType.TUNDRA) biomeDensity = 0.05;
+        else if (biome === BiomeType.GRASSLAND) biomeDensity = 0.1;
+        
         // Decidir si colocar árbol
         const pseudoRandom = Math.abs(Math.sin(globalTx * 12.9898 + globalTy * 78.233) * 43758.5453) % 1;
-        const shouldPlaceTree = (foodValue > 0.3 || treeValue > 0.3) && pseudoRandom < TREE_DENSITY;
+        const shouldPlaceTree = pseudoRandom < biomeDensity || treeValue > 0.5;
         
         if (shouldPlaceTree) {
-          const isForest = foodValue > 0.5 || treeValue > 0.5;
+          const isForest = biome === BiomeType.FOREST || biome === BiomeType.SWAMP || treeValue > 0.5;
           const texture = this.assetLoader.getTreeTexture(globalTx, globalTy, isForest);
           
           const sprite = new Sprite(texture);
@@ -202,9 +278,17 @@ export class ChunkRenderer {
           sprite.y = localY + TILE_SIZE + offsetY;
           sprite.anchor.set(0.5, 1);
           
-          const scale = 0.3 + (foodValue + treeValue) / 2 * 0.3;
+          // Escala basada en bioma
+          let scale = 0.3 + (foodValue + treeValue) / 2 * 0.3;
+          if (biome === BiomeType.FOREST) scale *= 1.2;
+          if (biome === BiomeType.TUNDRA) scale *= 0.7;
+          
           sprite.scale.set(scale);
           sprite.zIndex = 2 + ty; // Ordenar por Y para profundidad
+          
+          // Tint sutil para bioma
+          if (biome === BiomeType.TUNDRA) sprite.tint = 0xDDDDDD;
+          if (biome === BiomeType.SWAMP) sprite.tint = 0x88AA88;
           
           chunk.container.addChild(sprite);
           chunk.treeSprites.push(sprite);

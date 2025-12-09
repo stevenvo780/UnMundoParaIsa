@@ -211,6 +211,42 @@ export interface ClientMessage {
 }
 
 // ============================================
+// Tipos de biomas
+// ============================================
+
+export enum BiomeType {
+  GRASSLAND = 'grassland',
+  FOREST = 'forest',
+  DESERT = 'desert',
+  TUNDRA = 'tundra',
+  SWAMP = 'swamp',
+  WETLAND = 'wetland',
+  MOUNTAIN = 'mountain',
+  BEACH = 'beach',
+  OCEAN = 'ocean',
+  LAKE = 'lake',
+  RIVER = 'river',
+}
+
+// Colores de biomas para renderizado
+export const BIOME_COLORS: Record<BiomeType, number> = {
+  [BiomeType.GRASSLAND]: 0x7CB342,
+  [BiomeType.FOREST]: 0x2E7D32,
+  [BiomeType.DESERT]: 0xD4A574,
+  [BiomeType.TUNDRA]: 0xB0BEC5,
+  [BiomeType.SWAMP]: 0x558B2F,
+  [BiomeType.WETLAND]: 0x66BB6A,
+  [BiomeType.MOUNTAIN]: 0x78909C,
+  [BiomeType.BEACH]: 0xFFF59D,
+  [BiomeType.OCEAN]: 0x0288D1,
+  [BiomeType.LAKE]: 0x4FC3F7,
+  [BiomeType.RIVER]: 0x29B6F6,  // Azul claro para ríos
+};
+
+// Array ordenado de biomas para decodificar índices
+export const BIOME_ORDER: BiomeType[] = Object.values(BiomeType);
+
+// ============================================
 // Chunks dinámicos
 // ============================================
 
@@ -234,6 +270,7 @@ export interface ChunkSnapshot {
   worldY: number;
   size: number;
   fields: Partial<Record<FieldType, number[]>>;
+  biomes?: number[];  // Índices de biomas para cada tile (decodificar con BIOME_ORDER)
   generated: boolean;  // true si se acaba de generar
 }
 

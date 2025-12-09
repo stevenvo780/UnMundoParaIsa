@@ -5,6 +5,7 @@
 
 import { Field } from './Field.js';
 import { FieldType, FieldConfig, DEFAULT_FIELD_CONFIGS, WORLD } from '../types.js';
+import { BiomeType } from './BiomeResolver.js';
 
 export const CHUNK_SIZE = 64;
 
@@ -28,6 +29,9 @@ export class Chunk {
   private _state: ChunkState = 'dormant';
   private lastActiveTime = 0;
   
+  // Array de biomas para cada tile del chunk
+  private _biomes: Uint8Array | null = null;
+  
   constructor(cx: number, cy: number) {
     this.cx = cx;
     this.cy = cy;
@@ -40,6 +44,41 @@ export class Chunk {
    */
   get state(): ChunkState {
     return this._state;
+  }
+  
+  /**
+   * Obtener bioma en coordenadas locales
+   */
+  getBiome(localX: number, localY: number): BiomeType {
+    if (!this._biomes) return BiomeType.GRASSLAND;
+    const index = localY * CHUNK_SIZE + localX;
+    return Object.values(BiomeType)[this._biomes[index]] as BiomeType;
+  }
+  
+  /**
+   * Establecer bioma en coordenadas locales
+   */
+  setBiome(localX: number, localY: number, biome: BiomeType): void {
+    if (!this._biomes) {
+      this._biomes = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
+    }
+    const index = localY * CHUNK_SIZE + localX;
+    const biomeIndex = Object.values(BiomeType).indexOf(biome);
+    this._biomes[index] = biomeIndex >= 0 ? biomeIndex : 0;
+  }
+  
+  /**
+   * Obtener array completo de biomas (para serialización)
+   */
+  getBiomes(): Uint8Array | null {
+    return this._biomes;
+  }
+  
+  /**
+   * Establecer array de biomas (para deserialización)
+   */
+  setBiomes(biomes: Uint8Array): void {
+    this._biomes = biomes;
   }
   
   /**

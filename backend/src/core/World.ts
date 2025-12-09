@@ -996,10 +996,31 @@ export class World {
   }
   
   /**
-   * Reproducir partícula
+   * Reproducir partícula (con control de densidad)
    */
   private reproduce(parent: Particle): void {
     const { lifecycle } = this.config;
+    
+    // === Control de densidad ===
+    // Calcular densidad local (partículas en un radio de 10)
+    const localDensity = this.particles.filter(p => 
+      p.alive && 
+      Math.abs(p.x - parent.x) <= 10 && 
+      Math.abs(p.y - parent.y) <= 10
+    ).length;
+    
+    // Si hay demasiadas partículas cerca, NO reproducir
+    // Esto simula competencia por espacio/recursos
+    const MAX_LOCAL_DENSITY = 25; // máximo ~25 partículas en área 20x20
+    if (localDensity >= MAX_LOCAL_DENSITY) {
+      return; // Sin coste - simplemente no se reproduce
+    }
+    
+    // Probabilidad de éxito disminuye con densidad
+    const reproductionChance = 1 - (localDensity / MAX_LOCAL_DENSITY);
+    if (Math.random() > reproductionChance) {
+      return; // Falló - sin coste
+    }
     
     // Coste de reproducción
     parent.energy -= lifecycle.reproductionCost;
@@ -1018,18 +1039,19 @@ export class World {
     const cx = Math.floor(parent.x + Math.cos(angle) * dist);
     const cy = Math.floor(parent.y + Math.sin(angle) * dist);
     
-    if (cx >= 0 && cx < this.width && cy >= 0 && cy < this.height) {
+    // Permitir spawn en mundo infinito (sin límites estrictos)
+    if (this.isValidPosition(cx, cy)) {
       const newId = this.particleIdCounter++;
       this.particles.push({
         id: newId,
         x: cx,
         y: cy,
-        energy: lifecycle.reproductionCost * 0.8,
+        energy: lifecycle.reproductionCost * 0.7, // Hijos nacen con menos energía
         seed: childSeed,
         alive: true,
       });
       this.births++;
-      if (this.tick % 100 === 0 || this.births <= 3) {
+      if (this.tick % 200 === 0 || this.births <= 3) {
         console.log(`[Birth] Particle ${newId} born at (${cx},${cy}) from parent ${parent.id} - tick ${this.tick}`);
       }
     }

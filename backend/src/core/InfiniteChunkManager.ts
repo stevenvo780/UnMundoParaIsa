@@ -1,11 +1,18 @@
 /**
  * InfiniteChunkManager - Gestiona chunks dinámicos para mundo infinito
  * Genera chunks bajo demanda, soporta coordenadas negativas
+ * 
+ * Genera biomas realistas usando:
+ * - Temperature: gradiente climático
+ * - Moisture: humedad del terreno  
+ * - Elevation: altitud
+ * - Continentality: distancia a masas de agua
  */
 
 import { Chunk, CHUNK_SIZE, ChunkState } from './Chunk.js';
 import { FieldType, ChunkCoord, ChunkSnapshot, ViewportData } from '../types.js';
 import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
+import { BiomeResolver, BiomeType, BIOME_CONFIGS } from './BiomeResolver.js';
 
 // Alea PRNG simple
 function alea(seed: number): () => number {
@@ -15,6 +22,14 @@ function alea(seed: number): () => number {
     return s / 0x7fffffff;
   };
 }
+
+// Escalas de ruido para biomas (similares al proyecto original)
+const BIOME_NOISE_SCALES = {
+  temperature: { scale: 0.006, octaves: 3, persistence: 0.5 },
+  moisture:    { scale: 0.008, octaves: 3, persistence: 0.6 },
+  elevation:   { scale: 0.004, octaves: 4, persistence: 0.45 },
+  continentality: { scale: 0.003, octaves: 2, persistence: 0.4 },
+} as const;
 
 export interface InfiniteChunkManagerConfig {
   activationRadius: number;     // Radio en chunks para mantener activos
@@ -48,6 +63,19 @@ export class InfiniteChunkManager {
   private treeNoise: NoiseFunction2D;
   private stoneNoise: NoiseFunction2D;
   
+  // Generadores de ruido para biomas
+  private temperatureNoise: NoiseFunction2D;
+  private moistureNoise: NoiseFunction2D;
+  private elevationNoise: NoiseFunction2D;
+  private continentalityNoise: NoiseFunction2D;
+  
+  // Generador de ruido para ríos
+  private riverNoise: NoiseFunction2D;
+  private riverNoise2: NoiseFunction2D;
+  
+  // Resolver de biomas
+  private biomeResolver: BiomeResolver;
+  
   // Centro de activación (viewport o partículas)
   private focusCenters: Array<{ x: number; y: number; priority: number }> = [];
   
@@ -65,7 +93,20 @@ export class InfiniteChunkManager {
     this.treeNoise = createNoise2D(alea(this.config.seed + 2));
     this.stoneNoise = createNoise2D(alea(this.config.seed + 3));
     
-    console.log(`[InfiniteChunkManager] Initialized with seed ${this.config.seed}`);
+    // Generadores para biomas (semillas diferentes)
+    this.temperatureNoise = createNoise2D(alea(this.config.seed + 100));
+    this.moistureNoise = createNoise2D(alea(this.config.seed + 101));
+    this.elevationNoise = createNoise2D(alea(this.config.seed + 102));
+    this.continentalityNoise = createNoise2D(alea(this.config.seed + 103));
+    
+    // Generadores para ríos (2 capas para curvas naturales)
+    this.riverNoise = createNoise2D(alea(this.config.seed + 200));
+    this.riverNoise2 = createNoise2D(alea(this.config.seed + 201));
+    
+    // Resolver de biomas
+    this.biomeResolver = new BiomeResolver();
+    
+    console.log(`[InfiniteChunkManager] Initialized with seed ${this.config.seed}, biome generation enabled`);
   }
   
   /**
@@ -126,7 +167,73 @@ export class InfiniteChunkManager {
   }
   
   /**
-   * Generar terreno procedural para un chunk
+   * Calcular ruido fractal con octavas (FBM - Fractal Brownian Motion)
+   */
+  private fractalNoise(
+    noise: NoiseFunction2D,
+    x: number, 
+    y: number, 
+    scale: number,
+    octaves: number,
+    persistence: number
+  ): number {
+    let value = 0;
+    let amplitude = 1;
+    let frequency = scale;
+    let maxValue = 0;
+    
+    for (let i = 0; i < octaves; i++) {
+      // Simplex noise returns [-1, 1], normalizar a [0, 1]
+      value += amplitude * (0.5 + 0.5 * noise(x * frequency, y * frequency));
+      maxValue += amplitude;
+      amplitude *= persistence;
+      frequency *= 2; // lacunarity
+    }
+    
+    return value / maxValue;
+  }
+  
+  /**
+   * Detectar si un punto está en un río usando "ridged noise"
+   * Los ríos aparecen como líneas donde el ruido cruza un umbral
+   * 
+   * @returns Valor 0-1 indicando proximidad a río (1 = en el río)
+   */
+  private getRiverValue(x: number, y: number, elevation: number): number {
+    // Los ríos no deben aparecer en zonas muy altas (montañas)
+    // ni en zonas muy bajas (ya hay agua)
+    if (elevation > 0.65 || elevation < 0.15) {
+      return 0;
+    }
+    
+    // Usar ruido "ridged" para crear líneas naturales
+    // La idea es que donde |noise| es cercano a 0, hay río
+    const RIVER_SCALE = 0.004;
+    const RIVER_SCALE_2 = 0.008;
+    
+    // Dos capas de ruido para curvas más naturales
+    const n1 = this.riverNoise(x * RIVER_SCALE, y * RIVER_SCALE);
+    const n2 = this.riverNoise2(x * RIVER_SCALE_2, y * RIVER_SCALE_2);
+    
+    // Combinar las dos capas
+    const combined = (n1 + n2 * 0.5) / 1.5;
+    
+    // Convertir a "ridge" - valores cercanos a 0 = río
+    const ridge = 1 - Math.abs(combined);
+    
+    // Umbral para definir ancho del río
+    const RIVER_THRESHOLD = 0.92;
+    
+    if (ridge > RIVER_THRESHOLD) {
+      // Valor suavizado para el río
+      return (ridge - RIVER_THRESHOLD) / (1 - RIVER_THRESHOLD);
+    }
+    
+    return 0;
+  }
+  
+  /**
+   * Generar terreno procedural para un chunk con biomas realistas
    */
   private generateTerrain(chunk: Chunk): void {
     if (chunk.state === 'dormant') {
@@ -136,7 +243,10 @@ export class InfiniteChunkManager {
     const worldX = chunk.worldX;
     const worldY = chunk.worldY;
     
-    // Escalas de ruido para diferentes características
+    // Inicializar array de biomas para el chunk
+    const biomes: BiomeType[] = new Array(CHUNK_SIZE * CHUNK_SIZE);
+    
+    // Escalas de ruido para recursos
     const FOOD_SCALE = 0.02;
     const WATER_SCALE = 0.015;
     const TREE_SCALE = 0.03;
@@ -147,23 +257,92 @@ export class InfiniteChunkManager {
         const gx = worldX + lx;
         const gy = worldY + ly;
         
-        // Food: ruido con octavas
+        // === CALCULAR BIOMA ===
+        const temp = this.fractalNoise(
+          this.temperatureNoise, gx, gy,
+          BIOME_NOISE_SCALES.temperature.scale,
+          BIOME_NOISE_SCALES.temperature.octaves,
+          BIOME_NOISE_SCALES.temperature.persistence
+        );
+        
+        const moisture = this.fractalNoise(
+          this.moistureNoise, gx, gy,
+          BIOME_NOISE_SCALES.moisture.scale,
+          BIOME_NOISE_SCALES.moisture.octaves,
+          BIOME_NOISE_SCALES.moisture.persistence
+        );
+        
+        const elevation = this.fractalNoise(
+          this.elevationNoise, gx, gy,
+          BIOME_NOISE_SCALES.elevation.scale,
+          BIOME_NOISE_SCALES.elevation.octaves,
+          BIOME_NOISE_SCALES.elevation.persistence
+        );
+        
+        const continentality = this.fractalNoise(
+          this.continentalityNoise, gx, gy,
+          BIOME_NOISE_SCALES.continentality.scale,
+          BIOME_NOISE_SCALES.continentality.octaves,
+          BIOME_NOISE_SCALES.continentality.persistence
+        );
+        
+        // Resolver bioma basado en factores ambientales
+        let biome = this.biomeResolver.resolveBiome(temp, moisture, elevation, continentality);
+        
+        // === DETECTAR RÍOS ===
+        // Los ríos sobrescriben otros biomas si pasan por aquí
+        const riverValue = this.getRiverValue(gx, gy, elevation);
+        if (riverValue > 0.3) {
+          biome = BiomeType.RIVER;
+        }
+        
+        biomes[ly * CHUNK_SIZE + lx] = biome;
+        
+        // Guardar bioma en el chunk
+        chunk.setBiome(lx, ly, biome);
+        
+        // Obtener configuración del bioma para ajustar recursos
+        const biomeConfig = this.biomeResolver.getBiomeConfig(biome);
+        
+        // === GENERAR RECURSOS BASADOS EN BIOMA ===
+        
+        // Food: afectado por bioma (más en bosques/praderas, menos en desierto/montaña)
         let food = 0.5 + 0.5 * this.foodNoise(gx * FOOD_SCALE, gy * FOOD_SCALE);
         food += 0.25 * (0.5 + 0.5 * this.foodNoise(gx * FOOD_SCALE * 2, gy * FOOD_SCALE * 2));
         food = Math.min(1, Math.max(0, food / 1.25));
-        chunk.setValue('food', lx, ly, food * 0.5); // Valor inicial moderado
         
-        // Water: zonas más grandes y suaves
+        // Modificar food según bioma
+        if (biome === BiomeType.FOREST || biome === BiomeType.GRASSLAND) {
+          food *= 1.2;
+        } else if (biome === BiomeType.DESERT || biome === BiomeType.MOUNTAIN) {
+          food *= 0.3;
+        } else if (biome === BiomeType.OCEAN || biome === BiomeType.LAKE || biome === BiomeType.RIVER) {
+          food = 0;
+        } else if (biome === BiomeType.SWAMP || biome === BiomeType.WETLAND) {
+          food *= 0.8;
+        }
+        chunk.setValue('food', lx, ly, Math.min(1, food * 0.5));
+        
+        // Water: más en biomas húmedos
         let water = 0.5 + 0.5 * this.waterNoise(gx * WATER_SCALE, gy * WATER_SCALE);
-        water = Math.pow(water, 2); // Hacer agua más escasa
-        if (water > 0.6) {
+        water = Math.pow(water, 2);
+        
+        if (biome === BiomeType.OCEAN || biome === BiomeType.LAKE || biome === BiomeType.RIVER) {
+          chunk.setValue('water', lx, ly, 1.0);
+        } else if (biome === BiomeType.SWAMP || biome === BiomeType.WETLAND) {
+          chunk.setValue('water', lx, ly, 0.7 + water * 0.3);
+        } else if (biome === BiomeType.BEACH) {
+          chunk.setValue('water', lx, ly, water > 0.5 ? 0.4 : 0);
+        } else if (water > 0.6) {
           chunk.setValue('water', lx, ly, (water - 0.6) * 2.5);
         }
         
-        // Trees: correlacionado con food pero menos frecuente
+        // Trees: más en bosques, menos en desierto
         const treePotential = this.treeNoise(gx * TREE_SCALE, gy * TREE_SCALE);
-        if (treePotential > 0.4 && food > 0.3) {
-          chunk.setValue('trees', lx, ly, (treePotential - 0.4) * 1.67);
+        const treeDensity = biomeConfig?.density.trees ?? 0;
+        
+        if (treeDensity > 0 && treePotential > (1 - treeDensity)) {
+          chunk.setValue('trees', lx, ly, (treePotential - (1 - treeDensity)) * (1 / treeDensity));
         }
         
         // Stone: zonas separadas
@@ -376,6 +555,15 @@ export class InfiniteChunkManager {
       }
     }
     
+    // Serializar biomas
+    let biomesBuffer: ArrayBuffer | undefined;
+    const biomes = chunk.getBiomes();
+    if (biomes) {
+      // Copiar a un nuevo ArrayBuffer para evitar problemas con SharedArrayBuffer
+      biomesBuffer = new ArrayBuffer(biomes.byteLength);
+      new Uint8Array(biomesBuffer).set(biomes);
+    }
+    
     return {
       cx: chunk.cx,
       cy: chunk.cy,
@@ -383,6 +571,7 @@ export class InfiniteChunkManager {
       worldY: chunk.worldY,
       size: CHUNK_SIZE,
       fields,
+      biomes: biomesBuffer,
       generated,
     };
   }

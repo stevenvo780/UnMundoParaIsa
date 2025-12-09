@@ -110,11 +110,11 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   tickMs: WORLD.TICK_MS,
   seed: 42,
   lifecycle: {
-    baseMetabolism: 0.002,
+    baseMetabolism: 0.003,          // Aumentado: metabolismo más exigente
     movementCost: 0.001,
-    reproductionThreshold: 0.8,
-    reproductionCost: 0.4,
-    consumptionEfficiency: 0.7,
+    reproductionThreshold: 0.92,     // Subido: solo se reproducen las muy saludables
+    reproductionCost: 0.55,          // Aumentado: reproducirse es más costoso
+    consumptionEfficiency: 0.6,      // Reducido: menos eficientes comiendo
     mutationRate: 0.01,
   },
   weights: {
@@ -233,6 +233,7 @@ export interface ChunkSnapshot {
   worldY: number;
   size: number;
   fields: Partial<Record<FieldType, ArrayBuffer>>;
+  biomes?: ArrayBuffer;  // Uint8Array con índices de BiomeType para cada tile
   generated: boolean;  // true si se acaba de generar
 }
 
