@@ -1,5 +1,5 @@
-import { Application, Container, Graphics, Sprite } from 'pixi.js';
-import { Particle, FieldType, WORLD, ChunkSnapshot, ViewportData } from '../types';
+import { Application, Container, Graphics, Sprite, Ticker } from 'pixi.js';
+import { Particle, ParticleRenderState, FieldType, WORLD, ChunkSnapshot, ViewportData } from '../types';
 import { AssetLoader, LoadedAssets } from './AssetLoader';
 import { ChunkRenderer } from './ChunkRenderer';
 
@@ -9,6 +9,9 @@ const WATER_THRESHOLD = 0.4;
 
 // Throttle para viewport updates
 const VIEWPORT_UPDATE_THROTTLE_MS = 100;
+
+// Interpolación de movimiento
+const INTERPOLATION_SPEED = 0.2; // Velocidad de interpolación (0-1)
 
 interface FieldLayer {
   graphics: Graphics;
@@ -41,6 +44,9 @@ export class Renderer {
   private treeSprites: Sprite[] = [];
   private particleSprites: Map<number, Sprite> = new Map();
   private structureSprites: Map<number, Graphics> = new Map(); // Sprites de estructuras
+  
+  // Estado de partículas con interpolación
+  private particleRenderStates: Map<number, ParticleRenderState> = new Map();
   
   private foodField: Float32Array | null = null;
   private waterField: Float32Array | null = null;
@@ -516,6 +522,46 @@ export class Renderer {
       
       currentIds.add(p.id);
       
+      // Obtener o crear estado de interpolación
+      let renderState = this.particleRenderStates.get(p.id);
+      if (!renderState) {
+        renderState = {
+          ...p,
+          displayX: p.x,
+          displayY: p.y,
+          prevX: p.x,
+          prevY: p.y,
+        };
+        this.particleRenderStates.set(p.id, renderState);
+      } else {
+        // Actualizar posición objetivo cuando recibimos nuevo estado del servidor
+        if (renderState.x !== p.x || renderState.y !== p.y) {
+          renderState.prevX = renderState.displayX;
+          renderState.prevY = renderState.displayY;
+        }
+        renderState.x = p.x;
+        renderState.y = p.y;
+        renderState.vx = p.vx;
+        renderState.vy = p.vy;
+        renderState.energy = p.energy;
+        renderState.alive = p.alive;
+      }
+      
+      // Interpolación suave hacia la posición objetivo
+      const dx = renderState.x - renderState.displayX;
+      const dy = renderState.y - renderState.displayY;
+      
+      // Si la velocidad está disponible, usarla para predicción
+      if (renderState.vx !== undefined && renderState.vy !== undefined) {
+        // Movimiento predictivo: interpolar con velocidad
+        renderState.displayX += dx * INTERPOLATION_SPEED + (renderState.vx || 0) * 0.3;
+        renderState.displayY += dy * INTERPOLATION_SPEED + (renderState.vy || 0) * 0.3;
+      } else {
+        // Fallback: interpolación lineal simple
+        renderState.displayX += dx * INTERPOLATION_SPEED;
+        renderState.displayY += dy * INTERPOLATION_SPEED;
+      }
+      
       let sprite = this.particleSprites.get(p.id);
       
       if (!sprite) {
@@ -527,8 +573,9 @@ export class Renderer {
         this.particleSprites.set(p.id, sprite);
       }
       
-      sprite.x = p.x;
-      sprite.y = p.y;
+      // Usar posición interpolada para renderizado suave
+      sprite.x = renderState.displayX;
+      sprite.y = renderState.displayY;
       
       const isFemale = p.seed % 2 === 0;
       sprite.texture = this.assetLoader.getCharacterFrame(p.seed, this.currentTick, isFemale);
@@ -549,9 +596,11 @@ export class Renderer {
       sprite.visible = true;
     }
     
+    // Limpiar sprites y estados de partículas muertas
     this.particleSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
         sprite.visible = false;
+        this.particleRenderStates.delete(id);
         if (this.particleSprites.size > this.particles.length * 2) {
           sprite.destroy();
           this.particleSprites.delete(id);

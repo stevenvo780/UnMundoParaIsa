@@ -559,27 +559,31 @@ export class World {
    * Si está fuera del campo original, consulta al chunk manager
    */
   getFieldValueAt(type: FieldType, x: number, y: number): number {
+    // Truncar coordenadas a enteros
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    
     // Primero intentar en el campo local
-    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+    if (ix >= 0 && ix < this.width && iy >= 0 && iy < this.height) {
       const field = this.fields.get(type);
-      return field ? field.get(x, y) : 0;
+      return field ? field.get(ix, iy) : 0;
     }
     
     // Fuera del rango local: consultar chunk infinito
     if (this.infiniteChunks) {
-      const chunk = this.infiniteChunks.getChunkAt(x, y);
+      const chunk = this.infiniteChunks.getChunkAt(ix, iy);
       if (chunk) {
-        const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-        const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const localX = ((ix % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const localY = ((iy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
         return chunk.getValue(type, localX, localY);
       }
       // Si no hay chunk, generarlo
       const newChunk = this.infiniteChunks.ensureChunkActive(
-        Math.floor(x / CHUNK_SIZE),
-        Math.floor(y / CHUNK_SIZE)
+        Math.floor(ix / CHUNK_SIZE),
+        Math.floor(iy / CHUNK_SIZE)
       );
-      const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-      const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localX = ((ix % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((iy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       return newChunk.getValue(type, localX, localY);
     }
     
@@ -590,21 +594,25 @@ export class World {
    * Establecer valor de campo en cualquier coordenada (soporta infinito)
    */
   setFieldValueAt(type: FieldType, x: number, y: number, value: number): void {
+    // Truncar coordenadas a enteros
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    
     // En campo local
-    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+    if (ix >= 0 && ix < this.width && iy >= 0 && iy < this.height) {
       const field = this.fields.get(type);
-      if (field) field.set(x, y, value);
+      if (field) field.set(ix, iy, value);
       return;
     }
     
     // En chunk infinito
     if (this.infiniteChunks) {
       const chunk = this.infiniteChunks.ensureChunkActive(
-        Math.floor(x / CHUNK_SIZE),
-        Math.floor(y / CHUNK_SIZE)
+        Math.floor(ix / CHUNK_SIZE),
+        Math.floor(iy / CHUNK_SIZE)
       );
-      const localX = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-      const localY = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localX = ((ix % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((iy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       chunk.setValue(type, localX, localY, value);
     }
   }
@@ -752,7 +760,11 @@ export class World {
     // Log cada 100 ticks para monitoreo
     if (this.tick % 100 === 0) {
       const alive = this.particles.filter(p => p.alive).length;
-      const avgEnergy = this.particles.reduce((s, p) => s + (p.alive ? p.energy : 0), 0) / Math.max(1, alive);
+      const energySum = this.particles.reduce((s, p) => {
+        const energy = p.alive ? (p.energy ?? 0) : 0;
+        return s + (isNaN(energy) ? 0 : energy);
+      }, 0);
+      const avgEnergy = alive > 0 ? energySum / alive : 0;
       const foodSum = this.getField('food')?.getSum() ?? 0;
       console.log(`[World] Tick ${this.tick} | Alive: ${alive} | AvgEnergy: ${avgEnergy.toFixed(3)} | Food: ${foodSum.toFixed(0)} | Births: ${this.births} | Deaths: ${this.deaths}`);
     }
@@ -775,6 +787,11 @@ export class World {
     for (const p of this.particles) {
       if (!p.alive) continue;
       
+      // === INICIALIZAR VELOCIDAD SI NO EXISTE ===
+      if (p.vx === undefined || isNaN(p.vx)) p.vx = 0;
+      if (p.vy === undefined || isNaN(p.vy)) p.vy = 0;
+      if (isNaN(p.energy)) p.energy = 0.5;
+      
       // === PROTECCIÓN DE ESTRUCTURAS ===
       // Las partículas cerca de estructuras gastan menos energía
       const protectionBonus = this.structureManager.getProtectionBonus(p.x, p.y);
@@ -794,15 +811,20 @@ export class World {
       }
       
       // Consumir recursos - usar getFieldValueAt para soporte infinito
+      // (getFieldValueAt ya trunca coordenadas internamente)
       const foodHere = this.getFieldValueAt('food', p.x, p.y);
       const waterHere = this.getFieldValueAt('water', p.x, p.y);
       
       const consume = Math.min(0.1, foodHere) * lifecycle.consumptionEfficiency;
       p.energy += consume;
       
+      // Truncar posición para índices
+      const px = Math.floor(p.x);
+      const py = Math.floor(p.y);
+      
       // Solo actualizar buffer de consumo si está en área local
-      if (p.x >= 0 && p.x < this.width && p.y >= 0 && p.y < this.height) {
-        consumption[idx(p.x, p.y, this.width)] += consume / lifecycle.consumptionEfficiency;
+      if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
+        consumption[idx(px, py, this.width)] += consume / lifecycle.consumptionEfficiency;
       } else {
         // En chunks infinitos, reducir directamente el valor
         const newFoodValue = Math.max(0, foodHere - consume / lifecycle.consumptionEfficiency);
@@ -826,22 +848,48 @@ export class World {
         );
       }
       
-      // Movimiento por gradiente - ahora usa chooseDirectionInfinite
+      // === MOVIMIENTO FLUIDO CON VELOCIDAD ===
+      // Calcular dirección objetivo por gradiente
       const dir = this.chooseDirectionInfinite(p, weights);
       
-      if (dir.dx !== 0 || dir.dy !== 0) {
-        const newX = p.x + dir.dx;
-        const newY = p.y + dir.dy;
+      // Convertir dirección discreta a velocidad objetivo
+      const MAX_VELOCITY = 2.0;
+      const VELOCITY_DAMPING = 0.85;
+      const ACCELERATION = 0.3;
+      
+      const targetVx = dir.dx * MAX_VELOCITY;
+      const targetVy = dir.dy * MAX_VELOCITY;
+      
+      // Interpolar velocidad actual hacia objetivo (suavizado)
+      p.vx = p.vx * VELOCITY_DAMPING + targetVx * ACCELERATION;
+      p.vy = p.vy * VELOCITY_DAMPING + targetVy * ACCELERATION;
+      
+      // Clamp velocidad máxima
+      const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      if (speed > MAX_VELOCITY) {
+        p.vx = (p.vx / speed) * MAX_VELOCITY;
+        p.vy = (p.vy / speed) * MAX_VELOCITY;
+      }
+      
+      // Aplicar velocidad a posición
+      const newX = p.x + p.vx;
+      const newY = p.y + p.vy;
+      
+      // Permitir movimiento infinito
+      if (this.isValidPosition(newX, newY)) {
+        p.x = newX;
+        p.y = newY;
         
-        // Permitir movimiento infinito
-        if (this.isValidPosition(newX, newY)) {
-          p.x = newX;
-          p.y = newY;
-          p.energy -= lifecycle.movementCost;
-          
-          // Depositar trail
-          this.depositTrailInfinite(p);
-        }
+        // Coste de movimiento proporcional a velocidad
+        const movementMagnitude = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        p.energy -= lifecycle.movementCost * movementMagnitude * 0.5;
+        
+        // Depositar trail
+        this.depositTrailInfinite(p);
+      } else {
+        // Rebote suave en límites inválidos
+        p.vx *= -0.5;
+        p.vy *= -0.5;
       }
       
       // Reproducción
@@ -978,8 +1026,12 @@ export class World {
       this.getField('trail3')!,
     ];
     
+    // Truncar coordenadas a enteros
+    const px = Math.floor(p.x);
+    const py = Math.floor(p.y);
+    
     for (let c = 0; c < 4; c++) {
-      trailFields[c].add(p.x, p.y, sig[c] * 0.1);
+      trailFields[c].add(px, py, sig[c] * 0.1);
     }
   }
   
@@ -989,8 +1041,12 @@ export class World {
    * Si está fuera, actualiza el chunk correspondiente
    */
   private depositTrailInfinite(p: Particle): void {
+    // Truncar coordenadas
+    const px = Math.floor(p.x);
+    const py = Math.floor(p.y);
+    
     // Si está dentro del área local, usar método normal
-    if (p.x >= 0 && p.x < this.width && p.y >= 0 && p.y < this.height) {
+    if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
       this.depositTrail(p);
       return;
     }
@@ -998,13 +1054,13 @@ export class World {
     // Fuera del área local: depositar en chunk infinito
     if (this.infiniteChunks) {
       const sig = this.getSignature(p.seed);
-      const chunkX = Math.floor(p.x / CHUNK_SIZE);
-      const chunkY = Math.floor(p.y / CHUNK_SIZE);
+      const chunkX = Math.floor(px / CHUNK_SIZE);
+      const chunkY = Math.floor(py / CHUNK_SIZE);
       const chunk = this.infiniteChunks.ensureChunkActive(chunkX, chunkY);
       
-      // Calcular coordenadas locales dentro del chunk
-      const localX = ((p.x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-      const localY = ((p.y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      // Calcular coordenadas locales dentro del chunk (ya enteras)
+      const localX = ((px % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const localY = ((py % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       
       // Añadir trail a los 4 canales del chunk usando Field.add()
       chunk.getField('trail0')?.add(localX, localY, sig[0] * 0.1);

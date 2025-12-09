@@ -7,8 +7,10 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "3001:3001"
+      - "9091:9090"  # Prometheus metrics
     environment:
       - PORT=3001
+      - METRICS_PORT=9090
       - TICK_MS=50
     restart: unless-stopped
     networks:

@@ -28,7 +28,7 @@ const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   fastInterval: 1,
   mediumInterval: 5,
   slowInterval: 20,
-  maxTickBudgetMs: 16,  // 60 FPS target
+  maxTickBudgetMs: 100,  // 10 FPS mínimo para mundo infinito
 };
 
 /**

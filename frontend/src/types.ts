@@ -11,8 +11,9 @@ export const WORLD = {
   WIDTH: 512,
   HEIGHT: 512,
   CHUNK_SIZE: 64,
-  TICK_MS: 50,  // 20 ticks por segundo
-  GRID_SIZE: 64, // Tamaño del grid para campos
+  TICK_MS: 50,           // 20 ticks lógicos por segundo
+  GRID_SIZE: 64,         // Tamaño del grid para campos
+  INTERPOLATION_FACTOR: 0.15, // Factor de interpolación para movimiento suave
 } as const;
 
 // ============================================
@@ -68,9 +69,19 @@ export interface Particle {
   id: number;
   x: number;
   y: number;
+  vx?: number;              // Velocidad X (para interpolación)
+  vy?: number;              // Velocidad Y (para interpolación)
   energy: number;           // 0-1: energía vital
   seed: number;             // Semilla genética (define comportamiento)
   alive: boolean;
+}
+
+// Estado extendido para interpolación en frontend
+export interface ParticleRenderState extends Particle {
+  displayX: number;         // Posición visual interpolada
+  displayY: number;
+  prevX: number;            // Posición anterior (para interpolación)
+  prevY: number;
 }
 
 // ============================================

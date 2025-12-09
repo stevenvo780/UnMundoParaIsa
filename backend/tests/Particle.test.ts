@@ -14,6 +14,8 @@ function createTestParticle(
     id,
     x,
     y,
+    vx: 0,
+    vy: 0,
     energy,
     seed: Math.floor(Math.random() * 0xFFFFFFFF),
     alive: true,

@@ -5,6 +5,7 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { World } from './core/World.js';
 import { InfiniteChunkManager } from './core/InfiniteChunkManager.js';
 import { 
@@ -16,8 +17,17 @@ import {
   ChunkSnapshot,
   ViewportData,
 } from './types.js';
+import {
+  getMetrics,
+  updateSimulationMetrics,
+  wsConnectionsActive,
+  wsMessagesReceived,
+  wsMessagesSent,
+  chunksGenerated,
+} from './metrics/prometheus.js';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
+const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9090', 10);
 const TICK_MS = parseInt(process.env.TICK_MS || '50', 10);
 
 // ============================================
@@ -54,6 +64,7 @@ wss.on('connection', (ws: WebSocket) => {
   console.log('[Server] Client connected');
   clients.add(ws);
   subscriptions.set(ws, new Set(['food', 'water', 'trail0', 'population']));
+  wsConnectionsActive.inc();
   
   // Enviar estado inicial
   sendInit(ws);
@@ -61,6 +72,7 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('message', (data: Buffer) => {
     try {
       const msg: ClientMessage = JSON.parse(data.toString());
+      wsMessagesReceived.inc();
       handleClientMessage(ws, msg);
     } catch (e) {
       console.error('[Server] Invalid message:', e);
@@ -72,6 +84,7 @@ wss.on('connection', (ws: WebSocket) => {
     clients.delete(ws);
     subscriptions.delete(ws);
     clientViewports.delete(ws);
+    wsConnectionsActive.dec();
   });
   
   ws.on('error', (err) => {
@@ -79,6 +92,7 @@ wss.on('connection', (ws: WebSocket) => {
     clients.delete(ws);
     subscriptions.delete(ws);
     clientViewports.delete(ws);
+    wsConnectionsActive.dec();
   });
 });
 
@@ -314,11 +328,34 @@ function gameLoop(): void {
     
     // Enviar métricas cada segundo
     if (world.getTick() % 20 === 0) {
+      const metrics = world.getMetrics();
+      const chunkStats = infiniteChunks.getStats();
       const metricsMsg: ServerMessage = {
         type: 'metrics',
-        metrics: world.getMetrics(),
+        metrics: metrics,
       };
       broadcast(metricsMsg);
+      
+      // Calcular energía promedio desde partículas
+      const aliveParticles = particles.filter(p => p.alive);
+      const avgEnergy = aliveParticles.length > 0 
+        ? aliveParticles.reduce((sum, p) => sum + (p.energy ?? 0), 0) / aliveParticles.length 
+        : 0;
+      
+      // Protección contra NaN
+      const safeAvgEnergy = isNaN(avgEnergy) ? 0 : avgEnergy;
+      
+      // Actualizar métricas de Prometheus
+      updateSimulationMetrics({
+        tick: world.getTick(),
+        particles: metrics.particleCount,
+        avgEnergy: safeAvgEnergy,
+        births: metrics.births,
+        deaths: metrics.deaths,
+        tickTimeMs: metrics.tickTimeMs,
+        chunksActive: chunkStats.active,
+        chunksCached: chunkStats.dormant,
+      });
     }
   }
   
@@ -365,6 +402,40 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   console.log('[Server] SIGTERM received');
   process.emit('SIGINT', 'SIGINT');
+});
+
+// ============================================
+// Prometheus Metrics HTTP Server
+// ============================================
+
+const metricsServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  if (req.url === '/metrics') {
+    try {
+      const metrics = await getMetrics();
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.writeHead(200);
+      res.end(metrics);
+    } catch (error) {
+      res.writeHead(500);
+      res.end('Error collecting metrics');
+    }
+  } else if (req.url === '/health') {
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(200);
+    res.end(JSON.stringify({ 
+      status: 'ok', 
+      tick: world.getTick(),
+      particles: world.getParticles().length,
+    }));
+  } else {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
+});
+
+metricsServer.listen(METRICS_PORT, () => {
+  console.log(`[Server] Prometheus metrics available at http://localhost:${METRICS_PORT}/metrics`);
+  console.log(`[Server] Health check available at http://localhost:${METRICS_PORT}/health`);
 });
 
 // ============================================
