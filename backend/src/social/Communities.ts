@@ -4,11 +4,7 @@
  */
 
 import { Particle } from "../types.js";
-import {
-  getSignature,
-  averageSignature,
-  seedSimilarity,
-} from "./Signatures.js";
+import { averageSignature } from "./Signatures.js";
 
 export interface Community {
   id: number;

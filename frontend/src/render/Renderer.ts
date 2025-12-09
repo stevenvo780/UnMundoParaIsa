@@ -741,6 +741,10 @@ export class Renderer {
     return this.app;
   }
 
+  getWorldContainer(): Container | null {
+    return this.worldContainer;
+  }
+
   // Métodos de compatibilidad con main.ts
 
   updateParticles(particles: Particle[]): void {

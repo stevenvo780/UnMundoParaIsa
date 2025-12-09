@@ -3,8 +3,6 @@
  * Mantienen el equilibrio y evitan estados degenerados
  */
 
-import { WORLD, FieldConfig } from "../types.js";
-
 export type ThermostatType =
   | "population"
   | "resources"

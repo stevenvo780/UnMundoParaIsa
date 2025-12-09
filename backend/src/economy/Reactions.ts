@@ -178,7 +178,7 @@ export class ReactionProcessor {
   execute(
     reaction: Reaction,
     resources: Record<string, number>,
-    labor: number,
+    _labor: number,
   ): ReactionResult {
     const result: ReactionResult = {
       reactionId: reaction.id,

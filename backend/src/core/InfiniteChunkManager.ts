@@ -9,7 +9,7 @@
  * - Continentality: distancia a masas de agua
  */
 
-import { Chunk, CHUNK_SIZE, ChunkState } from "./Chunk.js";
+import { Chunk, CHUNK_SIZE } from "./Chunk.js";
 import {
   FieldType,
   ChunkCoord,
@@ -17,7 +17,7 @@ import {
   ViewportData,
 } from "../types.js";
 import { createNoise2D, NoiseFunction2D } from "simplex-noise";
-import { BiomeResolver, BiomeType, BIOME_CONFIGS } from "./BiomeResolver.js";
+import { BiomeResolver, BiomeType } from "./BiomeResolver.js";
 
 function alea(seed: number): () => number {
   let s = seed;
@@ -228,7 +228,7 @@ export class InfiniteChunkManager {
     const worldX = chunk.worldX;
     const worldY = chunk.worldY;
 
-    const biomes: BiomeType[] = new Array(CHUNK_SIZE * CHUNK_SIZE);
+    const biomes: BiomeType[] = new Array<BiomeType>(CHUNK_SIZE * CHUNK_SIZE);
 
     const FOOD_SCALE = 0.02;
     const WATER_SCALE = 0.006;
@@ -478,7 +478,6 @@ export class InfiniteChunkManager {
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
             if (dx === 0 && dy === 0) continue;
-            const adjKey = this.keyFor(cx + dx, cy + dy);
             const adjChunk = this.getChunk(cx + dx, cy + dy);
 
             if (!adjChunk || adjChunk.state === "dormant") {

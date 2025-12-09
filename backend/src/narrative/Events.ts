@@ -3,7 +3,7 @@
  * Triggers basados en condiciones del mundo
  */
 
-import { ChatFragment, Emotion, ContextType, TimeOfDay } from "./ChatParser.js";
+import { ChatFragment, Emotion } from "./ChatParser.js";
 import { Artifact } from "./Artifacts.js";
 import { Particle } from "../types.js";
 

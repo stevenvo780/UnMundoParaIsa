@@ -73,6 +73,7 @@ export interface Particle {
   energy: number;
   seed: number;
   alive: boolean;
+  lastReproductionTick?: number;
 }
 
 export interface LifecycleConfig {
@@ -112,7 +113,7 @@ export const DEFAULT_CONFIG: SimulationConfig = {
     baseMetabolism: 0.001,
     movementCost: 0.0005,
     reproductionThreshold: 0.7,
-    reproductionCost: 0.4,
+    reproductionCost: 0.45,
     consumptionEfficiency: 0.7,
     mutationRate: 0.02,
   },

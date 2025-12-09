@@ -3,7 +3,7 @@
  * Precomputa direcciones de movimiento hacia objetivos
  */
 
-import { WORLD, FieldConfig } from "../types.js";
+import { WORLD } from "../types.js";
 
 export interface FlowVector {
   dx: number;

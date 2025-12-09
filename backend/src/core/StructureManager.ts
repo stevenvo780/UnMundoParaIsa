@@ -7,8 +7,6 @@
  * 3. Las estructuras dan protección/beneficios
  */
 
-import { FieldType } from "../types.js";
-
 export enum StructureType {
   CAMP = "camp",
   SHELTER = "shelter",

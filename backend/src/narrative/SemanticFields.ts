@@ -3,7 +3,7 @@
  * Derivados de los fragmentos de chat y comportamientos de agentes
  */
 
-import { FieldConfig, WORLD } from "../types.js";
+import { FieldConfig } from "../types.js";
 
 export type SemanticFieldType =
   | "joy"

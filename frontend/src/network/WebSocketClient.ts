@@ -2,7 +2,12 @@
  * Cliente WebSocket para comunicación con el backend
  */
 
-import { ServerMessage, ClientMessage, FieldType } from "../types";
+import {
+  ServerMessage,
+  ClientMessage,
+  FieldType,
+  ClientMessageType,
+} from "../types";
 
 type EventHandler = (data: ServerMessage) => void;
 
@@ -139,19 +144,19 @@ export class WebSocketClient {
    * Comandos de control
    */
   start(): void {
-    this.send({ type: "start" });
+    this.send({ type: ClientMessageType.START });
   }
 
   pause(): void {
-    this.send({ type: "pause" });
+    this.send({ type: ClientMessageType.PAUSE });
   }
 
   resume(): void {
-    this.send({ type: "resume" });
+    this.send({ type: ClientMessageType.RESUME });
   }
 
   reset(): void {
-    this.send({ type: "reset" });
+    this.send({ type: ClientMessageType.RESET });
   }
 
   /**
@@ -159,7 +164,7 @@ export class WebSocketClient {
    */
   spawnParticles(x: number, y: number, count: number): void {
     this.send({
-      type: "spawn_particles",
+      type: ClientMessageType.SPAWN_PARTICLES,
       spawn: { x, y, count },
     });
   }
@@ -169,7 +174,7 @@ export class WebSocketClient {
    */
   subscribeFields(fields: FieldType[]): void {
     this.send({
-      type: "subscribe_field",
+      type: ClientMessageType.SUBSCRIBE_FIELD,
       subscribeFields: fields,
     });
   }

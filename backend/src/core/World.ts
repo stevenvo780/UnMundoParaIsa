@@ -217,54 +217,6 @@ export class World {
 
     this.demandManager.update(populationField, resourceFields);
 
-    if (laborField) {
-      for (let y = 0; y < this.height; y += 8) {
-        for (let x = 0; x < this.width; x += 8) {
-          const i = y * this.width + x;
-          if (laborField[i] > 0.1) {
-            const localResources: Record<string, number> = {
-              food: foodField.get(x, y),
-              water: waterField.get(x, y),
-            };
-
-            const labor = laborField[i];
-            const buildings = new Set<string>();
-            const population = populationField[i];
-            const fieldValues: Record<string, number> = { ...localResources };
-
-            for (const reaction of this.reactionProcessor.getReactions()) {
-              if (
-                this.reactionProcessor.canExecute(
-                  reaction,
-                  localResources,
-                  labor,
-                  buildings,
-                  population,
-                  fieldValues,
-                )
-              ) {
-                const result = this.reactionProcessor.execute(
-                  reaction,
-                  localResources,
-                  labor,
-                );
-                if (result.executed) {
-                  for (const [resource, amount] of Object.entries(
-                    result.produced,
-                  )) {
-                    const field = this.getField(resource as FieldType);
-                    if (field) {
-                      field.add(x, y, (amount as number) * 0.01);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
     const foodDemand = this.demandManager.getDemandField("food");
     if (foodDemand) {
       const size = this.width * this.height;
@@ -366,7 +318,6 @@ export class World {
     this.artifacts.update();
 
     const allCommunities = this.communities.getAll();
-    const tensionStats = this.tension.getStats();
     const conflicts = this.tension.getRecentConflicts();
 
     const worldState: WorldState = {
@@ -388,10 +339,7 @@ export class World {
       artifacts: this.artifacts.getAll(),
     };
 
-    const events = this.events.process(
-      worldState,
-      this.previousWorldState || worldState,
-    );
+    this.events.process(worldState, this.previousWorldState || worldState);
     this.previousWorldState = worldState;
 
     this.materialization.setTick(this.tick);
@@ -647,22 +595,15 @@ export class World {
       `[World] Food field: sum=${foodSum.toFixed(2)}, max=${foodMax.toFixed(3)}, size=${foodField.width}x${foodField.height}`,
     );
 
-    const waterOases = oases.slice(0, 3).map((o) => {
-      console.log(
-        `[World] Water oasis: x=${o.x}, y=${o.y}, radius=${(o.radius * 0.7).toFixed(1)} (field size: ${waterField.width}x${waterField.height})`,
-      );
-      return {
-        ...o,
-        radius: Math.max(20, o.radius * 0.7),
-        value: 0.9,
-      };
-    });
-    waterField.initWithOases(waterOases);
+    const waterBuffer = waterField.getBuffer();
+    for (let i = 0; i < waterBuffer.length; i++) {
+      waterBuffer[i] = 0.6 + Math.random() * 0.3;
+    }
 
     const waterSum = waterField.getSum();
     const waterMax = waterField.getMax();
     console.log(
-      `[World] Water field: sum=${waterSum.toFixed(2)}, max=${waterMax.toFixed(3)}, oases=${waterOases.length}`,
+      `[World] 💧 Bioma húmedo: Water field sum=${waterSum.toFixed(2)}, max=${waterMax.toFixed(3)} (todo el mapa)`,
     );
 
     treesField.initWithNoise(0.3, 0.3, seed + 1000);
@@ -673,15 +614,36 @@ export class World {
       `[World] Trees field: sum=${treesSum.toFixed(2)}, max=${treesMax.toFixed(3)}`,
     );
 
-    this.spawnParticlesAt(
-      Math.floor(this.width / 2),
-      Math.floor(this.height / 2),
-      50,
-      seed,
-    );
+    const centerX = Math.floor(this.width / 2);
+    const centerY = Math.floor(this.height / 2);
+
+    this.particles.push({
+      id: this.particleIdCounter++,
+      x: centerX - 3,
+      y: centerY,
+      vx: 0,
+      vy: 0,
+      energy: 0.85,
+      seed: 0x57455600,
+      alive: true,
+    });
+
+    this.particles.push({
+      id: this.particleIdCounter++,
+      x: centerX + 3,
+      y: centerY,
+      vx: 0,
+      vy: 0,
+      energy: 0.85,
+      seed: 0x00495341,
+      alive: true,
+    });
 
     console.log(
-      `[World] Generated with ${oases.length} oases, ${this.particles.length} particles`,
+      `[World] 🌍 Génesis: Stev e Isa nacen en (${centerX}, ${centerY})`,
+    );
+    console.log(
+      `[World] Generated with ${oases.length} oases, ${this.particles.length} particles (familia fundadora)`,
     );
   }
 
@@ -725,7 +687,7 @@ export class World {
     this.births = 0;
     this.deaths = 0;
 
-    const schedulerMetrics = this.scheduler.step();
+    this.scheduler.step();
 
     this.updateGrowth();
 
@@ -754,10 +716,6 @@ export class World {
    */
   private updateParticles(): void {
     const food = this.getField("food")!;
-    const water = this.getField("water")!;
-    const trail0 = this.getField("trail0")!;
-    const danger = this.getField("danger")!;
-    const cost = this.getField("cost")!;
 
     const { weights, lifecycle } = this.config;
 
@@ -1074,21 +1032,30 @@ export class World {
 
   /**
    * Reproducir partícula - REQUIERE recursos disponibles
+   * Con cooldown para reproducción más espaciada y realista
    */
   private reproduce(parent: Particle): void {
     const { lifecycle } = this.config;
 
-    const foodHere = this.getFieldValueAt("food", parent.x, parent.y);
-    const waterHere = this.getFieldValueAt("water", parent.x, parent.y);
-
-    if (foodHere < 0.03) {
+    const REPRODUCTION_COOLDOWN = 100;
+    if (
+      parent.lastReproductionTick &&
+      this.tick - parent.lastReproductionTick < REPRODUCTION_COOLDOWN
+    ) {
       return;
     }
 
-    const waterPenalty = waterHere > 0.01 ? 1.0 : 0.5;
+    const foodHere = this.getFieldValueAt("food", parent.x, parent.y);
+    const waterHere = this.getFieldValueAt("water", parent.x, parent.y);
+
+    if (foodHere < 0.05) {
+      return;
+    }
+
+    const waterBonus = Math.min(1.3, 0.7 + waterHere * 0.6);
 
     const aliveCount = this.particles.filter((p) => p.alive).length;
-    const MAX_GLOBAL_POPULATION = 1500;
+    const MAX_GLOBAL_POPULATION = 500;
     if (aliveCount >= MAX_GLOBAL_POPULATION) {
       return;
     }
@@ -1096,19 +1063,23 @@ export class World {
     const localDensity = this.particles.filter(
       (p) =>
         p.alive &&
-        Math.abs(p.x - parent.x) <= 30 &&
-        Math.abs(p.y - parent.y) <= 30,
+        Math.abs(p.x - parent.x) <= 40 &&
+        Math.abs(p.y - parent.y) <= 40,
     ).length;
 
-    const MAX_LOCAL_DENSITY = 40;
+    const MAX_LOCAL_DENSITY = 25;
     if (localDensity >= MAX_LOCAL_DENSITY) {
       return;
     }
 
-    const resourceFactor = Math.min(1, foodHere * 5);
-    const densityFactor = 1 - (localDensity / MAX_LOCAL_DENSITY) * 0.5; // Menos penalización
+    const isFounder = parent.seed === 0x57455600 || parent.seed === 0x00495341;
+    const founderBonus = isFounder ? 1.5 : 1.0;
+
+    const resourceFactor = Math.min(1, foodHere * 2);
+    const densityFactor = 1 - (localDensity / MAX_LOCAL_DENSITY) * 0.4;
+
     const reproductionChance =
-      resourceFactor * densityFactor * waterPenalty * 0.6;
+      resourceFactor * densityFactor * waterBonus * founderBonus * 0.12;
 
     if (Math.random() > reproductionChance) {
       return;
@@ -1155,8 +1126,11 @@ export class World {
       energy: childEnergy,
       seed: childSeed,
       alive: true,
+      lastReproductionTick: this.tick,
     });
     this.births++;
+
+    parent.lastReproductionTick = this.tick;
 
     if (this.tick % 100 === 0 || this.births <= 5) {
       console.log(

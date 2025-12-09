@@ -144,8 +144,8 @@ export class CarrierSystem {
    */
   private findNearestParticle(
     particleIds: number[],
-    x: number,
-    y: number,
+    _x: number,
+    _y: number,
   ): number | null {
     return particleIds.length > 0 ? particleIds[0] : null;
   }

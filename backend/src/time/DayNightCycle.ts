@@ -3,7 +3,6 @@
  * Afecta comportamiento de partículas y ambiente
  */
 
-import { Particle } from "../types.js";
 import {
   BehaviorType,
   getBehaviorType,

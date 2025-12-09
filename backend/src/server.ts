@@ -12,7 +12,6 @@ import {
   ServerMessage,
   ClientMessage,
   FieldType,
-  SimulationConfig,
   Particle,
   ChunkSnapshot,
   ViewportData,
@@ -29,12 +28,6 @@ import {
   updateFieldMetrics,
   wsConnectionsActive,
   wsMessagesReceived,
-  wsMessagesSent,
-  chunksGenerated,
-  recordWsMessage,
-  recordBirth,
-  recordDeath,
-  recordNarrativeEvent,
 } from "./metrics/prometheus.js";
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
@@ -279,8 +272,8 @@ function broadcastChunks(chunks: ChunkSnapshot[]): void {
   }
 }
 
-const lastTickTime = Date.now();
-let tickCount = 0;
+const _lastTickTime = Date.now();
+let _tickCount = 0;
 
 function gameLoop(): void {
   const now = Date.now();
@@ -288,7 +281,7 @@ function gameLoop(): void {
   if (!world.isPaused()) {
     world.step();
     infiniteChunks.step();
-    tickCount++;
+    _tickCount++;
 
     const particles = world.getParticles();
     const newChunksFromParticles =
@@ -424,7 +417,7 @@ const metricsServer = createServer(
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
         res.writeHead(200);
         res.end(metrics);
-      } catch (error) {
+      } catch (_error) {
         res.writeHead(500);
         res.end("Error collecting metrics");
       }

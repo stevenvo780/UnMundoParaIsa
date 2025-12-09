@@ -205,18 +205,35 @@ export type ServerMessageType =
   | "chunk_unload" // Notificar que chunk fue descargado
   | "error";
 
-export type ClientMessageType =
-  | "start"
-  | "pause"
-  | "resume"
-  | "reset"
-  | "set_config"
-  | "spawn_particles"
-  | "subscribe_field"
-  | "request_chunks" // Solicitar chunks por viewport
-  | "viewport_update"; // Actualizar posición/zoom de cámara
+// Removed duplicate ClientMessageType type alias
 
 // Estructura serializada desde el servidor
+export interface DialogFragment {
+  id: string;
+  text: string;
+  speaker?: string;
+  emotion?: "joy" | "nostalgia" | "love" | "sadness" | "neutral";
+  timestamp: number;
+  x: number;
+  y: number;
+  artifactId?: string;
+  characterId?: string;
+}
+
+export enum ClientMessageType {
+  JOIN = "join",
+  LEAVE = "leave",
+  INPUT = "input",
+  START = "start",
+  PAUSE = "pause",
+  RESUME = "resume",
+  RESET = "reset",
+  SET_CONFIG = "set_config",
+  SPAWN_ENTITY = "spawn_entity",
+  SPAWN_PARTICLES = "spawn_particles",
+  SUBSCRIBE_FIELD = "subscribe_field",
+}
+
 export interface StructureData {
   id: number;
   type: string;
@@ -227,7 +244,10 @@ export interface StructureData {
 }
 
 export interface ServerMessage {
-  type: ServerMessageType;
+  type: string;
+  clientId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  state?: any; // Replace with GameState type
   tick?: number;
   particles?: Particle[];
   fields?: Partial<Record<FieldType, ArrayBuffer>>;
@@ -236,6 +256,7 @@ export interface ServerMessage {
   error?: string;
   chunks?: ChunkSnapshot[]; // Datos de chunks
   structures?: StructureData[]; // Estructuras emergentes
+  dialog?: DialogFragment;
 }
 
 export interface ClientMessage {
@@ -245,6 +266,8 @@ export interface ClientMessage {
   subscribeFields?: FieldType[];
   viewport?: ViewportData; // Datos de viewport para chunks
   chunkRequests?: ChunkCoord[]; // Chunks específicos a solicitar
+  x?: number;
+  y?: number;
 }
 
 // ============================================

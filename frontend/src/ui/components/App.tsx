@@ -2,6 +2,7 @@ import React from "react";
 import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { theme } from "../theme";
 import { ControlPanel } from "./ControlPanel";
+import { DialogOverlay } from "./DialogOverlay";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
 
@@ -15,6 +16,7 @@ export const App: React.FC<AppProps> = ({ client, renderer }) => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box
+        id="ui-root-container"
         sx={{
           position: "relative",
           width: "100%",
@@ -22,11 +24,8 @@ export const App: React.FC<AppProps> = ({ client, renderer }) => {
           pointerEvents: "none",
         }}
       >
-        {/* Pointer events none allows clicks to pass through to canvas, 
-            but we need to re-enable them for the controls */}
-        <Box sx={{ pointerEvents: "auto" }}>
-          <ControlPanel client={client} renderer={renderer} />
-        </Box>
+        <DialogOverlay client={client} renderer={renderer} />
+        <ControlPanel client={client} renderer={renderer} />
       </Box>
     </ThemeProvider>
   );

@@ -219,7 +219,7 @@ export class LODManager {
   /**
    * Verificar si una región debe actualizarse este tick
    */
-  shouldUpdate(worldX: number, worldY: number, currentTick: number): boolean {
+  shouldUpdate(worldX: number, worldY: number, _currentTick: number): boolean {
     const gx = Math.floor(worldX / this.regionSize);
     const gy = Math.floor(worldY / this.regionSize);
     const key = `${gx},${gy}`;

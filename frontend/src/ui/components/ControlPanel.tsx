@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Paper,
+  Drawer,
   Typography,
   Button,
   Stack,
@@ -8,11 +8,14 @@ import {
   Checkbox,
   Divider,
   Box,
+  IconButton,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import AddIcon from "@mui/icons-material/Add";
+import MenuIcon from "@mui/icons-material/Menu";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
 import {
@@ -27,21 +30,24 @@ interface ControlPanelProps {
   renderer: Renderer;
 }
 
+const SIDEBAR_WIDTH = 300;
+
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   client,
   renderer,
 }) => {
+  const [isOpen, setIsOpen] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [metrics, setMetrics] = useState<SimulationMetrics | null>(null);
   const [fps, setFps] = useState(0);
   const [connected, setConnected] = useState(false);
 
+  // Field toggles state
+  const [showMoisture, setShowMoisture] = useState(false);
+  const [showNutrients, setShowNutrients] = useState(false);
+
   useEffect(() => {
     // Subscribe to events
-    const handleTick = (data: ServerMessage) => {
-      // Tick is handled in metrics or separate event
-    };
-
     const handleMetrics = (data: ServerMessage) => {
       if (data.metrics) {
         setMetrics(data.metrics);
@@ -55,236 +61,210 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     client.on("connected", handleConnected);
     client.on("disconnected", handleDisconnected);
 
-    // Initial state
-    setConnected(client.isConnected());
-
     // FPS Counter
-    let frameCount = 0;
     const fpsInterval = setInterval(() => {
-      setFps(frameCount);
-      frameCount = 0;
+      setFps(Math.round(renderer.app.ticker.FPS));
     }, 1000);
 
-    const frameCounter = () => {
-      frameCount++;
-      requestAnimationFrame(frameCounter);
-    };
-    const animId = requestAnimationFrame(frameCounter);
-
     return () => {
-      // Cleanup (assuming client has off, or we just rely on component unmount not happening often)
-      // client.off... (WebSocketClient might not expose off, but listeners are persistent in this app)
+      client.off("metrics", handleMetrics);
+      client.off("connected", handleConnected);
+      client.off("disconnected", handleDisconnected);
       clearInterval(fpsInterval);
-      cancelAnimationFrame(animId);
     };
-  }, [client]);
+  }, [client, renderer]);
+
+  const togglePause = () => {
+    const newState = !isPaused;
+    setIsPaused(newState);
+    if (newState) {
+      client.send({ type: ClientMessageType.PAUSE });
+    } else {
+      client.send({ type: ClientMessageType.RESUME });
+    }
+  };
+
+  const handleReset = () => {
+    client.send({ type: ClientMessageType.RESET });
+  };
+
+  const handleSpawn = () => {
+    client.send({
+      type: ClientMessageType.SPAWN_ENTITY,
+      x: 0, // Center
+      y: 0,
+    });
+  };
+
+  const toggleField = (type: FieldType, show: boolean) => {
+    if (type === FieldType.MOISTURE) setShowMoisture(show);
+    if (type === FieldType.NUTRIENTS) setShowNutrients(show);
+    renderer.toggleFieldLayer(type, show);
+  };
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        position: "fixed",
-        top: 20,
-        right: 20,
-        width: 300,
-        p: 2,
-        borderRadius: 2,
-        maxHeight: "calc(100vh - 40px)",
-        overflowY: "auto",
-        zIndex: 1000,
-        backgroundColor: "rgba(22, 33, 62, 0.95)",
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <Box
+    <>
+      {/* Toggle Button (visible when closed) */}
+      {!isOpen && (
+        <Box sx={{ position: "fixed", top: 20, right: 20, zIndex: 1200 }}>
+          <IconButton
+            color="primary"
+            onClick={() => setIsOpen(true)}
+            sx={{
+              bgcolor: "background.paper",
+              boxShadow: 3,
+              "&:hover": { bgcolor: "background.paper" },
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Box>
+      )}
+
+      <Drawer
+        variant="persistent"
+        anchor="right"
+        open={isOpen}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
+          width: SIDEBAR_WIDTH,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": {
+            width: SIDEBAR_WIDTH,
+            boxSizing: "border-box",
+            p: 2,
+            backgroundColor: "rgba(30, 30, 30, 0.95)", // Semi-transparent dark
+            backdropFilter: "blur(8px)",
+          },
         }}
       >
-        <Typography
-          variant="h6"
-          color="primary"
-          sx={{ fontWeight: "bold", fontSize: "1.1rem" }}
-        >
-          Un Mundo Para Isa
-        </Typography>
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            bgcolor: connected ? "success.main" : "error.main",
-            boxShadow: `0 0 8px ${connected ? "#4caf50" : "#f44336"}`,
-          }}
-          title={connected ? "Conectado" : "Desconectado"}
-        />
-      </Box>
+        <Stack spacing={2}>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography variant="h6" color="primary">
+              Un Mundo Para Isa
+            </Typography>
+            <IconButton onClick={() => setIsOpen(false)} size="small">
+              <ChevronRightIcon />
+            </IconButton>
+          </Box>
 
-      <Stack spacing={1} sx={{ mb: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="body2" color="text.secondary">
-            Tick
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {metrics?.tick ?? 0}
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="body2" color="text.secondary">
-            FPS
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {fps}
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="body2" color="text.secondary">
-            Partículas
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {metrics?.particleCount ?? 0}
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="body2" color="text.secondary">
-            Chunks Activos
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {metrics?.activeChunks ?? 0}
-          </Typography>
-        </Box>
-      </Stack>
+          <Divider />
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.1)" }} />
+          {/* Status */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary">
+              Estado del Sistema
+            </Typography>
+            <Typography
+              variant="body2"
+              color={connected ? "success.main" : "error.main"}
+            >
+              {connected ? "Conectado al Servidor" : "Desconectado"}
+            </Typography>
+            <Typography variant="body2">FPS: {fps}</Typography>
+            <Typography variant="body2">Tick: {metrics?.tick || 0}</Typography>
+          </Box>
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          size="small"
-          color={isPaused ? "success" : "warning"}
-          startIcon={isPaused ? <PlayArrowIcon /> : <PauseIcon />}
-          onClick={() => {
-            if (isPaused) client.resume();
-            else client.pause();
-            setIsPaused(!isPaused);
-          }}
-          fullWidth
-        >
-          {isPaused ? "Reanudar" : "Pausar"}
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          color="error"
-          startIcon={<RefreshIcon />}
-          onClick={() => client.reset()}
-          fullWidth
-        >
-          Reset
-        </Button>
-      </Stack>
+          <Divider />
 
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<AddIcon />}
-        onClick={() => client.spawnParticles(256, 256, 10)}
-        fullWidth
-        sx={{ mb: 2 }}
-      >
-        Spawn (Centro)
-      </Button>
+          {/* Metrics */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Métricas
+            </Typography>
+            <Stack spacing={0.5}>
+              <Typography variant="body2">
+                Entidades: {metrics?.particleCount || 0}
+              </Typography>
+              <Typography variant="body2">
+                Chunks Activos: {metrics?.activeChunks || 0}
+              </Typography>
+              <Typography variant="body2">
+                Prom. Comida:{" "}
+                {metrics?.fieldAverages?.food?.toFixed(2) || "0.00"}
+              </Typography>
+              <Typography variant="body2">
+                Prom. Agua:{" "}
+                {metrics?.fieldAverages?.water?.toFixed(2) || "0.00"}
+              </Typography>
+            </Stack>
+          </Box>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.1)" }} />
+          <Divider />
 
-      <Typography
-        variant="subtitle2"
-        color="text.secondary"
-        sx={{ mb: 1, textTransform: "uppercase", fontSize: "0.75rem" }}
-      >
-        Capas Visuales
-      </Typography>
-      <Stack spacing={0.5}>
-        <FieldToggle
-          renderer={renderer}
-          field="food"
-          label="Comida"
-          defaultChecked
-        />
-        <FieldToggle
-          renderer={renderer}
-          field="water"
-          label="Agua"
-          defaultChecked
-        />
-        <FieldToggle
-          renderer={renderer}
-          field="trail0"
-          label="Trail 0"
-          defaultChecked
-        />
-        <FieldToggle renderer={renderer} field="trail1" label="Trail 1" />
-        <FieldToggle renderer={renderer} field="trail2" label="Trail 2" />
-        <FieldToggle renderer={renderer} field="trail3" label="Trail 3" />
-        <FieldToggle renderer={renderer} field="danger" label="Peligro" />
-        <FieldToggle renderer={renderer} field="trees" label="Árboles" />
-      </Stack>
+          {/* Controls */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Controles
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+              <Button
+                variant={isPaused ? "contained" : "outlined"}
+                color={isPaused ? "warning" : "primary"}
+                startIcon={isPaused ? <PlayArrowIcon /> : <PauseIcon />}
+                onClick={togglePause}
+                fullWidth
+              >
+                {isPaused ? "Reanudar" : "Pausar"}
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<RefreshIcon />}
+                onClick={handleReset}
+                fullWidth
+              >
+                Reset
+              </Button>
+              <Button
+                variant="outlined"
+                color="info"
+                startIcon={<AddIcon />}
+                onClick={handleSpawn}
+                fullWidth
+              >
+                Centro
+              </Button>
+            </Stack>
+          </Box>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.1)" }} />
+          <Divider />
 
-      <Typography
-        variant="subtitle2"
-        color="text.secondary"
-        sx={{ mb: 1, textTransform: "uppercase", fontSize: "0.75rem" }}
-      >
-        Métricas de Campo
-      </Typography>
-      <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="body2" color="text.secondary">
-          Comida Avg
-        </Typography>
-        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-          {metrics?.fieldAverages?.food?.toFixed(2) ?? "0.00"}
-        </Typography>
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="body2" color="text.secondary">
-          Agua Avg
-        </Typography>
-        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-          {metrics?.fieldAverages?.water?.toFixed(2) ?? "0.00"}
-        </Typography>
-      </Box>
-    </Paper>
-  );
-};
-
-// Helper component for toggles
-const FieldToggle: React.FC<{
-  renderer: Renderer;
-  field: FieldType;
-  label: string;
-  defaultChecked?: boolean;
-}> = ({ renderer, field, label, defaultChecked }) => {
-  return (
-    <FormControlLabel
-      control={
-        <Checkbox
-          defaultChecked={defaultChecked}
-          size="small"
-          onChange={(e) => renderer.toggleFieldVisibility(field)}
-          sx={{ p: 0.5, "& .MuiSvgIcon-root": { fontSize: 18 } }}
-        />
-      }
-      label={
-        <Typography variant="body2" sx={{ fontSize: "0.85rem" }}>
-          {label}
-        </Typography>
-      }
-      sx={{ ml: 0, mr: 0 }}
-    />
+          {/* Layers */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary">
+              Visualización
+            </Typography>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showMoisture}
+                  onChange={(e) =>
+                    toggleField(FieldType.MOISTURE, e.target.checked)
+                  }
+                />
+              }
+              label="Humedad"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showNutrients}
+                  onChange={(e) =>
+                    toggleField(FieldType.NUTRIENTS, e.target.checked)
+                  }
+                />
+              }
+              label="Nutrientes"
+            />
+          </Box>
+        </Stack>
+      </Drawer>
+    </>
   );
 };

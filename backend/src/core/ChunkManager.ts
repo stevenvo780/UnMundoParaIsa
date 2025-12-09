@@ -2,7 +2,7 @@
  * ChunkManager - Gestiona grid de chunks con activación/desactivación dinámica
  */
 
-import { Chunk, CHUNK_SIZE, ChunkCoord, ChunkState } from "./Chunk.js";
+import { Chunk, CHUNK_SIZE } from "./Chunk.js";
 import { FieldType, WORLD, Particle } from "../types.js";
 
 export interface ChunkManagerConfig {
