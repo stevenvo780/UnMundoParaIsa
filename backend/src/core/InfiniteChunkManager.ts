@@ -208,8 +208,8 @@ export class InfiniteChunkManager {
     
     // Usar ruido "ridged" para crear líneas naturales
     // La idea es que donde |noise| es cercano a 0, hay río
-    const RIVER_SCALE = 0.004;
-    const RIVER_SCALE_2 = 0.008;
+    const RIVER_SCALE = 0.003;  // Más pequeño = ríos más largos
+    const RIVER_SCALE_2 = 0.006;
     
     // Dos capas de ruido para curvas más naturales
     const n1 = this.riverNoise(x * RIVER_SCALE, y * RIVER_SCALE);
@@ -221,8 +221,8 @@ export class InfiniteChunkManager {
     // Convertir a "ridge" - valores cercanos a 0 = río
     const ridge = 1 - Math.abs(combined);
     
-    // Umbral para definir ancho del río
-    const RIVER_THRESHOLD = 0.92;
+    // Umbral para definir ancho del río (más bajo = ríos más anchos)
+    const RIVER_THRESHOLD = 0.85;
     
     if (ridge > RIVER_THRESHOLD) {
       // Valor suavizado para el río
@@ -248,7 +248,7 @@ export class InfiniteChunkManager {
     
     // Escalas de ruido para recursos
     const FOOD_SCALE = 0.02;
-    const WATER_SCALE = 0.015;
+    const WATER_SCALE = 0.006;  // Más pequeño = lagos más grandes
     const TREE_SCALE = 0.03;
     const STONE_SCALE = 0.01;
     

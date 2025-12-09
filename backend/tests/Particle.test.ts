@@ -51,6 +51,8 @@ describe('Particle', () => {
         id: 0,
         x: 256,
         y: 256,
+        vx: 0,
+        vy: 0,
         energy: 0.75,
         seed: 12345,
         alive: true,
@@ -59,6 +61,8 @@ describe('Particle', () => {
       expect(particle.id).toBeDefined();
       expect(particle.x).toBeDefined();
       expect(particle.y).toBeDefined();
+      expect(particle.vx).toBeDefined();
+      expect(particle.vy).toBeDefined();
       expect(particle.energy).toBeDefined();
       expect(particle.seed).toBeDefined();
       expect(particle.alive).toBeDefined();

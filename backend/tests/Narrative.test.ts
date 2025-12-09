@@ -71,6 +71,8 @@ describe('EventManager', () => {
           id: i,
           x: 50 + Math.random() * 10,
           y: 50 + Math.random() * 10,
+          vx: 0,
+          vy: 0,
           energy: 1.0,
           alive: true,
           seed: 1000 + i,

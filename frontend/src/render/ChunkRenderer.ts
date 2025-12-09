@@ -246,7 +246,7 @@ export class ChunkRenderer {
         // No poner árboles en biomas sin vegetación
         const noTreeBiomes = [
           BiomeType.OCEAN, BiomeType.LAKE, BiomeType.BEACH, 
-          BiomeType.DESERT, BiomeType.MOUNTAIN
+          BiomeType.DESERT, BiomeType.MOUNTAIN, BiomeType.RIVER
         ];
         if (noTreeBiomes.includes(biome)) continue;
         

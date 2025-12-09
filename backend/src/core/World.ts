@@ -41,6 +41,9 @@ import { ThermostatBank, WorldBalancer } from '../scale/Thermostats.js';
 import { InfiniteChunkManager } from './InfiniteChunkManager.js';
 import { CHUNK_SIZE } from './Chunk.js';
 
+// Structures
+import { StructureManager } from './StructureManager.js';
+
 export class World {
   readonly width: number;
   readonly height: number;
@@ -48,6 +51,9 @@ export class World {
   
   // Referencia al chunk manager infinito (inyectado desde server)
   private infiniteChunks?: InfiniteChunkManager;
+  
+  // Sistema de estructuras emergentes
+  private structureManager!: StructureManager;
   
   // Core
   private fields: Map<FieldType, Field> = new Map();
@@ -132,6 +138,9 @@ export class World {
     this.thermostats = new ThermostatBank();
     this.balancer = new WorldBalancer(this.thermostats);
     
+    // Structures
+    this.structureManager = new StructureManager();
+    
     // Registrar tareas en scheduler
     this.registerScheduledTasks();
     
@@ -170,7 +179,7 @@ export class World {
       priority: 11
     });
     
-    // SLOW (cada 20 ticks): narrativa, escala, termostatos
+    // SLOW (cada 20 ticks): narrativa, escala, termostatos, estructuras
     this.scheduler.register({
       id: 'narrative',
       rate: 'SLOW',
@@ -188,6 +197,12 @@ export class World {
       rate: 'SLOW',
       fn: () => this.updateThermostats(),
       priority: 22
+    });
+    this.scheduler.register({
+      id: 'structures',
+      rate: 'SLOW',
+      fn: () => this.structureManager.update(this.tick),
+      priority: 23
     });
   }
   
@@ -696,6 +711,8 @@ export class World {
           id: this.particleIdCounter++,
           x,
           y,
+          vx: 0,  // Velocidad inicial
+          vy: 0,
           energy: 0.5 + rng() * 0.3,
           seed: Math.floor(rng() * 0xFFFFFFFF),
           alive: true,
@@ -758,8 +775,13 @@ export class World {
     for (const p of this.particles) {
       if (!p.alive) continue;
       
-      // Metabolismo base
-      p.energy -= lifecycle.baseMetabolism;
+      // === PROTECCIÓN DE ESTRUCTURAS ===
+      // Las partículas cerca de estructuras gastan menos energía
+      const protectionBonus = this.structureManager.getProtectionBonus(p.x, p.y);
+      const metabolismReduction = protectionBonus * 0.5; // Hasta 50% menos metabolismo
+      
+      // Metabolismo base (reducido si hay protección)
+      p.energy -= lifecycle.baseMetabolism * (1 - metabolismReduction);
       
       // Muerte por falta de energía
       if (p.energy <= 0) {
@@ -794,6 +816,15 @@ export class World {
       
       // Clamp energía
       p.energy = Math.min(1.0, p.energy);
+      
+      // === INTENTAR CONSTRUIR ESTRUCTURA ===
+      // Partículas con alta energía en zonas frecuentadas construyen
+      if (p.energy > 0.65 && Math.random() < 0.08) {
+        const trailHere = this.getFieldValueAt('trail0', p.x, p.y);
+        this.structureManager.tryCreateStructure(
+          p.x, p.y, trailHere, foodHere, p.energy, p.id, this.tick
+        );
+      }
       
       // Movimiento por gradiente - ahora usa chooseDirectionInfinite
       const dir = this.chooseDirectionInfinite(p, weights);
@@ -1046,6 +1077,8 @@ export class World {
         id: newId,
         x: cx,
         y: cy,
+        vx: 0,  // Velocidad inicial
+        vy: 0,
         energy: lifecycle.reproductionCost * 0.7, // Hijos nacen con menos energía
         seed: childSeed,
         alive: true,
@@ -1127,6 +1160,17 @@ export class World {
   
   getParticles(): Particle[] {
     return this.particles;
+  }
+  
+  getStructures(): Array<{
+    id: number;
+    type: string;
+    x: number;
+    y: number;
+    level: number;
+    health: number;
+  }> {
+    return this.structureManager.getStructuresForClient();
   }
   
   getParticleCount(): number {

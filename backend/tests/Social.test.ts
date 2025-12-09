@@ -64,6 +64,8 @@ describe('CommunityDetector', () => {
           id: i,
           x: 50 + Math.random() * 10,
           y: 50 + Math.random() * 10,
+          vx: 0,
+          vy: 0,
           energy: 0.8,
           alive: true,
           seed: 1000 + i,
@@ -98,6 +100,8 @@ describe('CommunityDetector', () => {
           id: i,
           x: i * 20,  // Muy dispersos
           y: i * 20,
+          vx: 0,
+          vy: 0,
           energy: 0.5,
           alive: true,
           seed: 1000 + i,

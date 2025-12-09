@@ -190,6 +190,16 @@ export type ClientMessageType =
   | 'request_chunks'       // Solicitar chunks por viewport
   | 'viewport_update';      // Actualizar posición/zoom de cámara
 
+// Estructura serializada desde el servidor
+export interface StructureData {
+  id: number;
+  type: string;
+  x: number;
+  y: number;
+  level: number;
+  health: number;
+}
+
 export interface ServerMessage {
   type: ServerMessageType;
   tick?: number;
@@ -199,6 +209,7 @@ export interface ServerMessage {
   config?: SimulationConfig;
   error?: string;
   chunks?: ChunkSnapshot[];  // Datos de chunks
+  structures?: StructureData[]; // Estructuras emergentes
 }
 
 export interface ClientMessage {

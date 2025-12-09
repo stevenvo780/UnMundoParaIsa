@@ -11,7 +11,10 @@ export const WORLD = {
   WIDTH: 512,
   HEIGHT: 512,
   CHUNK_SIZE: 64,
-  TICK_MS: 50,  // 20 ticks por segundo
+  TICK_MS: 50,           // 20 ticks lógicos por segundo (decisiones)
+  MOVEMENT_SUBSTEPS: 4,  // Sub-pasos de movimiento por tick (movimiento fluido)
+  MAX_VELOCITY: 2.0,     // Velocidad máxima de partículas
+  VELOCITY_DAMPING: 0.85, // Fricción del movimiento
 } as const;
 
 // ============================================
@@ -67,6 +70,10 @@ export interface Particle {
   id: number;
   x: number;
   y: number;
+  vx: number;               // Velocidad X (para movimiento fluido)
+  vy: number;               // Velocidad Y (para movimiento fluido)
+  targetX?: number;         // Destino actual (para interpolación)
+  targetY?: number;         // Destino actual (para interpolación)
   energy: number;           // 0-1: energía vital
   seed: number;             // Semilla genética (define comportamiento)
   alive: boolean;
@@ -189,6 +196,16 @@ export type ClientMessageType =
   | 'request_chunks'       // Solicitar chunks por viewport
   | 'viewport_update';      // Actualizar posición/zoom de cámara
 
+// Estructura serializada para enviar al cliente
+export interface StructureData {
+  id: number;
+  type: string;
+  x: number;
+  y: number;
+  level: number;
+  health: number;
+}
+
 export interface ServerMessage {
   type: ServerMessageType;
   tick?: number;
@@ -198,6 +215,7 @@ export interface ServerMessage {
   config?: SimulationConfig;
   error?: string;
   chunks?: ChunkSnapshot[];  // Datos de chunks
+  structures?: StructureData[]; // Estructuras emergentes
 }
 
 export interface ClientMessage {

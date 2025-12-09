@@ -178,6 +178,7 @@ function sendInit(ws: WebSocket): void {
     tick: world.getTick(),
     config: world.config,
     particles: world.getParticles(),
+    structures: world.getStructures(),
   };
   
   send(ws, msg);
@@ -299,6 +300,7 @@ function gameLoop(): void {
       type: 'tick',
       tick: world.getTick(),
       particles: particles.length <= 1000 ? particles : sampleParticles(particles, 1000),
+      structures: world.getStructures(), // Incluir estructuras
     };
     
     broadcast(tickMsg);

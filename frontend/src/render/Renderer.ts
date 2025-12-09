@@ -33,16 +33,19 @@ export class Renderer {
   private treeLayer: Container | null = null;
   private fieldLayers: Map<FieldType, FieldLayer> = new Map();
   private particleLayer: Container | null = null;
+  private structureLayer: Container | null = null; // Nueva capa para estructuras
   private uiLayer: Container | null = null;
   
   private terrainSprites: Sprite[] = [];
   private waterSprites: Sprite[] = [];
   private treeSprites: Sprite[] = [];
   private particleSprites: Map<number, Sprite> = new Map();
+  private structureSprites: Map<number, Graphics> = new Map(); // Sprites de estructuras
   
   private foodField: Float32Array | null = null;
   private waterField: Float32Array | null = null;
   private particles: Particle[] = [];
+  private structures: Array<{ id: number; type: string; x: number; y: number; level: number; health: number }> = [];
   private currentTick = 0;
   
   private worldWidth = WORLD.WIDTH;
@@ -95,6 +98,7 @@ export class Renderer {
     this.terrainLayer = new Container();
     this.waterLayer = new Container();
     this.treeLayer = new Container();
+    this.structureLayer = new Container(); // Capa de estructuras
     this.particleLayer = new Container();
     this.uiLayer = new Container();
     
@@ -104,6 +108,7 @@ export class Renderer {
     
     this.initFieldLayers();
     
+    this.worldContainer.addChild(this.structureLayer); // Estructuras debajo de partículas
     this.worldContainer.addChild(this.particleLayer);
     this.app.stage.addChild(this.uiLayer);
     
@@ -437,8 +442,62 @@ export class Renderer {
   
   render(): void {
     if (!this.app || !this.particleLayer || !this.assets) return;
+    this.renderStructures();
     this.renderParticles();
     this.renderFieldOverlays();
+  }
+  
+  private renderStructures(): void {
+    if (!this.structureLayer) return;
+    
+    const currentIds = new Set<number>();
+    
+    // Colores por tipo de estructura
+    const STRUCTURE_COLORS: Record<string, number> = {
+      'camp': 0xD4A574,      // Marrón claro
+      'shelter': 0x8B4513,   // Marrón oscuro
+      'settlement': 0xCD853F, // Peru
+      'storage': 0xDAA520,    // Goldenrod
+      'watchtower': 0x708090, // Slate gray
+    };
+    
+    for (const s of this.structures) {
+      currentIds.add(s.id);
+      
+      let graphic = this.structureSprites.get(s.id);
+      
+      if (!graphic) {
+        // Crear nuevo gráfico para la estructura
+        graphic = new Graphics();
+        this.structureLayer.addChild(graphic);
+        this.structureSprites.set(s.id, graphic);
+      }
+      
+      // Dibujar estructura
+      graphic.clear();
+      const color = STRUCTURE_COLORS[s.type] || 0x888888;
+      const size = 8 + s.level * 4; // Tamaño basado en nivel
+      
+      // Borde
+      graphic.rect(-size/2, -size/2, size, size);
+      graphic.fill({ color: 0x000000, alpha: 0.3 });
+      
+      // Relleno
+      graphic.rect(-size/2 + 1, -size/2 + 1, size - 2, size - 2);
+      graphic.fill({ color, alpha: 0.8 * s.health });
+      
+      // Posición en mundo
+      graphic.x = s.x * TILE_SIZE + TILE_SIZE / 2;
+      graphic.y = s.y * TILE_SIZE + TILE_SIZE / 2;
+    }
+    
+    // Limpiar estructuras que ya no existen
+    for (const [id, graphic] of this.structureSprites) {
+      if (!currentIds.has(id)) {
+        this.structureLayer.removeChild(graphic);
+        this.structureSprites.delete(id);
+      }
+    }
   }
   
   private renderParticles(): void {
@@ -566,6 +625,10 @@ export class Renderer {
   
   updateParticles(particles: Particle[]): void {
     this.particles = particles;
+  }
+  
+  updateStructures(structures: Array<{ id: number; type: string; x: number; y: number; level: number; health: number }>): void {
+    this.structures = structures;
   }
   
   updateFields(fields: Record<string, number[]>): void {

@@ -49,6 +49,9 @@ async function main() {
     if (data.particles) {
       renderer.updateParticles(data.particles);
     }
+    if (data.structures) {
+      renderer.updateStructures(data.structures);
+    }
     if (data.tick !== undefined) {
       ui.updateTick(data.tick);
     }
@@ -92,6 +95,10 @@ async function main() {
     
     if (data.particles) {
       renderer.updateParticles(data.particles);
+    }
+    
+    if (data.structures) {
+      renderer.updateStructures(data.structures);
     }
     
     // Enviar viewport inicial para recibir chunks
