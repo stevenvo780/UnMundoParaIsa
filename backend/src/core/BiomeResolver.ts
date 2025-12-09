@@ -1,38 +1,37 @@
 /**
  * BiomeResolver - Determina biomas basándose en factores ambientales
  * Adaptado del proyecto original UnaCartaParaIsaBackend
- * 
+ *
  * Usa temperature/moisture/elevation/continentality para resolver biomas realistas
  */
 
-// Tipos de bioma soportados
 export enum BiomeType {
-  GRASSLAND = 'grassland',
-  FOREST = 'forest',
-  DESERT = 'desert',
-  TUNDRA = 'tundra',
-  SWAMP = 'swamp',
-  WETLAND = 'wetland',
-  MOUNTAIN = 'mountain',
-  BEACH = 'beach',
-  OCEAN = 'ocean',
-  LAKE = 'lake',
-  RIVER = 'river',  // Nuevo: ríos
+  GRASSLAND = "grassland",
+  FOREST = "forest",
+  DESERT = "desert",
+  TUNDRA = "tundra",
+  SWAMP = "swamp",
+  WETLAND = "wetland",
+  MOUNTAIN = "mountain",
+  BEACH = "beach",
+  OCEAN = "ocean",
+  LAKE = "lake",
+  RIVER = "river",
+  MYSTICAL = "mystical",
+  MOUNTAINOUS = "mountainous",
+  VILLAGE = "village",
 }
 
-// Configuración de cada bioma
 export interface BiomeConfig {
   id: BiomeType;
   name: string;
-  color: number;         // Color en formato 0xRRGGBB
+  color: number;
   isWalkable: boolean;
-  
-  // Rangos de condiciones [min, max]
+
   temperature: [number, number];
   moisture: [number, number];
   elevation: [number, number];
-  
-  // Densidades para generación procedural
+
   density: {
     trees?: number;
     plants?: number;
@@ -41,12 +40,11 @@ export interface BiomeConfig {
   };
 }
 
-// Definición de biomas con rangos de temperatura/humedad/elevación
 export const BIOME_CONFIGS: BiomeConfig[] = [
   {
     id: BiomeType.GRASSLAND,
-    name: 'Pradera',
-    color: 0x7CB342,
+    name: "Pradera",
+    color: 0x7cb342,
     isWalkable: true,
     temperature: [0.3, 0.7],
     moisture: [0.3, 0.65],
@@ -55,8 +53,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.FOREST,
-    name: 'Bosque',
-    color: 0x2E7D32,
+    name: "Bosque",
+    color: 0x2e7d32,
     isWalkable: true,
     temperature: [0.2, 0.8],
     moisture: [0.55, 1.0],
@@ -65,8 +63,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.DESERT,
-    name: 'Desierto',
-    color: 0xD4A574,
+    name: "Desierto",
+    color: 0xd4a574,
     isWalkable: true,
     temperature: [0.6, 1.0],
     moisture: [0.0, 0.3],
@@ -75,8 +73,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.TUNDRA,
-    name: 'Tundra',
-    color: 0xB0BEC5,
+    name: "Tundra",
+    color: 0xb0bec5,
     isWalkable: true,
     temperature: [0.0, 0.35],
     moisture: [0.0, 0.6],
@@ -85,8 +83,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.SWAMP,
-    name: 'Pantano',
-    color: 0x558B2F,
+    name: "Pantano",
+    color: 0x558b2f,
     isWalkable: true,
     temperature: [0.5, 0.9],
     moisture: [0.7, 1.0],
@@ -95,8 +93,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.WETLAND,
-    name: 'Humedal',
-    color: 0x66BB6A,
+    name: "Humedal",
+    color: 0x66bb6a,
     isWalkable: true,
     temperature: [0.3, 0.7],
     moisture: [0.6, 0.85],
@@ -105,8 +103,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.MOUNTAIN,
-    name: 'Montaña',
-    color: 0x78909C,
+    name: "Montaña",
+    color: 0x78909c,
     isWalkable: true,
     temperature: [0.0, 0.5],
     moisture: [0.0, 0.7],
@@ -115,8 +113,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.BEACH,
-    name: 'Playa',
-    color: 0xFFF59D,
+    name: "Playa",
+    color: 0xfff59d,
     isWalkable: true,
     temperature: [0.3, 0.9],
     moisture: [0.2, 0.6],
@@ -125,8 +123,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.OCEAN,
-    name: 'Océano',
-    color: 0x0288D1,
+    name: "Océano",
+    color: 0x0288d1,
     isWalkable: false,
     temperature: [0.0, 1.0],
     moisture: [1.0, 1.0],
@@ -135,8 +133,8 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.LAKE,
-    name: 'Lago',
-    color: 0x4FC3F7,
+    name: "Lago",
+    color: 0x4fc3f7,
     isWalkable: false,
     temperature: [0.0, 1.0],
     moisture: [0.8, 1.0],
@@ -145,33 +143,69 @@ export const BIOME_CONFIGS: BiomeConfig[] = [
   },
   {
     id: BiomeType.RIVER,
-    name: 'Río',
-    color: 0x29B6F6,  // Azul claro
+    name: "Río",
+    color: 0x29b6f6,
     isWalkable: false,
     temperature: [0.0, 1.0],
     moisture: [0.7, 1.0],
     elevation: [0.1, 0.7],
     density: { water: 1.0 },
   },
+
+  {
+    id: BiomeType.MYSTICAL,
+    name: "Bosque Místico",
+    color: 0x7b1fa2,
+    isWalkable: true,
+    temperature: [0.2, 0.5],
+    moisture: [0.4, 0.7],
+    elevation: [0.1, 0.5],
+    density: { trees: 0.3, plants: 0.12 },
+  },
+  {
+    id: BiomeType.MOUNTAINOUS,
+    name: "Zona Montañosa",
+    color: 0x5d4037,
+    isWalkable: true,
+    temperature: [0.1, 0.4],
+    moisture: [0.1, 0.4],
+    elevation: [0.7, 1.0],
+    density: { trees: 0.13, rocks: 0.42 },
+  },
+  {
+    id: BiomeType.VILLAGE,
+    name: "Zona de Pueblo",
+    color: 0x8d6e63,
+    isWalkable: true,
+    temperature: [0.4, 0.7],
+    moisture: [0.4, 0.7],
+    elevation: [0.3, 0.6],
+    density: { trees: 0.13, plants: 0.22 },
+  },
 ];
 
-// Mapa para acceso rápido
 const BIOME_MAP = new Map<BiomeType, BiomeConfig>();
-BIOME_CONFIGS.forEach(b => BIOME_MAP.set(b.id, b));
+BIOME_CONFIGS.forEach((b) => BIOME_MAP.set(b.id, b));
 
 /**
  * BiomeResolver - Resuelve bioma a partir de factores ambientales
  */
 export class BiomeResolver {
   private walkableBiomes: BiomeConfig[];
-  
+
   constructor() {
-    this.walkableBiomes = BIOME_CONFIGS.filter(b => b.isWalkable);
+    this.walkableBiomes = BIOME_CONFIGS.filter((b) => b.isWalkable);
   }
-  
+
   /**
-   * Resolver bioma basándose en factores ambientales
-   * 
+   * Resolver bioma basándose en factores ambientales (lógica V3)
+   *
+   * Estrategia:
+   * - OCEAN en baja continentalidad
+   * - LAKE en baja elevación + alta humedad
+   * - Buscar candidatos que cumplan rangos de temp/moisture/elev
+   * - Elegir mejor ajuste por scoring
+   *
    * @param temperature - Temperatura normalizada [0..1]
    * @param moisture - Humedad normalizada [0..1]
    * @param elevation - Elevación normalizada [0..1]
@@ -184,60 +218,37 @@ export class BiomeResolver {
     elevation: number,
     continentality: number,
   ): BiomeType {
-    // === OCÉANO: Bordes del mundo o depresiones profundas marinas ===
-    // Más permisivo: baja continentalidad indica cercanía al mar
-    if (continentality < 0.25) {
-      // Zona oceánica profunda
-      if (elevation < 0.2) {
-        return BiomeType.OCEAN;
-      }
-      // Playa en las costas
-      if (elevation < 0.35) {
-        return BiomeType.BEACH;
-      }
+    if (continentality < 0.35) {
+      return BiomeType.OCEAN;
     }
-    
-    // === LAGO: Depresiones interiores con agua ===
-    // Lagos aparecen en zonas bajas con alta humedad LEJOS del océano
-    if (elevation < 0.22 && moisture > 0.55 && continentality > 0.5) {
+
+    if (elevation < 0.48 && moisture > 0.5) {
       return BiomeType.LAKE;
     }
-    
-    // === HUMEDAL/PANTANO: Zonas inundables ===
-    if (elevation < 0.32 && moisture > 0.58) {
-      // Pantanos en zonas cálidas, humedales en templadas
-      return temperature > 0.5 ? BiomeType.SWAMP : BiomeType.WETLAND;
+
+    if (elevation < 0.5 && moisture > 0.55) {
+      return BiomeType.WETLAND;
     }
-    
-    // === MONTAÑA: Alta elevación ===
-    if (elevation > 0.7) {
-      return BiomeType.MOUNTAIN;
-    }
-    
-    // === PLAYA interior: Zonas bajas cerca del agua ===
-    if (continentality < 0.4 && elevation < 0.28 && elevation > 0.15) {
+
+    if (continentality < 0.42 && elevation < 0.42) {
       return BiomeType.BEACH;
     }
-    
-    // === TUNDRA: Muy frío ===
-    if (temperature < 0.25) {
-      return BiomeType.TUNDRA;
+
+    const candidates = this.walkableBiomes.filter((b) =>
+      this.matchesCriteria(b, temperature, moisture, elevation),
+    );
+
+    if (candidates.length === 0) {
+      return this.findClosestBiome(temperature, moisture, elevation);
     }
-    
-    // === DESIERTO: Caliente y seco ===
-    if (temperature > 0.65 && moisture < 0.35) {
-      return BiomeType.DESERT;
+
+    if (candidates.length === 1) {
+      return candidates[0].id;
     }
-    
-    // === BOSQUE: Templado y húmedo ===
-    if (moisture > 0.5 && elevation < 0.65) {
-      return BiomeType.FOREST;
-    }
-    
-    // === DEFAULT: Pradera ===
-    return BiomeType.GRASSLAND;
+
+    return this.getBestFit(candidates, temperature, moisture, elevation);
   }
-  
+
   /**
    * Verificar si un bioma cumple con los criterios dados
    */
@@ -248,12 +259,15 @@ export class BiomeResolver {
     elev: number,
   ): boolean {
     return (
-      temp >= biome.temperature[0] && temp <= biome.temperature[1] &&
-      moist >= biome.moisture[0] && moist <= biome.moisture[1] &&
-      elev >= biome.elevation[0] && elev <= biome.elevation[1]
+      temp >= biome.temperature[0] &&
+      temp <= biome.temperature[1] &&
+      moist >= biome.moisture[0] &&
+      moist <= biome.moisture[1] &&
+      elev >= biome.elevation[0] &&
+      elev <= biome.elevation[1]
     );
   }
-  
+
   /**
    * Obtener el mejor ajuste entre candidatos
    */
@@ -265,7 +279,7 @@ export class BiomeResolver {
   ): BiomeType {
     let bestBiome = candidates[0];
     let bestScore = -1;
-    
+
     for (const biome of candidates) {
       const score = this.calculateScore(biome, temp, moist, elev);
       if (score > bestScore) {
@@ -273,10 +287,10 @@ export class BiomeResolver {
         bestBiome = biome;
       }
     }
-    
+
     return bestBiome.id;
   }
-  
+
   /**
    * Calcular puntuación de ajuste (más cercano al centro = mejor)
    */
@@ -289,14 +303,14 @@ export class BiomeResolver {
     const tempCenter = (biome.temperature[0] + biome.temperature[1]) / 2;
     const moistCenter = (biome.moisture[0] + biome.moisture[1]) / 2;
     const elevCenter = (biome.elevation[0] + biome.elevation[1]) / 2;
-    
+
     const tempDist = Math.abs(temp - tempCenter);
     const moistDist = Math.abs(moist - moistCenter);
     const elevDist = Math.abs(elev - elevCenter);
-    
+
     return 1 - (tempDist + moistDist + elevDist) / 3;
   }
-  
+
   /**
    * Encontrar bioma más cercano si no hay coincidencia exacta
    */
@@ -307,53 +321,52 @@ export class BiomeResolver {
   ): BiomeType {
     let bestBiome = this.walkableBiomes[0];
     let minDistance = Infinity;
-    
+
     for (const biome of this.walkableBiomes) {
       const tempCenter = (biome.temperature[0] + biome.temperature[1]) / 2;
       const moistCenter = (biome.moisture[0] + biome.moisture[1]) / 2;
       const elevCenter = (biome.elevation[0] + biome.elevation[1]) / 2;
-      
-      const dist = 
+
+      const dist =
         (temp - tempCenter) ** 2 +
         (moist - moistCenter) ** 2 +
         (elev - elevCenter) ** 2;
-      
+
       if (dist < minDistance) {
         minDistance = dist;
         bestBiome = biome;
       }
     }
-    
+
     return bestBiome.id;
   }
-  
+
   /**
    * Obtener configuración de un bioma
    */
   getBiomeConfig(biome: BiomeType): BiomeConfig | undefined {
     return BIOME_MAP.get(biome);
   }
-  
+
   /**
    * Obtener color de un bioma con variación
    */
   getBiomeColor(biome: BiomeType, variation: number = 0): number {
     const config = BIOME_MAP.get(biome);
     if (!config) return 0x808080;
-    
+
     const baseColor = config.color;
-    
-    // Aplicar variación sutil (±10%)
-    const r = (baseColor >> 16) & 0xFF;
-    const g = (baseColor >> 8) & 0xFF;
-    const b = baseColor & 0xFF;
-    
+
+    const r = (baseColor >> 16) & 0xff;
+    const g = (baseColor >> 8) & 0xff;
+    const b = baseColor & 0xff;
+
     const factor = 1 + variation * 0.1;
-    
+
     const newR = Math.min(255, Math.max(0, Math.floor(r * factor)));
     const newG = Math.min(255, Math.max(0, Math.floor(g * factor)));
     const newB = Math.min(255, Math.max(0, Math.floor(b * factor)));
-    
+
     return (newR << 16) | (newG << 8) | newB;
   }
 }

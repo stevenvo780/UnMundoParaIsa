@@ -1,6 +1,6 @@
 /**
  * Metrics.ts - Sistema de Métricas y Dashboard
- * 
+ *
  * Recopila, agrega y expone métricas del sistema para
  * monitoreo y debugging.
  */
@@ -12,14 +12,14 @@ export interface MetricSample {
 
 export interface MetricDefinition {
   name: string;
-  type: 'gauge' | 'counter' | 'histogram';
+  type: "gauge" | "counter" | "histogram";
   description: string;
   unit?: string;
   labels?: string[];
 }
 
 export interface HistogramBucket {
-  le: number;  // less than or equal
+  le: number;
   count: number;
 }
 
@@ -85,9 +85,13 @@ class Metric {
     this.definition = definition;
     this.maxSamples = maxSamples;
 
-    if (definition.type === 'histogram') {
-      this.histogramBuckets = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-      this.histogramCounts = new Array(this.histogramBuckets.length + 1).fill(0);
+    if (definition.type === "histogram") {
+      this.histogramBuckets = [
+        0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+      ];
+      this.histogramCounts = new Array(this.histogramBuckets.length + 1).fill(
+        0,
+      );
     }
   }
 
@@ -98,7 +102,11 @@ class Metric {
       this.samples.shift();
     }
 
-    if (this.definition.type === 'histogram' && this.histogramBuckets && this.histogramCounts) {
+    if (
+      this.definition.type === "histogram" &&
+      this.histogramBuckets &&
+      this.histogramCounts
+    ) {
       for (let i = 0; i < this.histogramBuckets.length; i++) {
         if (value <= this.histogramBuckets[i]) {
           this.histogramCounts[i]++;
@@ -110,7 +118,8 @@ class Metric {
   }
 
   increment(delta: number = 1): void {
-    const last = this.samples.length > 0 ? this.samples[this.samples.length - 1].value : 0;
+    const last =
+      this.samples.length > 0 ? this.samples[this.samples.length - 1].value : 0;
     this.record(last + delta);
   }
 
@@ -124,7 +133,7 @@ class Metric {
       };
     }
 
-    const values = this.samples.map(s => s.value);
+    const values = this.samples.map((s) => s.value);
     const latest = this.samples[this.samples.length - 1];
 
     const snapshot: MetricSnapshot = {
@@ -138,7 +147,11 @@ class Metric {
       timestamp: latest.timestamp,
     };
 
-    if (this.definition.type === 'histogram' && this.histogramBuckets && this.histogramCounts) {
+    if (
+      this.definition.type === "histogram" &&
+      this.histogramBuckets &&
+      this.histogramCounts
+    ) {
       snapshot.histogram = this.histogramBuckets.map((le, i) => ({
         le,
         count: this.histogramCounts![i],
@@ -176,34 +189,107 @@ export class MetricsCollector {
    * Registrar métricas por defecto
    */
   private registerDefaultMetrics(): void {
-    // Simulation
-    this.register({ name: 'simulation.tick', type: 'counter', description: 'Current tick number' });
-    this.register({ name: 'simulation.tick_time_ms', type: 'histogram', description: 'Time per tick in ms', unit: 'ms' });
-    this.register({ name: 'simulation.fps', type: 'gauge', description: 'Frames per second' });
+    this.register({
+      name: "simulation.tick",
+      type: "counter",
+      description: "Current tick number",
+    });
+    this.register({
+      name: "simulation.tick_time_ms",
+      type: "histogram",
+      description: "Time per tick in ms",
+      unit: "ms",
+    });
+    this.register({
+      name: "simulation.fps",
+      type: "gauge",
+      description: "Frames per second",
+    });
 
-    // Population
-    this.register({ name: 'population.total', type: 'gauge', description: 'Total particle count' });
-    this.register({ name: 'population.births', type: 'counter', description: 'Total births' });
-    this.register({ name: 'population.deaths', type: 'counter', description: 'Total deaths' });
-    this.register({ name: 'population.density', type: 'gauge', description: 'Particles per chunk' });
-    this.register({ name: 'population.avg_energy', type: 'gauge', description: 'Average energy' });
-    this.register({ name: 'population.avg_age', type: 'gauge', description: 'Average age in ticks' });
+    this.register({
+      name: "population.total",
+      type: "gauge",
+      description: "Total particle count",
+    });
+    this.register({
+      name: "population.births",
+      type: "counter",
+      description: "Total births",
+    });
+    this.register({
+      name: "population.deaths",
+      type: "counter",
+      description: "Total deaths",
+    });
+    this.register({
+      name: "population.density",
+      type: "gauge",
+      description: "Particles per chunk",
+    });
+    this.register({
+      name: "population.avg_energy",
+      type: "gauge",
+      description: "Average energy",
+    });
+    this.register({
+      name: "population.avg_age",
+      type: "gauge",
+      description: "Average age in ticks",
+    });
 
-    // Economy
-    this.register({ name: 'economy.total_food', type: 'gauge', description: 'Total food in world' });
-    this.register({ name: 'economy.total_water', type: 'gauge', description: 'Total water in world' });
-    this.register({ name: 'economy.demand_satisfaction', type: 'gauge', description: 'Demand satisfaction ratio' });
-    this.register({ name: 'economy.active_reactions', type: 'gauge', description: 'Active reactions count' });
+    this.register({
+      name: "economy.total_food",
+      type: "gauge",
+      description: "Total food in world",
+    });
+    this.register({
+      name: "economy.total_water",
+      type: "gauge",
+      description: "Total water in world",
+    });
+    this.register({
+      name: "economy.demand_satisfaction",
+      type: "gauge",
+      description: "Demand satisfaction ratio",
+    });
+    this.register({
+      name: "economy.active_reactions",
+      type: "gauge",
+      description: "Active reactions count",
+    });
 
-    // Social
-    this.register({ name: 'social.communities', type: 'gauge', description: 'Number of communities' });
-    this.register({ name: 'social.avg_tension', type: 'gauge', description: 'Average tension level' });
-    this.register({ name: 'social.active_conflicts', type: 'gauge', description: 'Active conflicts' });
+    this.register({
+      name: "social.communities",
+      type: "gauge",
+      description: "Number of communities",
+    });
+    this.register({
+      name: "social.avg_tension",
+      type: "gauge",
+      description: "Average tension level",
+    });
+    this.register({
+      name: "social.active_conflicts",
+      type: "gauge",
+      description: "Active conflicts",
+    });
 
-    // Performance
-    this.register({ name: 'performance.memory_mb', type: 'gauge', description: 'Memory usage in MB', unit: 'MB' });
-    this.register({ name: 'performance.ws_clients', type: 'gauge', description: 'WebSocket clients connected' });
-    this.register({ name: 'performance.msg_per_sec', type: 'gauge', description: 'Messages per second' });
+    this.register({
+      name: "performance.memory_mb",
+      type: "gauge",
+      description: "Memory usage in MB",
+      unit: "MB",
+    });
+    this.register({
+      name: "performance.ws_clients",
+      type: "gauge",
+      description: "WebSocket clients connected",
+    });
+    this.register({
+      name: "performance.msg_per_sec",
+      type: "gauge",
+      description: "Messages per second",
+    });
   }
 
   /**
@@ -247,7 +333,7 @@ export class MetricsCollector {
    * Obtener todos los snapshots
    */
   getAllSnapshots(): MetricSnapshot[] {
-    return Array.from(this.metrics.values()).map(m => m.getSnapshot());
+    return Array.from(this.metrics.values()).map((m) => m.getSnapshot());
   }
 
   /**
@@ -268,43 +354,42 @@ export class MetricsCollector {
     activeConflicts?: number;
     wsClients?: number;
   }): void {
-    this.record('simulation.tick', state.tick);
-    this.record('simulation.tick_time_ms', state.tickTime);
-    this.record('simulation.fps', 1000 / Math.max(1, state.tickTime));
+    this.record("simulation.tick", state.tick);
+    this.record("simulation.tick_time_ms", state.tickTime);
+    this.record("simulation.fps", 1000 / Math.max(1, state.tickTime));
 
-    this.record('population.total', state.particleCount);
-    this.increment('population.births', state.births);
-    this.increment('population.deaths', state.deaths);
-    
+    this.record("population.total", state.particleCount);
+    this.increment("population.births", state.births);
+    this.increment("population.deaths", state.deaths);
+
     if (state.avgEnergy !== undefined) {
-      this.record('population.avg_energy', state.avgEnergy);
+      this.record("population.avg_energy", state.avgEnergy);
     }
     if (state.avgAge !== undefined) {
-      this.record('population.avg_age', state.avgAge);
+      this.record("population.avg_age", state.avgAge);
     }
     if (state.totalFood !== undefined) {
-      this.record('economy.total_food', state.totalFood);
+      this.record("economy.total_food", state.totalFood);
     }
     if (state.totalWater !== undefined) {
-      this.record('economy.total_water', state.totalWater);
+      this.record("economy.total_water", state.totalWater);
     }
     if (state.communities !== undefined) {
-      this.record('social.communities', state.communities);
+      this.record("social.communities", state.communities);
     }
     if (state.avgTension !== undefined) {
-      this.record('social.avg_tension', state.avgTension);
+      this.record("social.avg_tension", state.avgTension);
     }
     if (state.activeConflicts !== undefined) {
-      this.record('social.active_conflicts', state.activeConflicts);
+      this.record("social.active_conflicts", state.activeConflicts);
     }
     if (state.wsClients !== undefined) {
-      this.record('performance.ws_clients', state.wsClients);
+      this.record("performance.ws_clients", state.wsClients);
     }
 
-    // Memory usage
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    if (typeof process !== "undefined" && process.memoryUsage) {
       const mem = process.memoryUsage();
-      this.record('performance.memory_mb', mem.heapUsed / 1024 / 1024);
+      this.record("performance.memory_mb", mem.heapUsed / 1024 / 1024);
     }
   }
 
@@ -324,37 +409,37 @@ export class MetricsCollector {
 
     this.lastDashboard = {
       simulation: {
-        tick: getVal('simulation.tick'),
-        tickTime: getAvg('simulation.tick_time_ms'),
-        fps: getAvg('simulation.fps'),
+        tick: getVal("simulation.tick"),
+        tickTime: getAvg("simulation.tick_time_ms"),
+        fps: getAvg("simulation.fps"),
         uptime: (Date.now() - this.startTime) / 1000,
       },
       population: {
-        total: getVal('population.total'),
-        births: getVal('population.births'),
-        deaths: getVal('population.deaths'),
-        density: getVal('population.density'),
-        avgEnergy: getAvg('population.avg_energy'),
-        avgAge: getAvg('population.avg_age'),
+        total: getVal("population.total"),
+        births: getVal("population.births"),
+        deaths: getVal("population.deaths"),
+        density: getVal("population.density"),
+        avgEnergy: getAvg("population.avg_energy"),
+        avgAge: getAvg("population.avg_age"),
       },
       economy: {
-        totalFood: getVal('economy.total_food'),
-        totalWater: getVal('economy.total_water'),
-        demandSatisfaction: getVal('economy.demand_satisfaction'),
-        activeReactions: getVal('economy.active_reactions'),
-        carrierEfficiency: 0, // TODO
+        totalFood: getVal("economy.total_food"),
+        totalWater: getVal("economy.total_water"),
+        demandSatisfaction: getVal("economy.demand_satisfaction"),
+        activeReactions: getVal("economy.active_reactions"),
+        carrierEfficiency: 0,
       },
       social: {
-        communities: getVal('social.communities'),
-        avgTension: getAvg('social.avg_tension'),
-        activeConflicts: getVal('social.active_conflicts'),
-        largestCommunity: 0, // TODO
+        communities: getVal("social.communities"),
+        avgTension: getAvg("social.avg_tension"),
+        activeConflicts: getVal("social.active_conflicts"),
+        largestCommunity: 0,
       },
       performance: {
-        memoryUsage: getVal('performance.memory_mb'),
-        cpuLoad: 0, // TODO
-        wsClients: getVal('performance.ws_clients'),
-        msgPerSecond: getVal('performance.msg_per_sec'),
+        memoryUsage: getVal("performance.memory_mb"),
+        cpuLoad: 0,
+        wsClients: getVal("performance.ws_clients"),
+        msgPerSecond: getVal("performance.msg_per_sec"),
       },
     };
 
@@ -379,16 +464,15 @@ export class MetricsCollector {
 
     for (const [name, metric] of this.metrics) {
       const snap = metric.getSnapshot();
-      const safeName = name.replace(/\./g, '_');
-      
+      const safeName = name.replace(/\./g, "_");
+
       lines.push(`# HELP ${safeName} Metric ${name}`);
       lines.push(`# TYPE ${safeName} ${snap.type}`);
       lines.push(`${safeName} ${snap.value}`);
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 }
 
-// Singleton para acceso global
 export const metrics = new MetricsCollector();

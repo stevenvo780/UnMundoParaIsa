@@ -1,6 +1,6 @@
 /**
  * DialogUI.ts - Interfaz de Diálogos Narrativos
- * 
+ *
  * Muestra fragmentos de diálogos descubiertos cuando
  * los personajes o artefactos son encontrados.
  */
@@ -9,7 +9,7 @@ export interface DialogFragment {
   id: string;
   text: string;
   speaker?: string;
-  emotion?: 'joy' | 'nostalgia' | 'love' | 'sadness' | 'neutral';
+  emotion?: "joy" | "nostalgia" | "love" | "sadness" | "neutral";
   timestamp: number;
   x: number;
   y: number;
@@ -19,10 +19,10 @@ export interface DialogFragment {
 
 export interface DialogUIConfig {
   maxVisibleDialogs: number;
-  dialogDuration: number;      // ms
-  fadeOutDuration: number;     // ms
-  offsetY: number;             // pixels above entity
-  maxWidth: number;            // max bubble width
+  dialogDuration: number; // ms
+  fadeOutDuration: number; // ms
+  offsetY: number; // pixels above entity
+  maxWidth: number; // max bubble width
   fontSize: number;
   fontFamily: string;
 }
@@ -50,7 +50,7 @@ export class DialogUIController {
     canvas: HTMLCanvasElement,
     worldWidth: number = 512,
     worldHeight: number = 512,
-    config: Partial<DialogUIConfig> = {}
+    config: Partial<DialogUIConfig> = {},
   ) {
     this.canvas = canvas;
     this.worldWidth = worldWidth;
@@ -62,12 +62,12 @@ export class DialogUIController {
       offsetY: config.offsetY ?? 40,
       maxWidth: config.maxWidth ?? 200,
       fontSize: config.fontSize ?? 14,
-      fontFamily: config.fontFamily ?? 'Georgia, serif',
+      fontFamily: config.fontFamily ?? "Georgia, serif",
     };
 
     // Crear contenedor de diálogos
-    this.container = document.createElement('div');
-    this.container.className = 'dialog-container';
+    this.container = document.createElement("div");
+    this.container.className = "dialog-container";
     this.container.style.cssText = `
       position: absolute;
       top: 0;
@@ -88,7 +88,7 @@ export class DialogUIController {
    * Inyectar estilos CSS
    */
   private injectStyles(): void {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .dialog-bubble {
         position: absolute;
@@ -180,20 +180,20 @@ export class DialogUIController {
     }
 
     // Crear elemento de burbuja
-    const element = document.createElement('div');
-    element.className = `dialog-bubble appearing emotion-${fragment.emotion ?? 'neutral'}`;
+    const element = document.createElement("div");
+    element.className = `dialog-bubble appearing emotion-${fragment.emotion ?? "neutral"}`;
 
     // Speaker si existe
     if (fragment.speaker) {
-      const speakerEl = document.createElement('div');
-      speakerEl.className = 'speaker';
+      const speakerEl = document.createElement("div");
+      speakerEl.className = "speaker";
       speakerEl.textContent = fragment.speaker;
       element.appendChild(speakerEl);
     }
 
     // Texto
-    const textEl = document.createElement('div');
-    textEl.className = 'text';
+    const textEl = document.createElement("div");
+    textEl.className = "text";
     textEl.textContent = `"${fragment.text}"`;
     element.appendChild(textEl);
 
@@ -213,9 +213,13 @@ export class DialogUIController {
   /**
    * Posicionar burbuja según coordenadas del mundo
    */
-  private positionBubble(element: HTMLDivElement, worldX: number, worldY: number): void {
+  private positionBubble(
+    element: HTMLDivElement,
+    worldX: number,
+    worldY: number,
+  ): void {
     const canvasRect = this.canvas.getBoundingClientRect();
-    
+
     // Convertir coordenadas del mundo a pixels del canvas
     const scaleX = canvasRect.width / this.worldWidth;
     const scaleY = canvasRect.height / this.worldHeight;
@@ -243,7 +247,8 @@ export class DialogUIController {
 
       // Fade out
       if (elapsed >= this.config.dialogDuration) {
-        const fadeProgress = (elapsed - this.config.dialogDuration) / this.config.fadeOutDuration;
+        const fadeProgress =
+          (elapsed - this.config.dialogDuration) / this.config.fadeOutDuration;
         dialog.opacity = 1 - fadeProgress;
         dialog.element.style.opacity = dialog.opacity.toString();
       }
@@ -252,7 +257,7 @@ export class DialogUIController {
       this.positionBubble(
         dialog.element,
         (dialog.fragment.x - cameraX) * zoom,
-        (dialog.fragment.y - cameraY) * zoom
+        (dialog.fragment.y - cameraY) * zoom,
       );
     }
   }

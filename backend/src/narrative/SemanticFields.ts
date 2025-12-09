@@ -3,14 +3,19 @@
  * Derivados de los fragmentos de chat y comportamientos de agentes
  */
 
-import { FieldConfig, WORLD } from '../types.js';
+import { FieldConfig, WORLD } from "../types.js";
 
-export type SemanticFieldType = 'joy' | 'nostalgia' | 'love' | 'wonder' | 'melancholy';
+export type SemanticFieldType =
+  | "joy"
+  | "nostalgia"
+  | "love"
+  | "wonder"
+  | "melancholy";
 
 export interface SemanticFieldConfig extends FieldConfig {
-  resonanceDecay: number;     // Decay de resonancia emocional
-  influenceRadius: number;    // Radio de influencia
-  behaviorEffect: number;     // Efecto en comportamiento de partículas
+  resonanceDecay: number;
+  influenceRadius: number;
+  behaviorEffect: number;
 }
 
 const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
@@ -64,51 +69,57 @@ export class SemanticField {
   readonly width: number;
   readonly height: number;
   readonly config: SemanticFieldConfig;
-  
+
   private current: Float32Array;
   private next: Float32Array;
-  private resonance: Float32Array;  // Resonancia persistente
-  
+  private resonance: Float32Array;
+
   constructor(type: SemanticFieldType, width: number, height: number) {
     this.type = type;
     this.width = width;
     this.height = height;
     this.config = SEMANTIC_CONFIGS[type];
-    
+
     const size = width * height;
     this.current = new Float32Array(size);
     this.next = new Float32Array(size);
     this.resonance = new Float32Array(size);
   }
-  
+
   /**
    * Depositar emoción en posición
    */
   deposit(x: number, y: number, intensity: number): void {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
-    
+
     const { influenceRadius, maxValue } = this.config;
     const r2 = influenceRadius * influenceRadius;
-    
+
     for (let dy = -influenceRadius; dy <= influenceRadius; dy++) {
       for (let dx = -influenceRadius; dx <= influenceRadius; dx++) {
         const nx = x + dx;
         const ny = y + dy;
-        
+
         if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
-        
+
         const d2 = dx * dx + dy * dy;
         if (d2 > r2) continue;
-        
+
         const factor = 1 - Math.sqrt(d2) / influenceRadius;
         const i = ny * this.width + nx;
-        
-        this.current[i] = Math.min(maxValue, this.current[i] + intensity * factor);
-        this.resonance[i] = Math.min(maxValue, this.resonance[i] + intensity * factor * 0.5);
+
+        this.current[i] = Math.min(
+          maxValue,
+          this.current[i] + intensity * factor,
+        );
+        this.resonance[i] = Math.min(
+          maxValue,
+          this.resonance[i] + intensity * factor * 0.5,
+        );
       }
     }
   }
-  
+
   /**
    * Obtener valor en posición
    */
@@ -116,7 +127,7 @@ export class SemanticField {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
     return this.current[y * this.width + x];
   }
-  
+
   /**
    * Obtener resonancia en posición
    */
@@ -124,44 +135,40 @@ export class SemanticField {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return 0;
     return this.resonance[y * this.width + x];
   }
-  
+
   /**
    * Paso de actualización
    */
   step(): void {
     const { width, height, config } = this;
     const { diffusion, decay, resonanceDecay } = config;
-    
-    // Copiar current a next
+
     this.next.set(this.current);
-    
-    // Difusión
+
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const i = y * width + x;
         const center = this.current[i];
-        
+
         let sum = 0;
         sum += this.current[i - 1];
         sum += this.current[i + 1];
         sum += this.current[i - width];
         sum += this.current[i + width];
-        
+
         const avg = sum / 4;
         this.next[i] = center + diffusion * (avg - center);
       }
     }
-    
-    // Decay
+
     for (let i = 0; i < this.next.length; i++) {
-      this.next[i] *= (1 - decay);
-      this.resonance[i] *= (1 - resonanceDecay);
+      this.next[i] *= 1 - decay;
+      this.resonance[i] *= 1 - resonanceDecay;
     }
-    
-    // Swap
+
     [this.current, this.next] = [this.next, this.current];
   }
-  
+
   /**
    * Obtener efecto en comportamiento
    */
@@ -170,26 +177,28 @@ export class SemanticField {
     const resonance = this.getResonance(x, y);
     return (value + resonance * 0.5) * this.config.behaviorEffect;
   }
-  
+
   /**
    * Obtener buffer
    */
   getBuffer(): Float32Array {
     return this.current;
   }
-  
+
   /**
    * Obtener estadísticas
    */
   getStats(): { average: number; max: number; totalResonance: number } {
-    let sum = 0, max = 0, resSum = 0;
-    
+    let sum = 0,
+      max = 0,
+      resSum = 0;
+
     for (let i = 0; i < this.current.length; i++) {
       sum += this.current[i];
       if (this.current[i] > max) max = this.current[i];
       resSum += this.resonance[i];
     }
-    
+
     return {
       average: sum / this.current.length,
       max,
@@ -204,47 +213,54 @@ export class SemanticField {
 export class SemanticFieldManager {
   readonly width: number;
   readonly height: number;
-  
+
   private fields: Map<SemanticFieldType, SemanticField> = new Map();
-  
+
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
-    
-    // Crear todos los campos semánticos
+
     for (const type of Object.keys(SEMANTIC_CONFIGS) as SemanticFieldType[]) {
       this.fields.set(type, new SemanticField(type, width, height));
     }
   }
-  
+
   /**
    * Obtener campo por tipo
    */
   getField(type: SemanticFieldType): SemanticField | undefined {
     return this.fields.get(type);
   }
-  
+
   /**
    * Depositar emoción
    */
-  deposit(type: SemanticFieldType, x: number, y: number, intensity: number): void {
+  deposit(
+    type: SemanticFieldType,
+    x: number,
+    y: number,
+    intensity: number,
+  ): void {
     this.fields.get(type)?.deposit(x, y, intensity);
   }
-  
+
   /**
    * Obtener valor de un campo
    */
   get(type: SemanticFieldType, x: number, y: number): number {
     return this.fields.get(type)?.get(x, y) || 0;
   }
-  
+
   /**
    * Obtener emoción dominante en posición
    */
-  getDominantEmotion(x: number, y: number): { type: SemanticFieldType; value: number } | null {
+  getDominantEmotion(
+    x: number,
+    y: number,
+  ): { type: SemanticFieldType; value: number } | null {
     let maxType: SemanticFieldType | null = null;
     let maxValue = 0;
-    
+
     for (const [type, field] of this.fields) {
       const value = field.get(x, y);
       if (value > maxValue) {
@@ -252,10 +268,10 @@ export class SemanticFieldManager {
         maxType = type;
       }
     }
-    
+
     return maxType ? { type: maxType, value: maxValue } : null;
   }
-  
+
   /**
    * Actualizar todos los campos
    */
@@ -264,18 +280,21 @@ export class SemanticFieldManager {
       field.step();
     }
   }
-  
+
   /**
    * Obtener estadísticas de todos los campos
    */
   getStats(): Record<SemanticFieldType, { average: number; max: number }> {
     const result: Record<string, { average: number; max: number }> = {};
-    
+
     for (const [type, field] of this.fields) {
       const stats = field.getStats();
       result[type] = { average: stats.average, max: stats.max };
     }
-    
-    return result as Record<SemanticFieldType, { average: number; max: number }>;
+
+    return result as Record<
+      SemanticFieldType,
+      { average: number; max: number }
+    >;
   }
 }

@@ -1,25 +1,24 @@
 /**
  * Carriers.ts - Sistema de Transporte de Recursos
- * 
+ *
  * Gestiona el transporte activo de recursos entre stockpiles
  * usando partículas especializadas como carriers.
  */
 
-// Constantes de mundo
 const WORLD_WIDTH = 512;
 const WORLD_HEIGHT = 512;
 
 export interface CarrierTask {
   id: string;
-  carrierId: number;        // Partícula asignada como carrier
+  carrierId: number;
   sourceX: number;
   sourceY: number;
   targetX: number;
   targetY: number;
   resourceType: string;
   amount: number;
-  progress: number;         // 0-1
-  status: 'pending' | 'pickup' | 'delivery' | 'completed' | 'failed';
+  progress: number;
+  status: "pending" | "pickup" | "delivery" | "completed" | "failed";
   createdAt: number;
   priority: number;
 }
@@ -57,7 +56,7 @@ export class CarrierSystem {
   constructor(
     width: number = WORLD_WIDTH,
     height: number = WORLD_HEIGHT,
-    config: Partial<CarrierConfig> = {}
+    config: Partial<CarrierConfig> = {},
   ) {
     this.width = width;
     this.height = height;
@@ -80,7 +79,7 @@ export class CarrierSystem {
     targetY: number,
     resourceType: string,
     amount: number,
-    priority: number = 1
+    priority: number = 1,
   ): void {
     this.pendingRequests.push({
       sourceX,
@@ -92,7 +91,6 @@ export class CarrierSystem {
       priority,
     });
 
-    // Ordenar por prioridad
     this.pendingRequests.sort((a, b) => b.priority - a.priority);
   }
 
@@ -106,11 +104,10 @@ export class CarrierSystem {
       if (this.assignedCarriers.size >= this.config.maxCarriers) break;
       if (availableParticleIds.length === 0) break;
 
-      // Buscar partícula cercana al source
       const nearestId = this.findNearestParticle(
         availableParticleIds,
         request.sourceX,
-        request.sourceY
+        request.sourceY,
       );
 
       if (nearestId !== null) {
@@ -124,7 +121,7 @@ export class CarrierSystem {
           resourceType: request.resourceType,
           amount: request.amount,
           progress: 0,
-          status: 'pending',
+          status: "pending",
           createdAt: Date.now(),
           priority: request.priority,
         };
@@ -134,7 +131,6 @@ export class CarrierSystem {
         availableParticleIds.splice(availableParticleIds.indexOf(nearestId), 1);
         newTasks.push(task);
 
-        // Remover request procesado
         const idx = this.pendingRequests.indexOf(request);
         if (idx >= 0) this.pendingRequests.splice(idx, 1);
       }
@@ -150,10 +146,7 @@ export class CarrierSystem {
     particleIds: number[],
     x: number,
     y: number,
-    // getParticlePosition callback sería pasado en producción
   ): number | null {
-    // Simplificado: retorna el primero disponible
-    // En producción, calcularíamos distancias reales
     return particleIds.length > 0 ? particleIds[0] : null;
   }
 
@@ -163,42 +156,84 @@ export class CarrierSystem {
   updateTaskProgress(
     taskId: string,
     carrierX: number,
-    carrierY: number
-  ): { action: 'move_to_source' | 'move_to_target' | 'pickup' | 'deliver' | 'done' | 'failed'; targetX: number; targetY: number } {
+    carrierY: number,
+  ): {
+    action:
+      | "move_to_source"
+      | "move_to_target"
+      | "pickup"
+      | "deliver"
+      | "done"
+      | "failed";
+    targetX: number;
+    targetY: number;
+  } {
     const task = this.tasks.get(taskId);
     if (!task) {
-      return { action: 'failed', targetX: 0, targetY: 0 };
+      return { action: "failed", targetX: 0, targetY: 0 };
     }
 
-    const distToSource = Math.hypot(carrierX - task.sourceX, carrierY - task.sourceY);
-    const distToTarget = Math.hypot(carrierX - task.targetX, carrierY - task.targetY);
+    const distToSource = Math.hypot(
+      carrierX - task.sourceX,
+      carrierY - task.sourceY,
+    );
+    const distToTarget = Math.hypot(
+      carrierX - task.targetX,
+      carrierY - task.targetY,
+    );
 
     switch (task.status) {
-      case 'pending':
-        task.status = 'pickup';
-        return { action: 'move_to_source', targetX: task.sourceX, targetY: task.sourceY };
+      case "pending":
+        task.status = "pickup";
+        return {
+          action: "move_to_source",
+          targetX: task.sourceX,
+          targetY: task.sourceY,
+        };
 
-      case 'pickup':
+      case "pickup":
         if (distToSource < 2) {
-          task.status = 'delivery';
-          return { action: 'pickup', targetX: task.targetX, targetY: task.targetY };
+          task.status = "delivery";
+          return {
+            action: "pickup",
+            targetX: task.targetX,
+            targetY: task.targetY,
+          };
         }
-        return { action: 'move_to_source', targetX: task.sourceX, targetY: task.sourceY };
+        return {
+          action: "move_to_source",
+          targetX: task.sourceX,
+          targetY: task.sourceY,
+        };
 
-      case 'delivery':
+      case "delivery":
         if (distToTarget < 2) {
-          task.status = 'completed';
-          return { action: 'deliver', targetX: task.targetX, targetY: task.targetY };
+          task.status = "completed";
+          return {
+            action: "deliver",
+            targetX: task.targetX,
+            targetY: task.targetY,
+          };
         }
-        task.progress = 1 - (distToTarget / Math.hypot(task.targetX - task.sourceX, task.targetY - task.sourceY));
-        return { action: 'move_to_target', targetX: task.targetX, targetY: task.targetY };
+        task.progress =
+          1 -
+          distToTarget /
+            Math.hypot(
+              task.targetX - task.sourceX,
+              task.targetY - task.sourceY,
+            );
+        return {
+          action: "move_to_target",
+          targetX: task.targetX,
+          targetY: task.targetY,
+        };
 
-      case 'completed':
+      case "completed":
         this.completeTask(taskId);
-        return { action: 'done', targetX: carrierX, targetY: carrierY };
+        return { action: "done", targetX: carrierX, targetY: carrierY };
 
       default:
-        return { action: 'failed', targetX: 0, targetY: 0 };
+        return { action: "failed", targetX: 0, targetY: 0 };
     }
   }
 
@@ -219,7 +254,7 @@ export class CarrierSystem {
   cancelTask(taskId: string): void {
     const task = this.tasks.get(taskId);
     if (task) {
-      task.status = 'failed';
+      task.status = "failed";
       this.assignedCarriers.delete(task.carrierId);
       this.tasks.delete(taskId);
     }
@@ -230,10 +265,10 @@ export class CarrierSystem {
    */
   cleanupExpiredTasks(currentTick: number): void {
     const now = Date.now();
-    const timeout = this.config.timeoutTicks * 50; // ~50ms por tick
+    const timeout = this.config.timeoutTicks * 50;
 
     for (const [taskId, task] of this.tasks) {
-      if (now - task.createdAt > timeout && task.status !== 'completed') {
+      if (now - task.createdAt > timeout && task.status !== "completed") {
         this.cancelTask(taskId);
       }
     }
@@ -292,7 +327,7 @@ export class CarrierSystem {
    */
   getActiveTasks(): CarrierTask[] {
     return Array.from(this.tasks.values()).filter(
-      t => t.status !== 'completed' && t.status !== 'failed'
+      (t) => t.status !== "completed" && t.status !== "failed",
     );
   }
 
@@ -306,7 +341,7 @@ export class CarrierSystem {
     targetY: number;
     progress: number;
   }> {
-    return this.getActiveTasks().map(task => ({
+    return this.getActiveTasks().map((task) => ({
       sourceX: task.sourceX,
       sourceY: task.sourceY,
       targetX: task.targetX,

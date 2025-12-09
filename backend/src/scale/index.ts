@@ -3,25 +3,22 @@
  * Para mundos infinitos con rendimiento constante
  */
 
-// Flow Fields - Navegación eficiente
 export {
   type FlowVector,
   type FlowTarget,
   type FlowFieldConfig,
   FlowField,
-  FlowFieldManager
-} from './FlowFields.js';
+  FlowFieldManager,
+} from "./FlowFields.js";
 
-// LOD (Level of Detail) - Detalle adaptativo
 export {
   type LODLevel,
   type LODConfig,
   type FocusPoint,
   type LODRegion,
-  LODManager
-} from './LOD.js';
+  LODManager,
+} from "./LOD.js";
 
-// Thermostats - Control homeostático
 export {
   type ThermostatType,
   type ThermostatReading,
@@ -29,15 +26,14 @@ export {
   Thermostat,
   ThermostatBank,
   type WorldParameters,
-  WorldBalancer
-} from './Thermostats.js';
+  WorldBalancer,
+} from "./Thermostats.js";
 
-// Metrics - Dashboard y monitoreo
 export {
   type MetricSample,
   type MetricDefinition,
   type MetricSnapshot,
   type DashboardData,
   MetricsCollector,
-  metrics
-} from './Metrics.js';
+  metrics,
+} from "./Metrics.js";

@@ -1,11 +1,10 @@
 /**
  * Conflict.ts - Sistema de Procesamiento de Conflictos
- * 
+ *
  * Gestiona la detección, resolución y consecuencias de conflictos
  * entre comunidades basándose en tensión acumulada.
  */
 
-// Constantes de mundo
 const WORLD_WIDTH = 512;
 const WORLD_HEIGHT = 512;
 
@@ -15,16 +14,16 @@ export interface Conflict {
   community2Id: string;
   epicenterX: number;
   epicenterY: number;
-  intensity: number;       // 0-1
-  phase: 'brewing' | 'active' | 'resolution' | 'aftermath';
+  intensity: number;
+  phase: "brewing" | "active" | "resolution" | "aftermath";
   startTick: number;
   duration: number;
   casualties: { community1: number; community2: number };
-  territoryChange: number; // Positivo = community1 gana, negativo = community2
+  territoryChange: number;
 }
 
 export interface ConflictOutcome {
-  winnerId: string | null;  // null = empate
+  winnerId: string | null;
   loserId: string | null;
   territoryTransferred: number;
   casualties: number;
@@ -32,12 +31,12 @@ export interface ConflictOutcome {
 }
 
 export interface ConflictConfig {
-  tensionThreshold: number;     // Tensión mínima para conflicto
-  conflictDuration: number;     // Ticks de duración base
-  casualtyRate: number;         // Tasa de bajas por tick
-  territoryChangeRate: number;  // Tasa de cambio territorial
-  cooldownTicks: number;        // Ticks antes de nuevo conflicto
-  maxActiveConflicts: number;   // Máximo de conflictos simultáneos
+  tensionThreshold: number;
+  conflictDuration: number;
+  casualtyRate: number;
+  territoryChangeRate: number;
+  cooldownTicks: number;
+  maxActiveConflicts: number;
 }
 
 /**
@@ -46,7 +45,7 @@ export interface ConflictConfig {
 export class ConflictManager {
   private activeConflicts: Map<string, Conflict> = new Map();
   private conflictHistory: Conflict[] = [];
-  private cooldowns: Map<string, number> = new Map(); // communityId -> tickCooldown
+  private cooldowns: Map<string, number> = new Map();
   private config: ConflictConfig;
   private conflictIdCounter = 0;
   private currentTick = 0;
@@ -56,7 +55,7 @@ export class ConflictManager {
   constructor(
     width: number = WORLD_WIDTH,
     height: number = WORLD_HEIGHT,
-    config: Partial<ConflictConfig> = {}
+    config: Partial<ConflictConfig> = {},
   ) {
     this.width = width;
     this.height = height;
@@ -81,26 +80,29 @@ export class ConflictManager {
       borderX: number;
       borderY: number;
     }>,
-    tick: number
+    tick: number,
   ): Conflict[] {
     this.currentTick = tick;
     const newConflicts: Conflict[] = [];
 
     for (const data of tensionData) {
-      // Verificar threshold y cooldowns
       if (data.tension < this.config.tensionThreshold) continue;
-      if (this.isOnCooldown(data.community1Id) || this.isOnCooldown(data.community2Id)) continue;
-      if (this.hasActiveConflict(data.community1Id, data.community2Id)) continue;
+      if (
+        this.isOnCooldown(data.community1Id) ||
+        this.isOnCooldown(data.community2Id)
+      )
+        continue;
+      if (this.hasActiveConflict(data.community1Id, data.community2Id))
+        continue;
       if (this.activeConflicts.size >= this.config.maxActiveConflicts) break;
 
-      // Crear nuevo conflicto
       const conflict = this.createConflict(
         data.community1Id,
         data.community2Id,
         data.borderX,
         data.borderY,
         data.tension,
-        tick
+        tick,
       );
 
       this.activeConflicts.set(conflict.id, conflict);
@@ -119,7 +121,7 @@ export class ConflictManager {
     epicenterX: number,
     epicenterY: number,
     tension: number,
-    tick: number
+    tick: number,
   ): Conflict {
     return {
       id: `conflict_${this.conflictIdCounter++}`,
@@ -128,9 +130,11 @@ export class ConflictManager {
       epicenterX,
       epicenterY,
       intensity: tension,
-      phase: 'brewing',
+      phase: "brewing",
       startTick: tick,
-      duration: Math.floor(this.config.conflictDuration * (0.5 + tension * 0.5)),
+      duration: Math.floor(
+        this.config.conflictDuration * (0.5 + tension * 0.5),
+      ),
       casualties: { community1: 0, community2: 0 },
       territoryChange: 0,
     };
@@ -141,7 +145,7 @@ export class ConflictManager {
    */
   update(
     tick: number,
-    getCommunityStrength: (communityId: string) => number
+    getCommunityStrength: (communityId: string) => number,
   ): { resolved: ConflictOutcome[]; ongoing: Conflict[] } {
     this.currentTick = tick;
     const resolved: ConflictOutcome[] = [];
@@ -150,28 +154,25 @@ export class ConflictManager {
       const ticksElapsed = tick - conflict.startTick;
       const progress = ticksElapsed / conflict.duration;
 
-      // Actualizar fase
       if (progress < 0.1) {
-        conflict.phase = 'brewing';
+        conflict.phase = "brewing";
       } else if (progress < 0.8) {
-        conflict.phase = 'active';
+        conflict.phase = "active";
         this.processActiveCombat(conflict, getCommunityStrength);
       } else if (progress < 1.0) {
-        conflict.phase = 'resolution';
+        conflict.phase = "resolution";
       } else {
-        conflict.phase = 'aftermath';
+        conflict.phase = "aftermath";
         const outcome = this.resolveConflict(conflict);
         resolved.push(outcome);
         this.conflictHistory.push(conflict);
         this.activeConflicts.delete(conflictId);
 
-        // Establecer cooldowns
         this.setCooldown(conflict.community1Id, this.config.cooldownTicks);
         this.setCooldown(conflict.community2Id, this.config.cooldownTicks);
       }
     }
 
-    // Decrementar cooldowns
     this.decrementCooldowns();
 
     return {
@@ -185,30 +186,36 @@ export class ConflictManager {
    */
   private processActiveCombat(
     conflict: Conflict,
-    getCommunityStrength: (communityId: string) => number
+    getCommunityStrength: (communityId: string) => number,
   ): void {
     const strength1 = getCommunityStrength(conflict.community1Id);
     const strength2 = getCommunityStrength(conflict.community2Id);
     const totalStrength = strength1 + strength2 || 1;
 
-    // Bajas proporcionales inversas a la fuerza
-    const casualtyRatio1 = (strength2 / totalStrength) * this.config.casualtyRate * conflict.intensity;
-    const casualtyRatio2 = (strength1 / totalStrength) * this.config.casualtyRate * conflict.intensity;
+    const casualtyRatio1 =
+      (strength2 / totalStrength) *
+      this.config.casualtyRate *
+      conflict.intensity;
+    const casualtyRatio2 =
+      (strength1 / totalStrength) *
+      this.config.casualtyRate *
+      conflict.intensity;
 
     conflict.casualties.community1 += casualtyRatio1;
     conflict.casualties.community2 += casualtyRatio2;
 
-    // Cambio territorial basado en diferencia de fuerza
     const strengthDiff = (strength1 - strength2) / totalStrength;
-    conflict.territoryChange += strengthDiff * this.config.territoryChangeRate * conflict.intensity;
+    conflict.territoryChange +=
+      strengthDiff * this.config.territoryChangeRate * conflict.intensity;
   }
 
   /**
    * Resolver conflicto y determinar resultado
    */
   private resolveConflict(conflict: Conflict): ConflictOutcome {
-    const totalCasualties = conflict.casualties.community1 + conflict.casualties.community2;
-    
+    const totalCasualties =
+      conflict.casualties.community1 + conflict.casualties.community2;
+
     let winnerId: string | null = null;
     let loserId: string | null = null;
 
@@ -225,7 +232,7 @@ export class ConflictManager {
       loserId,
       territoryTransferred: Math.abs(conflict.territoryChange),
       casualties: Math.floor(totalCasualties),
-      tensionReduction: 0.3 + conflict.intensity * 0.4, // El conflicto reduce tensión
+      tensionReduction: 0.3 + conflict.intensity * 0.4,
     };
   }
 
@@ -257,11 +264,16 @@ export class ConflictManager {
   /**
    * Verificar si hay conflicto activo entre dos comunidades
    */
-  private hasActiveConflict(community1Id: string, community2Id: string): boolean {
+  private hasActiveConflict(
+    community1Id: string,
+    community2Id: string,
+  ): boolean {
     for (const conflict of this.activeConflicts.values()) {
       if (
-        (conflict.community1Id === community1Id && conflict.community2Id === community2Id) ||
-        (conflict.community1Id === community2Id && conflict.community2Id === community1Id)
+        (conflict.community1Id === community1Id &&
+          conflict.community2Id === community2Id) ||
+        (conflict.community1Id === community2Id &&
+          conflict.community2Id === community1Id)
       ) {
         return true;
       }
@@ -293,7 +305,7 @@ export class ConflictManager {
     intensity: number;
     phase: string;
   }> {
-    return this.getActiveConflicts().map(conflict => ({
+    return this.getActiveConflicts().map((conflict) => ({
       x: conflict.epicenterX,
       y: conflict.epicenterY,
       radius: 20 + conflict.intensity * 30,
@@ -313,12 +325,13 @@ export class ConflictManager {
   } {
     const activeConflicts = this.activeConflicts.size;
     const totalHistorical = this.conflictHistory.length;
-    
+
     let totalCasualties = 0;
     let totalIntensity = 0;
 
     for (const conflict of this.conflictHistory) {
-      totalCasualties += conflict.casualties.community1 + conflict.casualties.community2;
+      totalCasualties +=
+        conflict.casualties.community1 + conflict.casualties.community2;
       totalIntensity += conflict.intensity;
     }
 

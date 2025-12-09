@@ -20,8 +20,13 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      target: builder
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
     ports:
-      - "8080:80"
+      - "5173:5173"
     depends_on:
       - backend
     networks:

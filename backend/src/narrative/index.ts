@@ -3,15 +3,13 @@
  * Materialización de partículas en personajes con historia
  */
 
-// Semantic Fields - Campos emocionales
 export {
   type SemanticFieldType,
   type SemanticFieldConfig,
   SemanticField,
-  SemanticFieldManager
-} from './SemanticFields.js';
+  SemanticFieldManager,
+} from "./SemanticFields.js";
 
-// Chat Parser - Procesamiento de fragmentos
 export {
   type Speaker,
   type Emotion,
@@ -22,19 +20,17 @@ export {
   type ChatStats,
   detectEmotion,
   parseChatsFromJSON,
-  ChatManager
-} from './ChatParser.js';
+  ChatManager,
+} from "./ChatParser.js";
 
-// Artifacts - Objetos descubribles
 export {
   type Artifact,
   type ArtifactType,
   type ArtifactSpawnCondition,
   type ArtifactStats,
-  ArtifactManager
-} from './Artifacts.js';
+  ArtifactManager,
+} from "./Artifacts.js";
 
-// Events - Sistema de eventos
 export {
   type EventType,
   type NarrativeEvent,
@@ -43,10 +39,9 @@ export {
   type EventCondition,
   type WorldState,
   type EventStats,
-  EventManager
-} from './Events.js';
+  EventManager,
+} from "./Events.js";
 
-// Materialization - Partícula → Personaje → Héroe
 export {
   type EntityType,
   type BaseCharacter,
@@ -57,5 +52,5 @@ export {
   generateName,
   generateTraits,
   generateTitle,
-  MaterializationManager
-} from './Materialization.js';
+  MaterializationManager,
+} from "./Materialization.js";

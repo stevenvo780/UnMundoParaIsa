@@ -10,10 +10,16 @@
     "start": "node dist/server.js",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "clean:comments": "tsx scripts/clean-comments.ts",
-    "validate:enums": "tsx scripts/validate-string-to-enum.ts"
+    "validate:enums": "tsx scripts/validate-string-to-enum.ts",
+    "analyze:logs": "tsx scripts/analyze-logs.ts"
   },
   "dependencies": {
     "@types/express": "^5.0.6",

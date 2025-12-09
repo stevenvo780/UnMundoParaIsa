@@ -3,60 +3,63 @@
  * Afecta comportamiento de partículas y ambiente
  */
 
-import { Particle } from '../types.js';
-import { BehaviorType, getBehaviorType } from '../biodiversity/BehaviorTypes.js';
+import { Particle } from "../types.js";
+import {
+  BehaviorType,
+  getBehaviorType,
+} from "../biodiversity/BehaviorTypes.js";
 
-// ============================================
-// Tipos
-// ============================================
-
-export type TimeOfDay = 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'evening' | 'night' | 'midnight';
+export type TimeOfDay =
+  | "dawn"
+  | "morning"
+  | "noon"
+  | "afternoon"
+  | "dusk"
+  | "evening"
+  | "night"
+  | "midnight";
 
 export interface DayNightState {
   tick: number;
-  dayProgress: number;      // 0-1 donde 0.5 es mediodía
+  dayProgress: number;
   timeOfDay: TimeOfDay;
-  lightLevel: number;       // 0-1
-  temperature: number;      // 0-1 (normalizado)
+  lightLevel: number;
+  temperature: number;
   isDay: boolean;
 }
 
 export interface DayNightConfig {
-  dayLength: number;        // Ticks por día completo
-  dawnStart: number;        // 0-1 del día
+  dayLength: number;
+  dawnStart: number;
   dayStart: number;
   duskStart: number;
   nightStart: number;
-  minLight: number;         // Luz mínima (noche)
-  maxLight: number;         // Luz máxima (día)
+  minLight: number;
+  maxLight: number;
   minTemperature: number;
   maxTemperature: number;
 }
 
 const DEFAULT_CONFIG: DayNightConfig = {
-  dayLength: 2400,          // 2 minutos de día a 20 ticks/segundo
-  dawnStart: 0.20,          // 4:48 AM
-  dayStart: 0.30,           // 7:12 AM
-  duskStart: 0.70,          // 4:48 PM
-  nightStart: 0.85,         // 8:24 PM
+  dayLength: 2400,
+  dawnStart: 0.2,
+  dayStart: 0.3,
+  duskStart: 0.7,
+  nightStart: 0.85,
   minLight: 0.1,
   maxLight: 1.0,
   minTemperature: 0.2,
   maxTemperature: 0.8,
 };
 
-// ============================================
-// Modificadores de comportamiento por tiempo
-// ============================================
-
 export interface TimeModifiers {
   foodWeight: number;
   waterWeight: number;
-  trailWeight: number;      // Social
+  trailWeight: number;
   dangerWeight: number;
   explorationBonus: number;
   metabolismMod: number;
-  activityLevel: number;    // 0-1, cuán activo está
+  activityLevel: number;
 }
 
 const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
@@ -80,7 +83,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
   },
   noon: {
     foodWeight: 1.0,
-    waterWeight: 1.5,       // Más sed al mediodía
+    waterWeight: 1.5,
     trailWeight: 0.3,
     dangerWeight: -2.0,
     explorationBonus: 0.4,
@@ -97,9 +100,9 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     activityLevel: 0.85,
   },
   dusk: {
-    foodWeight: 1.4,        // Buscan comida antes de noche
+    foodWeight: 1.4,
     waterWeight: 0.8,
-    trailWeight: 0.6,       // Más social
+    trailWeight: 0.6,
     dangerWeight: -1.5,
     explorationBonus: 0.2,
     metabolismMod: 0.95,
@@ -108,7 +111,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
   evening: {
     foodWeight: 1.0,
     waterWeight: 0.7,
-    trailWeight: 0.8,       // Muy social
+    trailWeight: 0.8,
     dangerWeight: -1.3,
     explorationBonus: 0.1,
     metabolismMod: 0.9,
@@ -117,8 +120,8 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
   night: {
     foodWeight: 0.5,
     waterWeight: 0.5,
-    trailWeight: 1.2,       // Muy gregarios
-    dangerWeight: -0.8,     // Menos miedo (confusión)
+    trailWeight: 1.2,
+    dangerWeight: -0.8,
     explorationBonus: -0.2,
     metabolismMod: 0.7,
     activityLevel: 0.3,
@@ -126,7 +129,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
   midnight: {
     foodWeight: 0.3,
     waterWeight: 0.3,
-    trailWeight: 1.5,       // Máxima socialización
+    trailWeight: 1.5,
     dangerWeight: -0.5,
     explorationBonus: -0.3,
     metabolismMod: 0.6,
@@ -134,11 +137,12 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
   },
 };
 
-// Modificadores especiales por tipo de comportamiento y hora
-const BEHAVIOR_TIME_BONUSES: Partial<Record<BehaviorType, Partial<Record<TimeOfDay, number>>>> = {
+const BEHAVIOR_TIME_BONUSES: Partial<
+  Record<BehaviorType, Partial<Record<TimeOfDay, number>>>
+> = {
   hunter: {
-    dawn: 1.3,              // Cazadores más activos al amanecer
-    dusk: 1.2,              // Y al atardecer
+    dawn: 1.3,
+    dusk: 1.2,
     night: 0.8,
   },
   nomad: {
@@ -148,10 +152,10 @@ const BEHAVIOR_TIME_BONUSES: Partial<Record<BehaviorType, Partial<Record<TimeOfD
   },
   settler: {
     noon: 1.1,
-    night: 1.2,             // Settlers descansan de noche (eficiencia)
+    night: 1.2,
   },
   guardian: {
-    night: 1.5,             // Guardianes activos de noche
+    night: 1.5,
     midnight: 1.4,
   },
   explorer: {
@@ -161,90 +165,88 @@ const BEHAVIOR_TIME_BONUSES: Partial<Record<BehaviorType, Partial<Record<TimeOfD
   },
 };
 
-// ============================================
-// DayNightCycle - Gestor del ciclo
-// ============================================
-
 export class DayNightCycle {
   private config: DayNightConfig;
   private currentTick = 0;
-  
+
   constructor(config: Partial<DayNightConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
-  
+
   /**
    * Actualizar tick
    */
   update(tick: number): void {
     this.currentTick = tick;
   }
-  
+
   /**
    * Obtener estado actual
    */
   getState(): DayNightState {
-    const dayProgress = (this.currentTick % this.config.dayLength) / this.config.dayLength;
+    const dayProgress =
+      (this.currentTick % this.config.dayLength) / this.config.dayLength;
     const timeOfDay = this.getTimeOfDay(dayProgress);
-    
+
     return {
       tick: this.currentTick,
       dayProgress,
       timeOfDay,
       lightLevel: this.calculateLightLevel(dayProgress),
       temperature: this.calculateTemperature(dayProgress),
-      isDay: dayProgress >= this.config.dawnStart && dayProgress < this.config.nightStart,
+      isDay:
+        dayProgress >= this.config.dawnStart &&
+        dayProgress < this.config.nightStart,
     };
   }
-  
+
   /**
    * Obtener tiempo del día desde progreso
    */
   private getTimeOfDay(progress: number): TimeOfDay {
     const { dawnStart, dayStart, duskStart, nightStart } = this.config;
-    
-    if (progress < dawnStart) return 'midnight';
-    if (progress < dayStart) return 'dawn';
-    if (progress < 0.45) return 'morning';
-    if (progress < 0.55) return 'noon';
-    if (progress < duskStart) return 'afternoon';
-    if (progress < nightStart) return 'dusk';
-    if (progress < 0.95) return 'evening';
-    return 'night';
+
+    if (progress < dawnStart) return "midnight";
+    if (progress < dayStart) return "dawn";
+    if (progress < 0.45) return "morning";
+    if (progress < 0.55) return "noon";
+    if (progress < duskStart) return "afternoon";
+    if (progress < nightStart) return "dusk";
+    if (progress < 0.95) return "evening";
+    return "night";
   }
-  
+
   /**
    * Calcular nivel de luz (curva sinusoidal suave)
    */
   private calculateLightLevel(progress: number): number {
     const { minLight, maxLight, dawnStart, nightStart } = this.config;
-    
-    // Usar sinusoide para transición suave
+
     const dayLength = nightStart - dawnStart;
     const normalized = (progress - dawnStart) / dayLength;
-    
+
     if (normalized < 0 || normalized > 1) {
       return minLight;
     }
-    
-    // Sinusoide: máximo al mediodía
+
     const sinValue = Math.sin(normalized * Math.PI);
     return minLight + (maxLight - minLight) * sinValue;
   }
-  
+
   /**
    * Calcular temperatura (desfasada de luz)
    */
   private calculateTemperature(progress: number): number {
     const { minTemperature, maxTemperature } = this.config;
-    
-    // Temperatura máxima a las 2-3 PM (progress ~0.6)
+
     const tempPhase = (progress + 0.1) % 1;
     const sinValue = Math.sin(tempPhase * Math.PI);
-    
-    return minTemperature + (maxTemperature - minTemperature) * Math.max(0, sinValue);
+
+    return (
+      minTemperature + (maxTemperature - minTemperature) * Math.max(0, sinValue)
+    );
   }
-  
+
   /**
    * Obtener modificadores para una partícula según hora y tipo
    */
@@ -252,11 +254,10 @@ export class DayNightCycle {
     const state = this.getState();
     const baseModifiers = TIME_MODIFIERS[state.timeOfDay];
     const behaviorType = getBehaviorType(particle.seed);
-    
-    // Aplicar bonus de comportamiento
+
     const bonusMap = BEHAVIOR_TIME_BONUSES[behaviorType];
     const bonus = bonusMap?.[state.timeOfDay] ?? 1.0;
-    
+
     return {
       foodWeight: baseModifiers.foodWeight,
       waterWeight: baseModifiers.waterWeight,
@@ -267,30 +268,32 @@ export class DayNightCycle {
       activityLevel: baseModifiers.activityLevel * bonus,
     };
   }
-  
+
   /**
    * Obtener día actual (para UI)
    */
   getCurrentDay(): number {
     return Math.floor(this.currentTick / this.config.dayLength) + 1;
   }
-  
+
   /**
    * Obtener hora del día en formato 24h
    */
   getHour24(): number {
-    const dayProgress = (this.currentTick % this.config.dayLength) / this.config.dayLength;
+    const dayProgress =
+      (this.currentTick % this.config.dayLength) / this.config.dayLength;
     return Math.floor(dayProgress * 24);
   }
-  
+
   /**
    * Obtener hora formateada
    */
   getTimeString(): string {
-    const dayProgress = (this.currentTick % this.config.dayLength) / this.config.dayLength;
+    const dayProgress =
+      (this.currentTick % this.config.dayLength) / this.config.dayLength;
     const totalMinutes = Math.floor(dayProgress * 24 * 60);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   }
 }

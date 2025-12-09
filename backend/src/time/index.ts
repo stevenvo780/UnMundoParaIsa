@@ -8,4 +8,4 @@ export {
   type DayNightConfig,
   type TimeModifiers,
   DayNightCycle,
-} from './DayNightCycle.js';
+} from "./DayNightCycle.js";

@@ -4,27 +4,23 @@
  * NO son pre-programadas, se generan dinámicamente
  */
 
-import { NarrativeEvent, EventType } from '../narrative/Events.js';
-import { Particle } from '../types.js';
-import { Community } from '../social/Communities.js';
-
-// ============================================
-// Tipos de quest
-// ============================================
+import { NarrativeEvent, EventType } from "../narrative/Events.js";
+import { Particle } from "../types.js";
+import { Community } from "../social/Communities.js";
 
 export type QuestType =
-  | 'protect_community'    // Proteger una comunidad emergente
-  | 'discover_artifact'    // Encontrar artefacto en zona
-  | 'restore_balance'      // Equilibrar recursos en área
-  | 'witness_birth'        // Observar primer nacimiento en zona
-  | 'heal_conflict'        // Reducir tensión en área conflictiva
-  | 'explore_unknown'      // Explorar zona no visitada
-  | 'nurture_growth'       // Fomentar crecimiento de población
-  | 'witness_elder'        // Encontrar partícula longeva
-  | 'observe_migration'    // Observar migración masiva
-  | 'discover_love';       // Encontrar pareja de partículas similares
+  | "protect_community"
+  | "discover_artifact"
+  | "restore_balance"
+  | "witness_birth"
+  | "heal_conflict"
+  | "explore_unknown"
+  | "nurture_growth"
+  | "witness_elder"
+  | "observe_migration"
+  | "discover_love";
 
-export type QuestStatus = 'active' | 'completed' | 'failed' | 'expired';
+export type QuestStatus = "active" | "completed" | "failed" | "expired";
 
 export interface Quest {
   id: string;
@@ -32,292 +28,288 @@ export interface Quest {
   title: string;
   description: string;
   triggerEvent?: NarrativeEvent;
-  
-  // Ubicación
+
   targetX: number;
   targetY: number;
   radius: number;
-  
-  // Condiciones
+
   condition: QuestCondition;
-  progress: number;         // 0-1
-  
-  // Tiempo
-  createdAt: number;        // Tick de creación
-  expiresAt: number;        // Tick de expiración
-  completedAt?: number;     // Tick de completado
-  
-  // Estado
+  progress: number;
+
+  createdAt: number;
+  expiresAt: number;
+  completedAt?: number;
+
   status: QuestStatus;
-  
-  // Recompensa (narrativa)
+
   reward: QuestReward;
 }
 
 export interface QuestCondition {
-  type: 'population' | 'resource' | 'time' | 'discovery' | 'tension' | 'survival';
+  type:
+    | "population"
+    | "resource"
+    | "time"
+    | "discovery"
+    | "tension"
+    | "survival";
   target: number;
   current: number;
-  comparison: 'gte' | 'lte' | 'eq' | 'within';
+  comparison: "gte" | "lte" | "eq" | "within";
 }
 
 export interface QuestReward {
-  type: 'artifact_spawn' | 'dialog_unlock' | 'area_reveal' | 'blessing';
-  value: string;            // ID del artefacto, diálogo, etc.
+  type: "artifact_spawn" | "dialog_unlock" | "area_reveal" | "blessing";
+  value: string;
   description: string;
 }
 
-// ============================================
-// Generadores de quests desde eventos
-// ============================================
+const QUEST_GENERATORS: Record<
+  EventType,
+  (event: NarrativeEvent, tick: number) => Quest | null
+> = {
+  artifact_discovered: () => null,
 
-const QUEST_GENERATORS: Record<EventType, (event: NarrativeEvent, tick: number) => Quest | null> = {
-  'artifact_discovered': () => null, // No genera quest (ya descubierto)
-  
-  'community_formed': (event, tick) => ({
+  community_formed: (event, tick) => ({
     id: `quest_${tick}_community_${event.id}`,
-    type: 'protect_community',
-    title: 'Proteger la Nueva Comunidad',
+    type: "protect_community",
+    title: "Proteger la Nueva Comunidad",
     description: `Una comunidad ha emergido. Ayúdala a sobrevivir sus primeros 500 ticks.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 30,
     condition: {
-      type: 'survival',
+      type: "survival",
       target: 500,
       current: 0,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 1000,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'blessing',
-      value: 'community_prosperity',
-      description: 'La comunidad florece con mayor energía',
+      type: "blessing",
+      value: "community_prosperity",
+      description: "La comunidad florece con mayor energía",
     },
   }),
-  
-  'community_extinct': (event, tick) => ({
+
+  community_extinct: (event, tick) => ({
     id: `quest_${tick}_restore_${event.id}`,
-    type: 'restore_balance',
-    title: 'Restaurar el Equilibrio',
+    type: "restore_balance",
+    title: "Restaurar el Equilibrio",
     description: `Una comunidad ha desaparecido. Restaura los recursos del área.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 25,
     condition: {
-      type: 'resource',
+      type: "resource",
       target: 0.5,
       current: 0,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 800,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'artifact_spawn',
-      value: 'memory',
-      description: 'Una memoria de los caídos aparece',
+      type: "artifact_spawn",
+      value: "memory",
+      description: "Una memoria de los caídos aparece",
     },
   }),
-  
-  'first_birth': (event, tick) => ({
+
+  first_birth: (event, tick) => ({
     id: `quest_${tick}_nurture_${event.id}`,
-    type: 'nurture_growth',
-    title: 'Nutrir la Nueva Vida',
+    type: "nurture_growth",
+    title: "Nutrir la Nueva Vida",
     description: `El primer nacimiento en esta área. Ayuda a la población a crecer a 10.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 20,
     condition: {
-      type: 'population',
+      type: "population",
       target: 10,
       current: 1,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0.1,
     createdAt: tick,
     expiresAt: tick + 1500,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'dialog_unlock',
-      value: 'birth_celebration',
-      description: 'Un diálogo de celebración se desbloquea',
+      type: "dialog_unlock",
+      value: "birth_celebration",
+      description: "Un diálogo de celebración se desbloquea",
     },
   }),
-  
-  'mass_birth': () => null,
-  
-  'mass_death': (event, tick) => ({
+
+  mass_birth: () => null,
+
+  mass_death: (event, tick) => ({
     id: `quest_${tick}_heal_${event.id}`,
-    type: 'heal_conflict',
-    title: 'Sanar las Heridas',
+    type: "heal_conflict",
+    title: "Sanar las Heridas",
     description: `Muchas muertes han ocurrido. Reduce la tensión del área.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 35,
     condition: {
-      type: 'tension',
+      type: "tension",
       target: 0.3,
       current: 1.0,
-      comparison: 'lte',
+      comparison: "lte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 600,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'artifact_spawn',
-      value: 'tear',
-      description: 'Una lágrima de los perdidos aparece',
+      type: "artifact_spawn",
+      value: "tear",
+      description: "Una lágrima de los perdidos aparece",
     },
   }),
-  
-  'conflict_started': (event, tick) => ({
+
+  conflict_started: (event, tick) => ({
     id: `quest_${tick}_peace_${event.id}`,
-    type: 'heal_conflict',
-    title: 'Restaurar la Paz',
+    type: "heal_conflict",
+    title: "Restaurar la Paz",
     description: `Un conflicto ha comenzado. Reduce la tensión antes de más muertes.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 25,
     condition: {
-      type: 'tension',
+      type: "tension",
       target: 0.4,
       current: 0.8,
-      comparison: 'lte',
+      comparison: "lte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 400,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'blessing',
-      value: 'peace_aura',
-      description: 'Un aura de paz se extiende',
+      type: "blessing",
+      value: "peace_aura",
+      description: "Un aura de paz se extiende",
     },
   }),
-  
-  'peace_restored': () => null,
-  
-  'migration': (event, tick) => ({
+
+  peace_restored: () => null,
+
+  migration: (event, tick) => ({
     id: `quest_${tick}_observe_${event.id}`,
-    type: 'observe_migration',
-    title: 'Observar la Gran Migración',
+    type: "observe_migration",
+    title: "Observar la Gran Migración",
     description: `Una migración masiva está ocurriendo. Observa su destino.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 40,
     condition: {
-      type: 'time',
+      type: "time",
       target: 200,
       current: 0,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 300,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'area_reveal',
-      value: 'migration_path',
-      description: 'Se revela una ruta de migración',
+      type: "area_reveal",
+      value: "migration_path",
+      description: "Se revela una ruta de migración",
     },
   }),
-  
-  'discovery': (event, tick) => ({
+
+  discovery: (event, tick) => ({
     id: `quest_${tick}_explore_${event.id}`,
-    type: 'explore_unknown',
-    title: 'Explorar lo Desconocido',
+    type: "explore_unknown",
+    title: "Explorar lo Desconocido",
     description: `Una nueva zona ha sido descubierta. Explórala completamente.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 50,
     condition: {
-      type: 'discovery',
+      type: "discovery",
       target: 100,
       current: 10,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0.1,
     createdAt: tick,
     expiresAt: tick + 2000,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'artifact_spawn',
-      value: 'star',
-      description: 'Una estrella de descubrimiento aparece',
+      type: "artifact_spawn",
+      value: "star",
+      description: "Una estrella de descubrimiento aparece",
     },
   }),
-  
-  'love_pair': (event, tick) => ({
+
+  love_pair: (event, tick) => ({
     id: `quest_${tick}_love_${event.id}`,
-    type: 'discover_love',
-    title: 'Testigo del Amor',
+    type: "discover_love",
+    title: "Testigo del Amor",
     description: `Dos almas similares se han encontrado. Ayúdalas a prosperar.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 15,
     condition: {
-      type: 'survival',
+      type: "survival",
       target: 300,
       current: 0,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 500,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'artifact_spawn',
-      value: 'letter',
-      description: 'Una carta de amor aparece',
+      type: "artifact_spawn",
+      value: "letter",
+      description: "Una carta de amor aparece",
     },
   }),
-  
-  'elder': (event, tick) => ({
+
+  elder: (event, tick) => ({
     id: `quest_${tick}_elder_${event.id}`,
-    type: 'witness_elder',
-    title: 'Sabiduría del Anciano',
+    type: "witness_elder",
+    title: "Sabiduría del Anciano",
     description: `Una partícula longeva ha sido encontrada. Aprende de su sabiduría.`,
     triggerEvent: event,
     targetX: event.x,
     targetY: event.y,
     radius: 10,
     condition: {
-      type: 'time',
+      type: "time",
       target: 100,
       current: 0,
-      comparison: 'gte',
+      comparison: "gte",
     },
     progress: 0,
     createdAt: tick,
     expiresAt: tick + 200,
-    status: 'active',
+    status: "active",
     reward: {
-      type: 'dialog_unlock',
-      value: 'elder_wisdom',
-      description: 'Se desbloquea la sabiduría del anciano',
+      type: "dialog_unlock",
+      value: "elder_wisdom",
+      description: "Se desbloquea la sabiduría del anciano",
     },
   }),
-  
-  'hero_born': () => null,
-};
 
-// ============================================
-// QuestManager - Gestiona misiones emergentes
-// ============================================
+  hero_born: () => null,
+};
 
 export interface QuestManagerConfig {
   maxActiveQuests: number;
@@ -336,45 +328,42 @@ export class QuestManager {
   private completedQuests: Quest[] = [];
   private config: QuestManagerConfig;
   private tick = 0;
-  
+
   constructor(config: Partial<QuestManagerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
-  
+
   /**
    * Procesar evento narrativo y generar quest si aplica
    */
   processEvent(event: NarrativeEvent, tick: number): Quest | null {
     this.tick = tick;
-    
-    // Verificar límite de quests activas
+
     if (this.getActiveQuests().length >= this.config.maxActiveQuests) {
       return null;
     }
-    
-    // Verificar distancia mínima
+
     for (const quest of this.quests.values()) {
-      if (quest.status !== 'active') continue;
+      if (quest.status !== "active") continue;
       const dx = event.x - quest.targetX;
       const dy = event.y - quest.targetY;
       if (Math.sqrt(dx * dx + dy * dy) < this.config.minDistanceBetweenQuests) {
         return null;
       }
     }
-    
-    // Generar quest desde evento
+
     const generator = QUEST_GENERATORS[event.type];
     if (!generator) return null;
-    
+
     const quest = generator(event, tick);
     if (quest) {
       this.quests.set(quest.id, quest);
       console.log(`[Quests] Nueva quest: ${quest.title}`);
     }
-    
+
     return quest;
   }
-  
+
   /**
    * Actualizar estado de quests
    */
@@ -383,78 +372,77 @@ export class QuestManager {
     particles: Particle[],
     communities: Community[],
     tensionField: Float32Array,
-    width: number
+    width: number,
   ): void {
     this.tick = tick;
-    
+
     for (const quest of this.quests.values()) {
-      if (quest.status !== 'active') continue;
-      
-      // Verificar expiración
+      if (quest.status !== "active") continue;
+
       if (tick >= quest.expiresAt) {
-        quest.status = 'expired';
+        quest.status = "expired";
         continue;
       }
-      
-      // Actualizar progreso según tipo de condición
-      this.updateQuestProgress(quest, particles, communities, tensionField, width);
-      
-      // Verificar completado
+
+      this.updateQuestProgress(
+        quest,
+        particles,
+        communities,
+        tensionField,
+        width,
+      );
+
       if (this.isConditionMet(quest.condition)) {
-        quest.status = 'completed';
+        quest.status = "completed";
         quest.completedAt = tick;
         quest.progress = 1;
         this.completedQuests.push(quest);
         console.log(`[Quests] Quest completada: ${quest.title}`);
       }
     }
-    
-    // Limpiar quests expiradas/completadas del mapa activo
+
     for (const [id, quest] of this.quests) {
-      if (quest.status === 'expired' || quest.status === 'completed') {
-        // Mantener por un tiempo para mostrar en UI
+      if (quest.status === "expired" || quest.status === "completed") {
         if (tick - (quest.completedAt || quest.expiresAt) > 200) {
           this.quests.delete(id);
         }
       }
     }
   }
-  
+
   private updateQuestProgress(
     quest: Quest,
     particles: Particle[],
     communities: Community[],
     tensionField: Float32Array,
-    width: number
+    width: number,
   ): void {
     const { targetX, targetY, radius, condition } = quest;
-    
-    // Contar partículas en radio
-    const nearbyParticles = particles.filter(p => {
+
+    const nearbyParticles = particles.filter((p) => {
       if (!p.alive) return false;
       const dx = p.x - targetX;
       const dy = p.y - targetY;
       return Math.sqrt(dx * dx + dy * dy) <= radius;
     });
-    
+
     switch (condition.type) {
-      case 'population':
+      case "population":
         condition.current = nearbyParticles.length;
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
-        
-      case 'survival':
+
+      case "survival":
         condition.current++;
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
-        
-      case 'time':
+
+      case "time":
         condition.current = this.tick - quest.createdAt;
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
-        
-      case 'tension':
-        // Calcular tensión promedio en área
+
+      case "tension":
         let totalTension = 0;
         let count = 0;
         for (let dy = -radius; dy <= radius; dy++) {
@@ -468,61 +456,73 @@ export class QuestManager {
           }
         }
         condition.current = count > 0 ? totalTension / count : 0;
-        // Para condiciones "lte", progreso es inverso
-        quest.progress = Math.min(1, (1 - condition.current) / (1 - condition.target));
+
+        quest.progress = Math.min(
+          1,
+          (1 - condition.current) / (1 - condition.target),
+        );
         break;
-        
-      case 'discovery':
-        // Contar celdas "descubiertas" (con trail)
-        condition.current = nearbyParticles.length * 10; // Aproximación
+
+      case "discovery":
+        condition.current = nearbyParticles.length * 10;
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
-        
-      case 'resource':
-        // Implementar según campos disponibles
+
+      case "resource":
         condition.current = nearbyParticles.length > 0 ? 0.5 : 0;
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
     }
   }
-  
+
   private isConditionMet(condition: QuestCondition): boolean {
     switch (condition.comparison) {
-      case 'gte': return condition.current >= condition.target;
-      case 'lte': return condition.current <= condition.target;
-      case 'eq': return Math.abs(condition.current - condition.target) < 0.01;
-      case 'within': return Math.abs(condition.current - condition.target) < condition.target * 0.1;
-      default: return false;
+      case "gte":
+        return condition.current >= condition.target;
+      case "lte":
+        return condition.current <= condition.target;
+      case "eq":
+        return Math.abs(condition.current - condition.target) < 0.01;
+      case "within":
+        return (
+          Math.abs(condition.current - condition.target) <
+          condition.target * 0.1
+        );
+      default:
+        return false;
     }
   }
-  
-  // ============================================
-  // Getters
-  // ============================================
-  
+
   getActiveQuests(): Quest[] {
-    return Array.from(this.quests.values()).filter(q => q.status === 'active');
+    return Array.from(this.quests.values()).filter(
+      (q) => q.status === "active",
+    );
   }
-  
+
   getQuest(id: string): Quest | undefined {
     return this.quests.get(id);
   }
-  
+
   getAllQuests(): Quest[] {
     return Array.from(this.quests.values());
   }
-  
+
   getCompletedQuests(): Quest[] {
     return this.completedQuests;
   }
-  
-  getQuestStats(): { active: number; completed: number; failed: number; expired: number } {
+
+  getQuestStats(): {
+    active: number;
+    completed: number;
+    failed: number;
+    expired: number;
+  } {
     const all = Array.from(this.quests.values());
     return {
-      active: all.filter(q => q.status === 'active').length,
+      active: all.filter((q) => q.status === "active").length,
       completed: this.completedQuests.length,
-      failed: all.filter(q => q.status === 'failed').length,
-      expired: all.filter(q => q.status === 'expired').length,
+      failed: all.filter((q) => q.status === "failed").length,
+      expired: all.filter((q) => q.status === "expired").length,
     };
   }
 }

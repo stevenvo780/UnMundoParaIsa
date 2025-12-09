@@ -3,93 +3,85 @@
  * Un Mundo Para Isa - Sistema de Agentes Emergentes
  */
 
-// ============================================
-// Constantes del mundo
-// ============================================
-
 export const WORLD = {
   WIDTH: 512,
   HEIGHT: 512,
   CHUNK_SIZE: 64,
-  TICK_MS: 50,           // 20 ticks lógicos por segundo (decisiones)
-  MOVEMENT_SUBSTEPS: 4,  // Sub-pasos de movimiento por tick (movimiento fluido)
-  MAX_VELOCITY: 2.0,     // Velocidad máxima de partículas
-  VELOCITY_DAMPING: 0.85, // Fricción del movimiento
+  TICK_MS: 50,
+  MOVEMENT_SUBSTEPS: 4,
+  MAX_VELOCITY: 2.0,
+  VELOCITY_DAMPING: 0.85,
 } as const;
 
-// ============================================
-// Tipos de campos
-// ============================================
-
-export type FieldType = 
-  | 'food'
-  | 'water'
-  | 'cost'
-  | 'danger'
-  | 'trees'
-  | 'stone'
-  | 'trail0'  // Canal de firma 0
-  | 'trail1'  // Canal de firma 1
-  | 'trail2'  // Canal de firma 2
-  | 'trail3'  // Canal de firma 3
-  | 'population'
-  | 'labor';
-
-// ============================================
-// Configuración de campos
-// ============================================
+export type FieldType =
+  | "food"
+  | "water"
+  | "cost"
+  | "danger"
+  | "trees"
+  | "stone"
+  | "trail0"
+  | "trail1"
+  | "trail2"
+  | "trail3"
+  | "population"
+  | "labor";
 
 export interface FieldConfig {
-  diffusion: number;    // 0-1: qué tan rápido se expande
-  decay: number;        // 0-1: qué tan rápido desaparece
-  maxValue: number;     // Valor máximo permitido
-  growthRate?: number;  // Para recursos regenerables
-  growthCap?: number;   // Límite de crecimiento
+  diffusion: number;
+  decay: number;
+  maxValue: number;
+  growthRate?: number;
+  growthCap?: number;
 }
 
 export const DEFAULT_FIELD_CONFIGS: Record<FieldType, FieldConfig> = {
-  food:       { diffusion: 0.01, decay: 0.001, maxValue: 1.0, growthRate: 0.02, growthCap: 0.8 },
-  water:      { diffusion: 0.05, decay: 0.0001, maxValue: 1.0 },
-  cost:       { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  danger:     { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
-  trees:      { diffusion: 0.005, decay: 0.0001, maxValue: 1.0, growthRate: 0.01, growthCap: 0.9 },
-  stone:      { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  trail0:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail1:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail2:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail3:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  food: {
+    diffusion: 0.03,
+    decay: 0.002,
+    maxValue: 1.0,
+    growthRate: 0.0,
+    growthCap: 0.0,
+  },
+  water: { diffusion: 0.02, decay: 0.001, maxValue: 1.0 },
+  cost: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  danger: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
+  trees: {
+    diffusion: 0.0,
+    decay: 0.0,
+    maxValue: 1.0,
+    growthRate: 0.003,
+    growthCap: 1.0,
+  },
+  stone: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  trail0: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  trail1: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  trail2: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  trail3: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
   population: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
-  labor:      { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
+  labor: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
 };
-
-// ============================================
-// Partículas (agentes)
-// ============================================
 
 export interface Particle {
   id: number;
   x: number;
   y: number;
-  vx: number;               // Velocidad X (para movimiento fluido)
-  vy: number;               // Velocidad Y (para movimiento fluido)
-  targetX?: number;         // Destino actual (para interpolación)
-  targetY?: number;         // Destino actual (para interpolación)
-  energy: number;           // 0-1: energía vital
-  seed: number;             // Semilla genética (define comportamiento)
+  vx: number;
+  vy: number;
+  targetX?: number;
+  targetY?: number;
+  energy: number;
+  seed: number;
   alive: boolean;
 }
 
-// ============================================
-// Configuración de simulación
-// ============================================
-
 export interface LifecycleConfig {
-  baseMetabolism: number;        // Consumo de energía por tick
-  movementCost: number;          // Coste de moverse
-  reproductionThreshold: number; // Energía necesaria para reproducirse
-  reproductionCost: number;      // Energía gastada al reproducirse
-  consumptionEfficiency: number; // Eficiencia al consumir recursos
-  mutationRate: number;          // Probabilidad de mutar cada bit del seed
+  baseMetabolism: number;
+  movementCost: number;
+  reproductionThreshold: number;
+  reproductionCost: number;
+  consumptionEfficiency: number;
+  mutationRate: number;
 }
 
 export interface GradientWeights {
@@ -98,8 +90,8 @@ export interface GradientWeights {
   trail: number;
   danger: number;
   cost: number;
-  crowding: number;  // Peso negativo para evitar zonas densas (population)
-  exploration: number; // Bonus por explorar zonas nuevas (bajo trail)
+  crowding: number;
+  exploration: number;
 }
 
 export interface SimulationConfig {
@@ -117,27 +109,23 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   tickMs: WORLD.TICK_MS,
   seed: 42,
   lifecycle: {
-    baseMetabolism: 0.003,          // Aumentado: metabolismo más exigente
-    movementCost: 0.001,
-    reproductionThreshold: 0.92,     // Subido: solo se reproducen las muy saludables
-    reproductionCost: 0.55,          // Aumentado: reproducirse es más costoso
-    consumptionEfficiency: 0.6,      // Reducido: menos eficientes comiendo
-    mutationRate: 0.01,
+    baseMetabolism: 0.001,
+    movementCost: 0.0005,
+    reproductionThreshold: 0.7,
+    reproductionCost: 0.4,
+    consumptionEfficiency: 0.7,
+    mutationRate: 0.02,
   },
   weights: {
-    food: 1.0,
+    food: 3.0,
     water: 0.5,
-    trail: 0.2,     // Reducido para menos agrupamiento
+    trail: 0.1,
     danger: -2.0,
-    cost: -0.5,
-    crowding: -0.8, // Evitar zonas densas (fuerte presión de dispersión)
-    exploration: 0.4, // Bonus por zonas nuevas (bajo trail)
+    cost: -0.3,
+    crowding: -1.5,
+    exploration: 0.8,
   },
 };
-
-// ============================================
-// Métricas
-// ============================================
 
 export interface SimulationMetrics {
   tick: number;
@@ -150,10 +138,6 @@ export interface SimulationMetrics {
   deaths: number;
 }
 
-// ============================================
-// Utilidades
-// ============================================
-
 /**
  * Convertir coordenadas 2D a índice linear
  */
@@ -164,39 +148,37 @@ export function idx(x: number, y: number, width: number = WORLD.WIDTH): number {
 /**
  * Convertir índice linear a coordenadas 2D
  */
-export function fromIdx(i: number, width: number = WORLD.WIDTH): { x: number; y: number } {
+export function fromIdx(
+  i: number,
+  width: number = WORLD.WIDTH,
+): { x: number; y: number } {
   return {
     x: i % width,
     y: Math.floor(i / width),
   };
 }
 
-// ============================================
-// Mensajes WebSocket
-// ============================================
+export type ServerMessageType =
+  | "init"
+  | "tick"
+  | "metrics"
+  | "field_update"
+  | "particles_update"
+  | "chunk_data"
+  | "chunk_unload"
+  | "error";
 
-export type ServerMessageType = 
-  | 'init'
-  | 'tick'
-  | 'metrics'
-  | 'field_update'
-  | 'particles_update'
-  | 'chunk_data'      // Datos de chunks generados
-  | 'chunk_unload'    // Notificar que chunk fue descargado
-  | 'error';
+export type ClientMessageType =
+  | "start"
+  | "pause"
+  | "resume"
+  | "reset"
+  | "set_config"
+  | "spawn_particles"
+  | "subscribe_field"
+  | "request_chunks"
+  | "viewport_update";
 
-export type ClientMessageType = 
-  | 'start'
-  | 'pause'
-  | 'resume'
-  | 'reset'
-  | 'set_config'
-  | 'spawn_particles'
-  | 'subscribe_field'
-  | 'request_chunks'       // Solicitar chunks por viewport
-  | 'viewport_update';      // Actualizar posición/zoom de cámara
-
-// Estructura serializada para enviar al cliente
 export interface StructureData {
   id: number;
   type: string;
@@ -214,8 +196,8 @@ export interface ServerMessage {
   metrics?: SimulationMetrics;
   config?: SimulationConfig;
   error?: string;
-  chunks?: ChunkSnapshot[];  // Datos de chunks
-  structures?: StructureData[]; // Estructuras emergentes
+  chunks?: ChunkSnapshot[];
+  structures?: StructureData[];
 }
 
 export interface ClientMessage {
@@ -223,25 +205,21 @@ export interface ClientMessage {
   config?: Partial<SimulationConfig>;
   spawn?: { x: number; y: number; count: number };
   subscribeFields?: FieldType[];
-  viewport?: ViewportData;    // Datos de viewport para chunks
-  chunkRequests?: ChunkCoord[]; // Chunks específicos a solicitar
+  viewport?: ViewportData;
+  chunkRequests?: ChunkCoord[];
 }
 
-// ============================================
-// Chunks dinámicos
-// ============================================
-
 export interface ChunkCoord {
-  cx: number;  // Coordenada X del chunk (puede ser negativa)
-  cy: number;  // Coordenada Y del chunk (puede ser negativa)
+  cx: number;
+  cy: number;
 }
 
 export interface ViewportData {
-  centerX: number;  // Centro del viewport en coordenadas mundo
+  centerX: number;
   centerY: number;
-  zoom: number;     // Nivel de zoom (1 = normal)
-  width: number;    // Ancho del viewport en pixels
-  height: number;   // Alto del viewport en pixels
+  zoom: number;
+  width: number;
+  height: number;
 }
 
 export interface ChunkSnapshot {
@@ -251,8 +229,8 @@ export interface ChunkSnapshot {
   worldY: number;
   size: number;
   fields: Partial<Record<FieldType, ArrayBuffer>>;
-  biomes?: ArrayBuffer;  // Uint8Array con índices de BiomeType para cada tile
-  generated: boolean;  // true si se acaba de generar
+  biomes?: ArrayBuffer;
+  generated: boolean;
 }
 
 export interface FieldSnapshot {

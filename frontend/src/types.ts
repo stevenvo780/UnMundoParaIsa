@@ -11,8 +11,8 @@ export const WORLD = {
   WIDTH: 512,
   HEIGHT: 512,
   CHUNK_SIZE: 64,
-  TICK_MS: 50,           // 20 ticks lógicos por segundo
-  GRID_SIZE: 64,         // Tamaño del grid para campos
+  TICK_MS: 50, // 20 ticks lógicos por segundo
+  GRID_SIZE: 64, // Tamaño del grid para campos
   INTERPOLATION_FACTOR: 0.15, // Factor de interpolación para movimiento suave
 } as const;
 
@@ -20,45 +20,57 @@ export const WORLD = {
 // Tipos de campos
 // ============================================
 
-export type FieldType = 
-  | 'food'
-  | 'water'
-  | 'cost'
-  | 'danger'
-  | 'trees'
-  | 'stone'
-  | 'trail0'  // Canal de firma 0
-  | 'trail1'  // Canal de firma 1
-  | 'trail2'  // Canal de firma 2
-  | 'trail3'  // Canal de firma 3
-  | 'population'
-  | 'labor';
+export type FieldType =
+  | "food"
+  | "water"
+  | "cost"
+  | "danger"
+  | "trees"
+  | "stone"
+  | "trail0" // Canal de firma 0
+  | "trail1" // Canal de firma 1
+  | "trail2" // Canal de firma 2
+  | "trail3" // Canal de firma 3
+  | "population"
+  | "labor";
 
 // ============================================
 // Configuración de campos
 // ============================================
 
 export interface FieldConfig {
-  diffusion: number;    // 0-1: qué tan rápido se expande
-  decay: number;        // 0-1: qué tan rápido desaparece
-  maxValue: number;     // Valor máximo permitido
-  growthRate?: number;  // Para recursos regenerables
-  growthCap?: number;   // Límite de crecimiento
+  diffusion: number; // 0-1: qué tan rápido se expande
+  decay: number; // 0-1: qué tan rápido desaparece
+  maxValue: number; // Valor máximo permitido
+  growthRate?: number; // Para recursos regenerables
+  growthCap?: number; // Límite de crecimiento
 }
 
 export const DEFAULT_FIELD_CONFIGS: Record<FieldType, FieldConfig> = {
-  food:       { diffusion: 0.01, decay: 0.001, maxValue: 1.0, growthRate: 0.02, growthCap: 0.8 },
-  water:      { diffusion: 0.05, decay: 0.0001, maxValue: 1.0 },
-  cost:       { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  danger:     { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
-  trees:      { diffusion: 0.005, decay: 0.0001, maxValue: 1.0, growthRate: 0.01, growthCap: 0.9 },
-  stone:      { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  trail0:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail1:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail2:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail3:     { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  food: {
+    diffusion: 0.01,
+    decay: 0.001,
+    maxValue: 1.0,
+    growthRate: 0.02,
+    growthCap: 0.8,
+  },
+  water: { diffusion: 0.05, decay: 0.0001, maxValue: 1.0 },
+  cost: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  danger: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
+  trees: {
+    diffusion: 0.005,
+    decay: 0.0001,
+    maxValue: 1.0,
+    growthRate: 0.01,
+    growthCap: 0.9,
+  },
+  stone: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  trail0: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  trail1: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  trail2: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  trail3: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
   population: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
-  labor:      { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
+  labor: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
 };
 
 // ============================================
@@ -69,18 +81,18 @@ export interface Particle {
   id: number;
   x: number;
   y: number;
-  vx?: number;              // Velocidad X (para interpolación)
-  vy?: number;              // Velocidad Y (para interpolación)
-  energy: number;           // 0-1: energía vital
-  seed: number;             // Semilla genética (define comportamiento)
+  vx?: number; // Velocidad X (para interpolación)
+  vy?: number; // Velocidad Y (para interpolación)
+  energy: number; // 0-1: energía vital
+  seed: number; // Semilla genética (define comportamiento)
   alive: boolean;
 }
 
 // Estado extendido para interpolación en frontend
 export interface ParticleRenderState extends Particle {
-  displayX: number;         // Posición visual interpolada
+  displayX: number; // Posición visual interpolada
   displayY: number;
-  prevX: number;            // Posición anterior (para interpolación)
+  prevX: number; // Posición anterior (para interpolación)
   prevY: number;
 }
 
@@ -89,12 +101,12 @@ export interface ParticleRenderState extends Particle {
 // ============================================
 
 export interface LifecycleConfig {
-  baseMetabolism: number;        // Consumo de energía por tick
-  movementCost: number;          // Coste de moverse
+  baseMetabolism: number; // Consumo de energía por tick
+  movementCost: number; // Coste de moverse
   reproductionThreshold: number; // Energía necesaria para reproducirse
-  reproductionCost: number;      // Energía gastada al reproducirse
+  reproductionCost: number; // Energía gastada al reproducirse
   consumptionEfficiency: number; // Eficiencia al consumir recursos
-  mutationRate: number;          // Probabilidad de mutar cada bit del seed
+  mutationRate: number; // Probabilidad de mutar cada bit del seed
 }
 
 export interface GradientWeights {
@@ -103,7 +115,7 @@ export interface GradientWeights {
   trail: number;
   danger: number;
   cost: number;
-  crowding: number;  // Peso negativo para evitar zonas densas (population)
+  crowding: number; // Peso negativo para evitar zonas densas (population)
   exploration: number; // Bonus por explorar zonas nuevas (bajo trail)
 }
 
@@ -132,7 +144,7 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   weights: {
     food: 1.0,
     water: 0.5,
-    trail: 0.2,     // Reducido para menos agrupamiento
+    trail: 0.2, // Reducido para menos agrupamiento
     danger: -2.0,
     cost: -0.5,
     crowding: -0.8, // Evitar zonas densas (fuerte presión de dispersión)
@@ -169,7 +181,10 @@ export function idx(x: number, y: number, width: number = WORLD.WIDTH): number {
 /**
  * Convertir índice linear a coordenadas 2D
  */
-export function fromIdx(i: number, width: number = WORLD.WIDTH): { x: number; y: number } {
+export function fromIdx(
+  i: number,
+  width: number = WORLD.WIDTH,
+): { x: number; y: number } {
   return {
     x: i % width,
     y: Math.floor(i / width),
@@ -180,26 +195,26 @@ export function fromIdx(i: number, width: number = WORLD.WIDTH): { x: number; y:
 // Mensajes WebSocket
 // ============================================
 
-export type ServerMessageType = 
-  | 'init'
-  | 'tick'
-  | 'metrics'
-  | 'field_update'
-  | 'particles_update'
-  | 'chunk_data'      // Datos de chunks generados
-  | 'chunk_unload'    // Notificar que chunk fue descargado
-  | 'error';
+export type ServerMessageType =
+  | "init"
+  | "tick"
+  | "metrics"
+  | "field_update"
+  | "particles_update"
+  | "chunk_data" // Datos de chunks generados
+  | "chunk_unload" // Notificar que chunk fue descargado
+  | "error";
 
-export type ClientMessageType = 
-  | 'start'
-  | 'pause'
-  | 'resume'
-  | 'reset'
-  | 'set_config'
-  | 'spawn_particles'
-  | 'subscribe_field'
-  | 'request_chunks'       // Solicitar chunks por viewport
-  | 'viewport_update';      // Actualizar posición/zoom de cámara
+export type ClientMessageType =
+  | "start"
+  | "pause"
+  | "resume"
+  | "reset"
+  | "set_config"
+  | "spawn_particles"
+  | "subscribe_field"
+  | "request_chunks" // Solicitar chunks por viewport
+  | "viewport_update"; // Actualizar posición/zoom de cámara
 
 // Estructura serializada desde el servidor
 export interface StructureData {
@@ -219,7 +234,7 @@ export interface ServerMessage {
   metrics?: SimulationMetrics;
   config?: SimulationConfig;
   error?: string;
-  chunks?: ChunkSnapshot[];  // Datos de chunks
+  chunks?: ChunkSnapshot[]; // Datos de chunks
   structures?: StructureData[]; // Estructuras emergentes
 }
 
@@ -228,7 +243,7 @@ export interface ClientMessage {
   config?: Partial<SimulationConfig>;
   spawn?: { x: number; y: number; count: number };
   subscribeFields?: FieldType[];
-  viewport?: ViewportData;    // Datos de viewport para chunks
+  viewport?: ViewportData; // Datos de viewport para chunks
   chunkRequests?: ChunkCoord[]; // Chunks específicos a solicitar
 }
 
@@ -237,32 +252,38 @@ export interface ClientMessage {
 // ============================================
 
 export enum BiomeType {
-  GRASSLAND = 'grassland',
-  FOREST = 'forest',
-  DESERT = 'desert',
-  TUNDRA = 'tundra',
-  SWAMP = 'swamp',
-  WETLAND = 'wetland',
-  MOUNTAIN = 'mountain',
-  BEACH = 'beach',
-  OCEAN = 'ocean',
-  LAKE = 'lake',
-  RIVER = 'river',
+  GRASSLAND = "grassland",
+  FOREST = "forest",
+  DESERT = "desert",
+  TUNDRA = "tundra",
+  SWAMP = "swamp",
+  WETLAND = "wetland",
+  MOUNTAIN = "mountain",
+  BEACH = "beach",
+  OCEAN = "ocean",
+  LAKE = "lake",
+  RIVER = "river",
+  MYSTICAL = "mystical", // Bosque Místico
+  MOUNTAINOUS = "mountainous", // Zona Montañosa
+  VILLAGE = "village", // Zona de Pueblo
 }
 
 // Colores de biomas para renderizado
 export const BIOME_COLORS: Record<BiomeType, number> = {
-  [BiomeType.GRASSLAND]: 0x7CB342,
-  [BiomeType.FOREST]: 0x2E7D32,
-  [BiomeType.DESERT]: 0xD4A574,
-  [BiomeType.TUNDRA]: 0xB0BEC5,
-  [BiomeType.SWAMP]: 0x558B2F,
-  [BiomeType.WETLAND]: 0x66BB6A,
-  [BiomeType.MOUNTAIN]: 0x78909C,
-  [BiomeType.BEACH]: 0xFFF59D,
-  [BiomeType.OCEAN]: 0x0288D1,
-  [BiomeType.LAKE]: 0x4FC3F7,
-  [BiomeType.RIVER]: 0x29B6F6,  // Azul claro para ríos
+  [BiomeType.GRASSLAND]: 0x7cb342,
+  [BiomeType.FOREST]: 0x2e7d32,
+  [BiomeType.DESERT]: 0xd4a574,
+  [BiomeType.TUNDRA]: 0xb0bec5,
+  [BiomeType.SWAMP]: 0x558b2f,
+  [BiomeType.WETLAND]: 0x66bb6a,
+  [BiomeType.MOUNTAIN]: 0x78909c,
+  [BiomeType.BEACH]: 0xfff59d,
+  [BiomeType.OCEAN]: 0x0288d1,
+  [BiomeType.LAKE]: 0x4fc3f7,
+  [BiomeType.RIVER]: 0x29b6f6,
+  [BiomeType.MYSTICAL]: 0x7b1fa2, // Púrpura
+  [BiomeType.MOUNTAINOUS]: 0x5d4037, // Marrón oscuro
+  [BiomeType.VILLAGE]: 0x8d6e63, // Marrón claro
 };
 
 // Array ordenado de biomas para decodificar índices
@@ -273,16 +294,16 @@ export const BIOME_ORDER: BiomeType[] = Object.values(BiomeType);
 // ============================================
 
 export interface ChunkCoord {
-  cx: number;  // Coordenada X del chunk (puede ser negativa)
-  cy: number;  // Coordenada Y del chunk (puede ser negativa)
+  cx: number; // Coordenada X del chunk (puede ser negativa)
+  cy: number; // Coordenada Y del chunk (puede ser negativa)
 }
 
 export interface ViewportData {
-  centerX: number;  // Centro del viewport en coordenadas mundo
+  centerX: number; // Centro del viewport en coordenadas mundo
   centerY: number;
-  zoom: number;     // Nivel de zoom (1 = normal)
-  width: number;    // Ancho del viewport en pixels
-  height: number;   // Alto del viewport en pixels
+  zoom: number; // Nivel de zoom (1 = normal)
+  width: number; // Ancho del viewport en pixels
+  height: number; // Alto del viewport en pixels
 }
 
 export interface ChunkSnapshot {
@@ -292,8 +313,8 @@ export interface ChunkSnapshot {
   worldY: number;
   size: number;
   fields: Partial<Record<FieldType, number[]>>;
-  biomes?: number[];  // Índices de biomas para cada tile (decodificar con BIOME_ORDER)
-  generated: boolean;  // true si se acaba de generar
+  biomes?: number[]; // Índices de biomas para cada tile (decodificar con BIOME_ORDER)
+  generated: boolean; // true si se acaba de generar
 }
 
 export interface FieldSnapshot {
@@ -341,7 +362,7 @@ export interface Character {
   name: string;
   x: number;
   y: number;
-  type: 'character' | 'hero';
+  type: "character" | "hero";
 }
 
 export interface ExtendedWorldState extends WorldState {
