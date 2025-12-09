@@ -2,20 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar package.json y shared
-COPY backend/package*.json ./backend/
-COPY shared/ ./shared/
+# Copiar package.json
+COPY backend/package*.json ./
 
-# Instalar dependencias
-WORKDIR /app/backend
-RUN npm install
+# Copiar código ya compilado localmente
+COPY backend/dist ./dist
 
-# Copiar código fuente
-COPY backend/ ./
+# Copiar node_modules compilados localmente (evita npm install en container)
+COPY backend/node_modules ./node_modules
 
-# Build
-RUN npm run build
-
-EXPOSE 3001
+EXPOSE 3001 9090
 
 CMD ["npm", "start"]

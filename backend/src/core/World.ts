@@ -1286,6 +1286,317 @@ export class World {
   }
   
   /**
+   * Obtener métricas de emergencia para Prometheus
+   */
+  getEmergenceMetrics(): {
+    complexity: number;
+    coherence: number;
+    adaptability: number;
+    sustainability: number;
+    entropy: number;
+    autopoiesis: number;
+    novelty: number;
+    stability: number;
+  } {
+    const aliveParticles = this.particles.filter(p => p.alive);
+    const count = aliveParticles.length;
+    
+    if (count === 0) {
+      return { complexity: 0, coherence: 0, adaptability: 0, sustainability: 0, entropy: 0, autopoiesis: 0, novelty: 0, stability: 0 };
+    }
+    
+    // Calcular diversidad de seeds (complejidad)
+    const seedSet = new Set(aliveParticles.map(p => p.seed));
+    const complexity = Math.min(1, seedSet.size / Math.max(count, 1));
+    
+    // Coherencia: qué tan agrupadas están las partículas
+    const communities = this.communities.getAll();
+    const coherence = communities.length > 0 ? Math.min(1, communities.length / Math.sqrt(count)) : 0;
+    
+    // Adaptabilidad: ratio de energía promedio sobre máximo teórico
+    const avgEnergy = aliveParticles.reduce((s, p) => s + (p.energy ?? 0), 0) / count;
+    const adaptability = Math.min(1, avgEnergy / 100);
+    
+    // Sostenibilidad: balance nacimientos/muertes
+    const totalEvents = this.births + this.deaths;
+    const sustainability = totalEvents > 0 ? this.births / totalEvents : 0.5;
+    
+    // Entropía: dispersión de partículas (varianza de posiciones)
+    const avgX = aliveParticles.reduce((s, p) => s + p.x, 0) / count;
+    const avgY = aliveParticles.reduce((s, p) => s + p.y, 0) / count;
+    const varX = aliveParticles.reduce((s, p) => s + (p.x - avgX) ** 2, 0) / count;
+    const varY = aliveParticles.reduce((s, p) => s + (p.y - avgY) ** 2, 0) / count;
+    const maxVar = (this.width * this.height) / 4;
+    const entropy = Math.min(1, Math.sqrt(varX + varY) / Math.sqrt(maxVar));
+    
+    // Autopoiesis: capacidad de reproducción (births/population)
+    const autopoiesis = count > 0 ? Math.min(1, (this.births / Math.max(this.tick, 1)) * 100 / count) : 0;
+    
+    // Novedad: variación reciente (aproximado)
+    const novelty = Math.min(1, (this.births + this.deaths) / Math.max(count, 1));
+    
+    // Estabilidad: inverso de la tensión
+    const tensionStats = this.tension.getStats();
+    const stability = 1 - Math.min(1, tensionStats.average);
+    
+    return { complexity, coherence, adaptability, sustainability, entropy, autopoiesis, novelty, stability };
+  }
+  
+  /**
+   * Obtener métricas de biodiversidad
+   */
+  getBiodiversityMetrics(): {
+    behaviorCounts: Record<string, number>;
+    shannonIndex: number;
+    speciesRichness: number;
+    dominantType: string;
+    dominantRatio: number;
+  } {
+    const aliveParticles = this.particles.filter(p => p.alive);
+    
+    // Clasificar por tipo de comportamiento basado en seed
+    const behaviorCounts: Record<string, number> = {
+      forager: 0,
+      hunter: 0,
+      nomad: 0,
+      settler: 0,
+    };
+    
+    for (const p of aliveParticles) {
+      const type = this.getBehaviorType(p.seed);
+      behaviorCounts[type] = (behaviorCounts[type] || 0) + 1;
+    }
+    
+    const total = aliveParticles.length;
+    
+    // Índice de Shannon
+    let shannon = 0;
+    if (total > 0) {
+      for (const count of Object.values(behaviorCounts)) {
+        if (count > 0) {
+          const p = count / total;
+          shannon -= p * Math.log(p);
+        }
+      }
+    }
+    
+    // Tipo dominante
+    let dominantType = 'forager';
+    let dominantCount = 0;
+    for (const [type, count] of Object.entries(behaviorCounts)) {
+      if (count > dominantCount) {
+        dominantType = type;
+        dominantCount = count;
+      }
+    }
+    
+    return {
+      behaviorCounts,
+      shannonIndex: shannon,
+      speciesRichness: Object.values(behaviorCounts).filter(c => c > 0).length,
+      dominantType,
+      dominantRatio: total > 0 ? dominantCount / total : 0,
+    };
+  }
+  
+  /**
+   * Obtener tipo de comportamiento desde seed
+   */
+  private getBehaviorType(seed: number): string {
+    const type = (seed >> 4) & 0b11;
+    switch (type) {
+      case 0: return 'forager';
+      case 1: return 'hunter';
+      case 2: return 'nomad';
+      case 3: return 'settler';
+      default: return 'forager';
+    }
+  }
+  
+  /**
+   * Obtener métricas sociales
+   */
+  getSocialMetrics(): {
+    communities: number;
+    communitySizes: number[];
+    communityStability: number;
+    cohesion: number;
+    tension: number;
+    conflictsActive: number;
+    relationships: Record<string, number>;
+  } {
+    const allCommunities = this.communities.getAll();
+    const tensionStats = this.tension.getStats();
+    const conflicts = this.tension.getRecentConflicts();
+    
+    return {
+      communities: allCommunities.length,
+      communitySizes: allCommunities.map(c => c.members.length),
+      communityStability: allCommunities.length > 0 
+        ? allCommunities.reduce((s, c) => s + Math.min(1, c.age / 1000), 0) / allCommunities.length 
+        : 0,
+      cohesion: allCommunities.length > 0 
+        ? allCommunities.reduce((s, c) => s + c.population / (c.radius * c.radius || 1), 0) / allCommunities.length / 10 
+        : 0,
+      tension: tensionStats.average,
+      conflictsActive: conflicts.length,
+      relationships: {
+        cooperation: allCommunities.reduce((s, c) => s + c.members.length, 0),
+        conflict: conflicts.length,
+      },
+    };
+  }
+  
+  /**
+   * Obtener métricas económicas
+   */
+  getEconomyMetrics(): {
+    energyFlow: number;
+    scarcityIndex: number;
+    stockpiles: Record<string, number>;
+    production: Record<string, number>;
+    consumption: Record<string, number>;
+  } {
+    const aliveParticles = this.particles.filter(p => p.alive);
+    const totalEnergy = aliveParticles.reduce((s, p) => s + (p.energy ?? 0), 0);
+    const previousEnergy = this.particles.length * 50; // baseline
+    
+    // Calcular escasez basada en campos de recursos
+    const foodField = this.getField('food');
+    const waterField = this.getField('water');
+    const foodAvg = foodField?.getAverage() ?? 0;
+    const waterAvg = waterField?.getAverage() ?? 0;
+    
+    const scarcityIndex = 1 - Math.min(1, (foodAvg + waterAvg) / 2);
+    
+    return {
+      energyFlow: totalEnergy - previousEnergy,
+      scarcityIndex,
+      stockpiles: {
+        energy: totalEnergy,
+        food: foodField?.getSum() ?? 0,
+        water: waterField?.getSum() ?? 0,
+      },
+      production: {
+        food: this.births * 10, // aproximado
+      },
+      consumption: {
+        food: this.deaths * 5, // aproximado
+      },
+    };
+  }
+  
+  /**
+   * Obtener métricas de tiempo
+   */
+  getTimeMetrics(): {
+    timeOfDay: number;
+    dayNumber: number;
+    phase: number;
+    season: number;
+    seasonProgress: number;
+    lunarPhase: number;
+  } {
+    const ticksPerDay = 200;
+    const ticksPerSeason = ticksPerDay * 10;
+    
+    const dayProgress = (this.tick % ticksPerDay) / ticksPerDay;
+    const dayNumber = Math.floor(this.tick / ticksPerDay);
+    const season = Math.floor((this.tick / ticksPerSeason) % 4);
+    const seasonProgress = ((this.tick % ticksPerSeason) / ticksPerSeason);
+    const lunarPhase = (this.tick % (ticksPerDay * 30)) / (ticksPerDay * 30);
+    
+    // Fase del día: 0=noche, 1=amanecer, 2=día, 3=atardecer
+    let phase = 0;
+    if (dayProgress < 0.2) phase = 0; // noche
+    else if (dayProgress < 0.3) phase = 1; // amanecer
+    else if (dayProgress < 0.7) phase = 2; // día
+    else if (dayProgress < 0.8) phase = 3; // atardecer
+    else phase = 0; // noche
+    
+    return {
+      timeOfDay: dayProgress,
+      dayNumber,
+      phase,
+      season,
+      seasonProgress,
+      lunarPhase,
+    };
+  }
+  
+  /**
+   * Obtener métricas de quests (placeholder)
+   */
+  getQuestMetrics(): {
+    active: Record<string, number>;
+    progress: number;
+  } {
+    // Por ahora placeholder - se integrará con EmergentQuests
+    return {
+      active: {
+        community_growth: 0,
+        survival: 0,
+        exploration: 0,
+      },
+      progress: 0,
+    };
+  }
+  
+  /**
+   * Obtener métricas de campos
+   */
+  getFieldMetrics(): Array<{
+    fieldType: string;
+    avgIntensity: number;
+    maxIntensity: number;
+    coverage: number;
+    gradientStrength: number;
+    decayRate: number;
+  }> {
+    const result: Array<{
+      fieldType: string;
+      avgIntensity: number;
+      maxIntensity: number;
+      coverage: number;
+      gradientStrength: number;
+      decayRate: number;
+    }> = [];
+    
+    for (const [type, field] of this.fields) {
+      const buffer = field.getBuffer();
+      let max = 0;
+      let nonZero = 0;
+      let gradSum = 0;
+      
+      for (let i = 0; i < buffer.length; i++) {
+        if (buffer[i] > max) max = buffer[i];
+        if (buffer[i] > 0.001) nonZero++;
+      }
+      
+      // Calcular gradiente promedio manualmente
+      for (let y = 1; y < this.height - 1; y++) {
+        for (let x = 1; x < this.width - 1; x++) {
+          const i = y * this.width + x;
+          const gx = (buffer[i + 1] - buffer[i - 1]) / 2;
+          const gy = (buffer[i + this.width] - buffer[i - this.width]) / 2;
+          gradSum += Math.sqrt(gx * gx + gy * gy);
+        }
+      }
+      
+      result.push({
+        fieldType: type,
+        avgIntensity: field.getAverage(),
+        maxIntensity: max,
+        coverage: nonZero / buffer.length,
+        gradientStrength: gradSum / buffer.length,
+        decayRate: field.config.decay ?? 0.01,
+      });
+    }
+    
+    return result;
+  }
+  
+  /**
    * Obtener snapshot de campo para enviar al frontend
    */
   getFieldSnapshot(type: FieldType): Float32Array | undefined {

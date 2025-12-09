@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Backend de la simulación
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: umpi-backend
+    ports:
+      - "3002:3001"      # WebSocket
+      - "9091:9090"      # Prometheus metrics
+    environment:
+      - PORT=3001
+      - METRICS_PORT=9090
+      - TICK_MS=50
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - mundo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: umpi-prometheus
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./backend/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - mundo-network
+
+  # Grafana para visualización
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: umpi-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./backend/monitoring/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - mundo-network
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  mundo-network:
+    driver: bridge

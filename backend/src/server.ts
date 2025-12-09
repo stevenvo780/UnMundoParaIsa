@@ -20,10 +20,21 @@ import {
 import {
   getMetrics,
   updateSimulationMetrics,
+  updateEmergenceMetrics,
+  updateBiodiversityMetrics,
+  updateSocialMetrics,
+  updateEconomyMetrics,
+  updateTimeMetrics,
+  updateQuestMetrics,
+  updateFieldMetrics,
   wsConnectionsActive,
   wsMessagesReceived,
   wsMessagesSent,
   chunksGenerated,
+  recordWsMessage,
+  recordBirth,
+  recordDeath,
+  recordNarrativeEvent,
 } from './metrics/prometheus.js';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
@@ -341,21 +352,53 @@ function gameLoop(): void {
       const avgEnergy = aliveParticles.length > 0 
         ? aliveParticles.reduce((sum, p) => sum + (p.energy ?? 0), 0) / aliveParticles.length 
         : 0;
+      const totalEnergy = aliveParticles.reduce((sum, p) => sum + (p.energy ?? 0), 0);
       
       // Protección contra NaN
       const safeAvgEnergy = isNaN(avgEnergy) ? 0 : avgEnergy;
       
-      // Actualizar métricas de Prometheus
+      // Actualizar métricas de Prometheus - Core
       updateSimulationMetrics({
         tick: world.getTick(),
         particles: metrics.particleCount,
         avgEnergy: safeAvgEnergy,
+        totalEnergy: totalEnergy,
         births: metrics.births,
         deaths: metrics.deaths,
         tickTimeMs: metrics.tickTimeMs,
         chunksActive: chunkStats.active,
         chunksCached: chunkStats.dormant,
       });
+      
+      // Actualizar métricas de Emergencia
+      const emergenceData = world.getEmergenceMetrics();
+      updateEmergenceMetrics(emergenceData);
+      
+      // Actualizar métricas de Biodiversidad
+      const biodiversityData = world.getBiodiversityMetrics();
+      updateBiodiversityMetrics(biodiversityData);
+      
+      // Actualizar métricas Sociales
+      const socialData = world.getSocialMetrics();
+      updateSocialMetrics(socialData);
+      
+      // Actualizar métricas Económicas
+      const economyData = world.getEconomyMetrics();
+      updateEconomyMetrics(economyData);
+      
+      // Actualizar métricas de Tiempo
+      const timeData = world.getTimeMetrics();
+      updateTimeMetrics(timeData);
+      
+      // Actualizar métricas de Quests
+      const questData = world.getQuestMetrics();
+      updateQuestMetrics(questData);
+      
+      // Actualizar métricas de Campos
+      const fieldData = world.getFieldMetrics();
+      for (const f of fieldData) {
+        updateFieldMetrics(f);
+      }
     }
   }
   
