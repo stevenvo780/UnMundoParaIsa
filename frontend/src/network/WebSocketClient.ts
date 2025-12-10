@@ -33,6 +33,7 @@ export class WebSocketClient {
     }
 
     console.log(`[WS] Conectando a ${this.url}...`);
+    console.log(`[WS] Full WebSocket URL being used: ${this.url}`);
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {

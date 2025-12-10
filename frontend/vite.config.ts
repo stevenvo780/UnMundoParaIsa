@@ -11,7 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true,
+    open: false,
+    host: true, // Listen on all addresses for Docker
   },
   build: {
     outDir: 'dist',

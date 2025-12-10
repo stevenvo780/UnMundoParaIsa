@@ -63,7 +63,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
     // FPS Counter
     const fpsInterval = setInterval(() => {
-      setFps(Math.round(renderer.app.ticker.FPS));
+      const app = renderer.getApp();
+      if (app) {
+        setFps(Math.round(app.ticker.FPS));
+      }
     }, 1000);
 
     return () => {
@@ -97,9 +100,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   const toggleField = (type: FieldType, show: boolean) => {
-    if (type === FieldType.MOISTURE) setShowMoisture(show);
-    if (type === FieldType.NUTRIENTS) setShowNutrients(show);
-    renderer.toggleFieldLayer(type, show);
+    if (type === "water") setShowMoisture(show);
+    if (type === "food") setShowNutrients(show);
+    renderer.toggleFieldVisibility(type);
   };
 
   return (
@@ -245,7 +248,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <Checkbox
                   checked={showMoisture}
                   onChange={(e) =>
-                    toggleField(FieldType.MOISTURE, e.target.checked)
+                    toggleField("water", e.target.checked)
                   }
                 />
               }
@@ -256,7 +259,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <Checkbox
                   checked={showNutrients}
                   onChange={(e) =>
-                    toggleField(FieldType.NUTRIENTS, e.target.checked)
+                    toggleField("food", e.target.checked)
                   }
                 />
               }

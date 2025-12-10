@@ -263,7 +263,7 @@ export class CarrierSystem {
   /**
    * Verificar y limpiar tareas expiradas
    */
-  cleanupExpiredTasks(currentTick: number): void {
+  cleanupExpiredTasks(): void {
     const now = Date.now();
     const timeout = this.config.timeoutTicks * 50;
 

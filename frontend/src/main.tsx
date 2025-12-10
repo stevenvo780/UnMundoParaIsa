@@ -1,7 +1,7 @@
 import "./style.css";
 import { Renderer } from "./render/Renderer";
 import { WebSocketClient } from "./network/WebSocketClient";
-import { ViewportData, ChunkSnapshot } from "./types";
+import { ViewportData, ChunkSnapshot, ClientMessageType } from "./types";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/components/App";
 
@@ -31,7 +31,7 @@ async function main() {
   // Conectar al backend - usa /ws relativo para funcionar via nginx proxy
   const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl =
-    import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
+    import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:3001`;
   const client = new WebSocketClient(wsUrl);
 
   // Inicializar UI (React)
@@ -46,7 +46,7 @@ async function main() {
   // Registrar callback de viewport para chunks dinámicos
   renderer.onViewportUpdate((viewport: ViewportData) => {
     client.send({
-      type: "viewport_update",
+      type: ClientMessageType.VIEWPORT_UPDATE,
       viewport,
     });
   });
@@ -104,7 +104,7 @@ async function main() {
     // Enviar viewport inicial para recibir chunks
     const viewport = renderer.getViewport();
     client.send({
-      type: "viewport_update",
+      type: ClientMessageType.VIEWPORT_UPDATE,
       viewport,
     });
   });

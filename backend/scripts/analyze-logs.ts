@@ -6,9 +6,9 @@
  * Analyze simulation logs to study behavior patterns.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,10 +41,10 @@ function parseArgs(): Record<string, string | boolean> {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith('--')) {
+    if (arg.startsWith("--")) {
       const key = arg.slice(2);
       const nextArg = argv[i + 1];
-      if (nextArg && !nextArg.startsWith('--')) {
+      if (nextArg && !nextArg.startsWith("--")) {
         args[key] = nextArg;
         i++;
       } else {
@@ -57,7 +57,7 @@ function parseArgs(): Record<string, string | boolean> {
 }
 
 function getLatestLogFile(): string {
-  const logsDir = path.resolve(__dirname, '../logs');
+  const logsDir = path.resolve(__dirname, "../logs");
 
   if (!fs.existsSync(logsDir)) {
     throw new Error(`Logs directory not found: ${logsDir}`);
@@ -65,27 +65,30 @@ function getLatestLogFile(): string {
 
   const files = fs
     .readdirSync(logsDir)
-    .filter((f) => f.endsWith('.jsonl'))
+    .filter((f) => f.endsWith(".jsonl"))
     .sort()
     .reverse();
 
   if (files.length === 0) {
-    throw new Error('No log files found');
+    throw new Error("No log files found");
   }
 
   return path.join(logsDir, files[0]);
 }
 
 function readLogFile(filePath: string): LogEntry[] {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const lines = content.split('\n').filter((line) => line.trim());
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.split("\n").filter((line) => line.trim());
 
   return lines
     .map((line) => {
       try {
         return JSON.parse(line) as LogEntry;
       } catch (error) {
-        console.error('Failed to parse log line:', error instanceof Error ? error.message : String(error));
+        console.error(
+          "Failed to parse log line:",
+          error instanceof Error ? error.message : String(error),
+        );
         return null;
       }
     })
@@ -99,13 +102,17 @@ function filterLogs(
     level?: string;
     agent?: string;
     search?: string;
-  }
+  },
 ): LogEntry[] {
   return entries.filter((entry) => {
     if (filters.category && entry.category !== filters.category) return false;
     if (filters.level && entry.level !== filters.level) return false;
     if (filters.agent && entry.agentId !== filters.agent) return false;
-    if (filters.search && !entry.message.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    if (
+      filters.search &&
+      !entry.message.toLowerCase().includes(filters.search.toLowerCase())
+    )
+      return false;
     return true;
   });
 }
@@ -137,53 +144,69 @@ function calculateStats(entries: LogEntry[]): LogStats {
     byCategory,
     byAgent,
     timeRange: {
-      start: entries[0]?.timestamp || 'N/A',
-      end: entries[entries.length - 1]?.timestamp || 'N/A',
+      start: entries[0]?.timestamp || "N/A",
+      end: entries[entries.length - 1]?.timestamp || "N/A",
     },
     topMessages,
   };
 }
 
 function printStats(stats: LogStats): void {
-  console.log('\n📊 LOG ANALYSIS REPORT\n');
-  console.log('='.repeat(60));
+  console.log("\n📊 LOG ANALYSIS REPORT\n");
+  console.log("=".repeat(60));
 
-  console.log('\n📈 TOTAL ENTRIES:', stats.totalEntries);
+  console.log("\n📈 TOTAL ENTRIES:", stats.totalEntries);
 
-  console.log('\n⏱️ TIME RANGE:');
-  console.log('  Start:', stats.timeRange.start);
-  console.log('  End:  ', stats.timeRange.end);
+  console.log("\n⏱️ TIME RANGE:");
+  console.log("  Start:", stats.timeRange.start);
+  console.log("  End:  ", stats.timeRange.end);
 
-  console.log('\n📋 BY LEVEL:');
+  console.log("\n📋 BY LEVEL:");
   Object.entries(stats.byLevel)
     .sort((a, b) => b[1] - a[1])
     .forEach(([level, count]) => {
       const pct = ((count / stats.totalEntries) * 100).toFixed(1);
-      console.log('  ' + level.padEnd(10) + count.toString().padStart(6) + ' (' + pct + '%)');
+      console.log(
+        "  " +
+          level.padEnd(10) +
+          count.toString().padStart(6) +
+          " (" +
+          pct +
+          "%)",
+      );
     });
 
-  console.log('\n🏷️ BY CATEGORY:');
+  console.log("\n🏷️ BY CATEGORY:");
   Object.entries(stats.byCategory)
     .sort((a, b) => b[1] - a[1])
     .forEach(([cat, count]) => {
       const pct = ((count / stats.totalEntries) * 100).toFixed(1);
-      console.log('  ' + cat.padEnd(15) + count.toString().padStart(6) + ' (' + pct + '%)');
+      console.log(
+        "  " +
+          cat.padEnd(15) +
+          count.toString().padStart(6) +
+          " (" +
+          pct +
+          "%)",
+      );
     });
 
-  const agentEntries = Object.entries(stats.byAgent).sort((a, b) => b[1] - a[1]);
+  const agentEntries = Object.entries(stats.byAgent).sort(
+    (a, b) => b[1] - a[1],
+  );
   if (agentEntries.length > 0) {
-    console.log('\n👤 TOP AGENTS:');
+    console.log("\n👤 TOP AGENTS:");
     agentEntries.slice(0, 10).forEach(([agent, count]) => {
-      console.log('  ' + agent.padEnd(20) + count.toString().padStart(6));
+      console.log("  " + agent.padEnd(20) + count.toString().padStart(6));
     });
   }
 
-  console.log('\n💬 TOP MESSAGES:');
+  console.log("\n💬 TOP MESSAGES:");
   stats.topMessages.forEach(({ message, count }) => {
-    console.log('  ' + count.toString().padStart(6) + 'x  ' + message + '...');
+    console.log("  " + count.toString().padStart(6) + "x  " + message + "...");
   });
 
-  console.log('\n' + '='.repeat(60));
+  console.log("\n" + "=".repeat(60));
 }
 
 function printEntries(entries: LogEntry[], limit?: number): void {
@@ -193,9 +216,11 @@ function printEntries(entries: LogEntry[], limit?: number): void {
     const time = new Date(entry.timestamp).toLocaleTimeString();
     const level = entry.level.toUpperCase().padEnd(5);
     const cat = entry.category.padEnd(12);
-    const agent = entry.agentId ? '[' + entry.agentId + ']' : '';
+    const agent = entry.agentId ? "[" + entry.agentId + "]" : "";
 
-    console.log(time + ' ' + level + ' ' + cat + ' ' + agent + ' ' + entry.message);
+    console.log(
+      time + " " + level + " " + cat + " " + agent + " " + entry.message,
+    );
   });
 }
 
@@ -203,11 +228,12 @@ async function main(): Promise<void> {
   const args = parseArgs();
 
   try {
-    const filePath = typeof args.file === 'string' ? args.file : getLatestLogFile();
-    console.log('📂 Analyzing:', filePath, '\n');
+    const filePath =
+      typeof args.file === "string" ? args.file : getLatestLogFile();
+    console.log("📂 Analyzing:", filePath, "\n");
 
     const entries = readLogFile(filePath);
-    console.log('📝 Loaded', entries.length, 'entries\n');
+    console.log("📝 Loaded", entries.length, "entries\n");
 
     const filtered = filterLogs(entries, {
       category: args.category as string,
@@ -226,13 +252,16 @@ async function main(): Promise<void> {
       printEntries(filtered.slice(-20));
     }
 
-    if (typeof args.export === 'string') {
+    if (typeof args.export === "string") {
       const exportPath = args.export;
-      fs.writeFileSync(exportPath, filtered.map((e) => JSON.stringify(e)).join('\n'));
-      console.log('\n✅ Exported', filtered.length, 'entries to', exportPath);
+      fs.writeFileSync(
+        exportPath,
+        filtered.map((e) => JSON.stringify(e)).join("\n"),
+      );
+      console.log("\n✅ Exported", filtered.length, "entries to", exportPath);
     }
   } catch (error) {
-    console.error('Error:', error instanceof Error ? error.message : error);
+    console.error("Error:", error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

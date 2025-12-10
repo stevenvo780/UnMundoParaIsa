@@ -1,7 +1,15 @@
 #!/usr/bin/env tsx
 
-import { readFileSync, writeFileSync, readdirSync, statSync, copyFileSync, unlinkSync, existsSync } from 'fs';
-import { join, relative, extname } from 'path';
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+  copyFileSync,
+  unlinkSync,
+  existsSync,
+} from "fs";
+import { join, relative, extname } from "path";
 
 /**
  * Script SIMPLE Y SEGURO para eliminar comentarios inline
@@ -20,7 +28,7 @@ const PRESERVED_PATTERNS = [
 ];
 
 function shouldPreserveLine(commentPart: string): boolean {
-  return PRESERVED_PATTERNS.some(pattern => pattern.test(commentPart));
+  return PRESERVED_PATTERNS.some((pattern) => pattern.test(commentPart));
 }
 
 function findCommentStart(line: string): number {
@@ -32,7 +40,13 @@ function findCommentStart(line: string): number {
     const char = line[i];
     const nextChar = line[i + 1];
 
-    if (char === '\\' && (nextChar === '"' || nextChar === "'" || nextChar === '`' || nextChar === '\\')) {
+    if (
+      char === "\\" &&
+      (nextChar === '"' ||
+        nextChar === "'" ||
+        nextChar === "`" ||
+        nextChar === "\\")
+    ) {
       i++;
       continue;
     }
@@ -52,7 +66,7 @@ function findCommentStart(line: string): number {
     }
 
     if (inBacktick) {
-      if (char === '`') {
+      if (char === "`") {
         inBacktick = false;
       }
       continue;
@@ -68,14 +82,19 @@ function findCommentStart(line: string): number {
       continue;
     }
 
-    if (char === '`') {
+    if (char === "`") {
       inBacktick = true;
       continue;
     }
 
-    if (char === '/' && nextChar === '/') {
+    if (char === "/" && nextChar === "/") {
       const before = line.substring(0, i);
-      if (before.includes('/') && !before.includes('"') && !before.includes("'") && !before.includes('`')) {
+      if (
+        before.includes("/") &&
+        !before.includes('"') &&
+        !before.includes("'") &&
+        !before.includes("`")
+      ) {
         return -1;
       }
       return i;
@@ -86,11 +105,11 @@ function findCommentStart(line: string): number {
 }
 
 function cleanFile(filePath: string): { modified: boolean; removed: number } {
-  const originalCode = readFileSync(filePath, 'utf-8');
-  const lines = originalCode.split('\n');
+  const originalCode = readFileSync(filePath, "utf-8");
+  const lines = originalCode.split("\n");
   let removed = 0;
 
-  const cleanedLines = lines.map(line => {
+  const cleanedLines = lines.map((line) => {
     const commentIndex = findCommentStart(line);
 
     if (commentIndex === -1) {
@@ -108,7 +127,7 @@ function cleanFile(filePath: string): { modified: boolean; removed: number } {
     return beforeComment.trimEnd();
   });
 
-  const finalCode = cleanedLines.join('\n');
+  const finalCode = cleanedLines.join("\n");
   const modified = finalCode !== originalCode;
 
   if (modified) {
@@ -116,7 +135,7 @@ function cleanFile(filePath: string): { modified: boolean; removed: number } {
     copyFileSync(filePath, backupPath);
 
     try {
-      writeFileSync(filePath, finalCode, 'utf-8');
+      writeFileSync(filePath, finalCode, "utf-8");
 
       if (existsSync(backupPath)) {
         unlinkSync(backupPath);
@@ -134,7 +153,10 @@ function cleanFile(filePath: string): { modified: boolean; removed: number } {
   return { modified, removed };
 }
 
-function processFile(filePath: string, stats: { processed: number; modified: number; removed: number }): void {
+function processFile(
+  filePath: string,
+  stats: { processed: number; modified: number; removed: number },
+): void {
   try {
     stats.processed++;
     const { modified, removed } = cleanFile(filePath);
@@ -150,7 +172,10 @@ function processFile(filePath: string, stats: { processed: number; modified: num
   }
 }
 
-function processDirectory(dir: string, stats: { processed: number; modified: number; removed: number }): void {
+function processDirectory(
+  dir: string,
+  stats: { processed: number; modified: number; removed: number },
+): void {
   const entries = readdirSync(dir);
 
   for (const entry of entries) {
@@ -158,31 +183,40 @@ function processDirectory(dir: string, stats: { processed: number; modified: num
     const stat = statSync(fullPath);
 
     if (stat.isDirectory()) {
-      if (['node_modules', 'dist', '.git', 'coverage', '.claude', 'scripts'].includes(entry)) {
+      if (
+        [
+          "node_modules",
+          "dist",
+          ".git",
+          "coverage",
+          ".claude",
+          "scripts",
+        ].includes(entry)
+      ) {
         continue;
       }
       processDirectory(fullPath, stats);
-    } else if (stat.isFile() && extname(fullPath) === '.ts') {
+    } else if (stat.isFile() && extname(fullPath) === ".ts") {
       processFile(fullPath, stats);
     }
   }
 }
 
 const args = process.argv.slice(2);
-const targetPath = args[0] || './src';
+const targetPath = args[0] || "./src";
 
 if (!existsSync(targetPath)) {
   console.error(`❌ La ruta "${targetPath}" no existe`);
   process.exit(1);
 }
 
-console.log('🧹 Limpiador de Comentarios TypeScript\n');
+console.log("🧹 Limpiador de Comentarios TypeScript\n");
 
 const stats = { processed: 0, modified: 0, removed: 0 };
 const stat = statSync(targetPath);
 
 if (stat.isFile()) {
-  if (extname(targetPath) === '.ts') {
+  if (extname(targetPath) === ".ts") {
     processFile(targetPath, stats);
   } else {
     console.error(`❌ "${targetPath}" no es un archivo .ts`);
@@ -192,14 +226,14 @@ if (stat.isFile()) {
   processDirectory(targetPath, stats);
 }
 
-console.log('\n' + '='.repeat(60));
-console.log('📊 Resumen:');
-console.log('='.repeat(60));
+console.log("\n" + "=".repeat(60));
+console.log("📊 Resumen:");
+console.log("=".repeat(60));
 console.log(`Archivos procesados:  ${stats.processed}`);
 console.log(`Archivos modificados: ${stats.modified}`);
 console.log(`Comentarios eliminados: ${stats.removed}`);
 
 if (stats.removed > 0) {
-  console.log('\n✅ Cambios aplicados');
+  console.log("\n✅ Cambios aplicados");
   console.log('💡 Revisa con "git diff" y luego ejecuta "npm run lint"');
 }

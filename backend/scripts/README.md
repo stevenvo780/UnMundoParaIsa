@@ -5,6 +5,7 @@ Scripts de desarrollo para mantener la calidad del código y analizar el sistema
 ## Scripts Disponibles
 
 ### Limpiar Comentarios
+
 Elimina comentarios inline (`//`) de archivos TypeScript, preservando JSDoc, directivas de ESLint y TypeScript.
 
 ```bash
@@ -14,6 +15,7 @@ npx tsx scripts/clean-comments.ts [ruta]
 ```
 
 **Ejemplos:**
+
 ```bash
 # Limpiar todo el directorio src
 npm run clean:comments ./src
@@ -23,6 +25,7 @@ npm run clean:comments ./src/domain/MyClass.ts
 ```
 
 **Preserva:**
+
 - Comentarios JSDoc (`/** */`)
 - ESLint directivas (`// eslint-disable-*`)
 - TypeScript directivas (`// @ts-*`)
@@ -33,6 +36,7 @@ npm run clean:comments ./src/domain/MyClass.ts
 ---
 
 ### Validar Enums y Strings
+
 Detecta strings literales que deberían ser enums y enums que no se están utilizando.
 
 ```bash
@@ -42,10 +46,12 @@ npx tsx scripts/validate-string-to-enum.ts [opciones]
 ```
 
 **Opciones:**
+
 - `--verbose`: Muestra detalles de falsos positivos ignorados
 - `--all`: Muestra todos los resultados
 
 **Salida:**
+
 - Reporte en consola con strings que deberían usar enums
 - Lista de enums no utilizados
 - Archivo `enum-validation-report.json` con reporte completo
@@ -53,6 +59,7 @@ npx tsx scripts/validate-string-to-enum.ts [opciones]
 ---
 
 ### Analizar Logs
+
 Analiza archivos de logs de la simulación para estudiar patrones de comportamiento.
 
 ```bash
@@ -62,6 +69,7 @@ npx tsx scripts/analyze-logs.ts [opciones]
 ```
 
 **Opciones:**
+
 - `--file <path>`: Analizar un archivo específico (por defecto usa el más reciente)
 - `--stats`: Mostrar estadísticas completas
 - `--last <n>`: Mostrar últimas n entradas
@@ -72,6 +80,7 @@ npx tsx scripts/analyze-logs.ts [opciones]
 - `--export <path>`: Exportar resultados filtrados a un archivo
 
 **Ejemplos:**
+
 ```bash
 # Ver últimas 50 entradas
 npm run analyze:logs -- --last 50
@@ -91,6 +100,7 @@ npm run analyze:logs -- --search "agent" --export results.jsonl
 ## Otros Scripts útiles
 
 ### Linting y Formato
+
 ```bash
 # Ejecutar linter y corregir automáticamente
 npm run lint:fix
@@ -106,6 +116,7 @@ npm run format:check
 ```
 
 ### Testing
+
 ```bash
 # Ejecutar tests
 npm test

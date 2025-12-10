@@ -62,7 +62,7 @@ wss.on("connection", (ws: WebSocket) => {
 
   ws.on("message", (data: Buffer) => {
     try {
-      const msg: ClientMessage = JSON.parse(data.toString());
+      const msg = JSON.parse(data.toString()) as ClientMessage;
       wsMessagesReceived.inc();
       handleClientMessage(ws, msg);
     } catch (e) {

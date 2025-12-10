@@ -104,9 +104,9 @@ export class LODManager {
     this.gridWidth = Math.ceil(WORLD.WIDTH / regionSize);
     this.gridHeight = Math.ceil(WORLD.HEIGHT / regionSize);
 
-    this.levelCache = new Array(this.gridWidth * this.gridHeight).fill(
-      "dormant",
-    );
+    this.levelCache = new Array<LODLevel>(
+      this.gridWidth * this.gridHeight,
+    ).fill("dormant");
 
     this.initializeRegions();
   }

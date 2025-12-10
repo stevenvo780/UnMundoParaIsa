@@ -65,11 +65,7 @@ export default tseslint.config(
     },
   },
   {
-    files: [
-      "scripts/**/*.{js,mjs,ts}",
-      "src/**/*.test.ts",
-      "src/**/*.spec.ts",
-    ],
+    files: ["scripts/**/*.{js,mjs,ts}", "src/**/*.test.ts", "src/**/*.spec.ts"],
     languageOptions: {
       globals: {
         console: "readonly",

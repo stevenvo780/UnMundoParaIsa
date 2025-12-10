@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Typography } from "@mui/material";
 import { keyframes } from "@emotion/react";
-import { Smile, Heart, CloudRain, Meh, Sun } from "lucide-react";
+import WbSunnyIcon from "@mui/icons-material/WbSunny";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import CloudIcon from "@mui/icons-material/Cloud";
+import SentimentSatisfiedIcon from "@mui/icons-material/SentimentSatisfied";
+import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
 import { DialogFragment, ServerMessage } from "../../types";
@@ -31,6 +35,22 @@ const appearAnimation = keyframes`
   }
 `;
 
+const getEmotionIcon = (emotion?: string) => {
+  switch (emotion) {
+    case "joy":
+      return <WbSunnyIcon sx={{ fontSize: 16, color: "#FDB813" }} />;
+    case "love":
+      return <FavoriteIcon sx={{ fontSize: 16, color: "#fb2b76" }} />;
+    case "sadness":
+      return <CloudIcon sx={{ fontSize: 16, color: "#4a90e2" }} />;
+    case "nostalgia":
+      return <SentimentSatisfiedIcon sx={{ fontSize: 16, color: "#909090" }} />;
+    case "neutral":
+    default:
+      return <SentimentNeutralIcon sx={{ fontSize: 16, color: "#666" }} />;
+  }
+};
+
 export const DialogOverlay: React.FC<DialogOverlayProps> = ({
   client,
   renderer,
@@ -41,7 +61,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
   const [dialogPositions, setDialogPositions] = useState<
     Map<string, { x: number; y: number; opacity: number }>
   >(new Map());
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
 
   // Use renderer dimensions to project world coordinates to screen coordinates
   const updatePositions = useCallback(() => {
@@ -89,7 +109,6 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
       // We'll need the renderer to tell us this, or we poll it.
 
       // Inspecting Renderer.ts would be ideal, but let's assume `renderer.worldContainer.position` and `scale`.
-      const stage = renderer.getApp()?.stage;
       const world = renderer.getWorldContainer(); // Assuming this exists based on typical Pixi setup
 
       if (world) {
@@ -113,7 +132,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
     requestRef.current = requestAnimationFrame(updatePositions);
   }, [activeDialogs, renderer]);
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     requestRef.current = requestAnimationFrame(updatePositions);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -138,101 +157,74 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
     };
   }, [client]);
 
-  import { Smile, Heart, CloudRain, Frown, Meh, Sun } from "lucide-react";
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        overflow: "hidden",
+        zIndex: 1000,
+      }}
+    >
+      {Array.from(activeDialogs.entries()).map(([id, { fragment }]) => {
+        const pos = dialogPositions.get(id);
+        if (!pos) return null;
 
-  // ... previous imports
-
-  const getEmotionIcon = (emotion?: string) => {
-    switch (emotion) {
-      case "joy":
-        return <Sun size={16} color="#FDB813" />;
-      case "love":
-        return <Heart size={16} color="#fb2b76" fill="#fb2b76" />;
-      case "sadness":
-        return <CloudRain size={16} color="#4a90e2" />;
-      case "nostalgia":
-        return <Smile size={16} color="#909090" />;
-      case "neutral":
-      default:
-        return <Meh size={16} color="#666" />;
-    }
-  };
-
-  export const DialogOverlay: React.FC<DialogOverlayProps> = ({
-    client,
-    renderer,
-  }) => {
-    // ... existing state and logic ...
-
-    // (Keep the existing component logic, just modify the return JSX)
-    return (
-      <Box
-        sx={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-          overflow: "hidden",
-          zIndex: 1000,
-        }}
-      >
-        {Array.from(activeDialogs.entries()).map(([id, { fragment }]) => {
-          const pos = dialogPositions.get(id);
-          if (!pos) return null;
-
-          return (
-            <Box
-              key={id}
-              sx={{
+        return (
+          <Box
+            key={id}
+            sx={{
+              position: "absolute",
+              left: pos.x,
+              top: pos.y,
+              transform: "translateX(-50%)",
+              maxWidth: 200,
+              p: 1.5,
+              bgcolor: "rgba(255, 255, 255, 0.95)",
+              borderRadius: 2,
+              boxShadow: 2,
+              opacity: pos.opacity,
+              animation: `${appearAnimation} 0.3s ease-out`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              "&::after": {
+                content: '""',
                 position: "absolute",
-                left: pos.x,
-                top: pos.y,
+                bottom: -8,
+                left: "50%",
                 transform: "translateX(-50%)",
-                maxWidth: 200,
-                p: 1.5,
-                bgcolor: "rgba(255, 255, 255, 0.95)",
-                borderRadius: 2,
-                boxShadow: 2,
-                opacity: pos.opacity,
-                animation: `${appearAnimation} 0.3s ease-out`,
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.5,
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  bottom: -8,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  borderLeft: "8px solid transparent",
-                  borderRight: "8px solid transparent",
-                  borderTop: "8px solid rgba(255, 255, 255, 0.95)",
-                },
-              }}
-            >
-              <Box display="flex" alignItems="center" gap={1}>
-                {fragment.emotion && getEmotionIcon(fragment.emotion)}
-                {fragment.speaker && (
-                  <Typography
-                    variant="caption"
-                    display="block"
-                    sx={{ fontWeight: "bold", color: "text.secondary" }}
-                  >
-                    {fragment.speaker}
-                  </Typography>
-                )}
-              </Box>
-              <Typography
-                variant="body2"
-                sx={{ color: "text.primary", lineHeight: 1.2 }}
-              >
-                {fragment.text}
-              </Typography>
+                borderLeft: "8px solid transparent",
+                borderRight: "8px solid transparent",
+                borderTop: "8px solid rgba(255, 255, 255, 0.95)",
+              },
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={1}>
+              {fragment.emotion && getEmotionIcon(fragment.emotion)}
+              {fragment.speaker && (
+                <Typography
+                  variant="caption"
+                  display="block"
+                  sx={{ fontWeight: "bold", color: "text.secondary" }}
+                >
+                  {fragment.speaker}
+                </Typography>
+              )}
             </Box>
-          );
-        })}
-      </Box>
-    );
-  };
+            <Typography
+              variant="body2"
+              sx={{ color: "text.primary", lineHeight: 1.2 }}
+            >
+              {fragment.text}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+};

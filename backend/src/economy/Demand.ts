@@ -3,8 +3,6 @@
  * Cada recurso genera un campo de demanda basado en población y necesidades
  */
 
-import { FieldType } from "../types.js";
-
 export interface DemandConfig {
   baseNeed: number;
   urgencyMultiplier: number;
@@ -119,7 +117,6 @@ export class DemandField {
    */
   private diffuse(): void {
     const { width, height } = this;
-    const radius = this.config.diffusionRadius;
     const temp = new Float32Array(this.demand);
 
     for (let y = 1; y < height - 1; y++) {

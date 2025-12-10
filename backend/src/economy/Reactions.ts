@@ -248,13 +248,17 @@ export class ReactionProcessor {
   }
 }
 
+interface ReactionsJSON {
+  reactions?: unknown;
+}
+
 /**
  * Cargar reacciones desde JSON
  */
 export function loadReactionsFromJSON(json: string): Reaction[] {
   try {
-    const data = JSON.parse(json);
-    if (Array.isArray(data.reactions)) {
+    const data = JSON.parse(json) as ReactionsJSON;
+    if (data.reactions && Array.isArray(data.reactions)) {
       return data.reactions as Reaction[];
     }
     return [];

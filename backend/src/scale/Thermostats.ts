@@ -373,7 +373,6 @@ export class ThermostatBank {
     }> = [];
 
     for (const [type, thermostat] of this.thermostats) {
-      const reading = thermostat.getReading();
       const output = thermostat.getOutput();
 
       if (Math.abs(output) > 0.5) {

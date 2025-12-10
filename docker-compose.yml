@@ -22,9 +22,11 @@ services:
       dockerfile: frontend/Dockerfile
       target: builder
     command: npm run dev -- --host 0.0.0.0
+    environment:
+      - VITE_WS_URL=ws://localhost:3001
     volumes:
       - ./frontend:/app/frontend
-      # - /app/frontend/node_modules
+      - /app/frontend/node_modules
     ports:
       - "5173:5173"
     depends_on:

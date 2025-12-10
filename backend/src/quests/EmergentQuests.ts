@@ -6,7 +6,6 @@
 
 import { NarrativeEvent, EventType } from "../narrative/Events.js";
 import { Particle } from "../types.js";
-import { Community } from "../social/Communities.js";
 
 export type QuestType =
   | "protect_community"
@@ -370,7 +369,6 @@ export class QuestManager {
   update(
     tick: number,
     particles: Particle[],
-    communities: Community[],
     tensionField: Float32Array,
     width: number,
   ): void {
@@ -384,13 +382,7 @@ export class QuestManager {
         continue;
       }
 
-      this.updateQuestProgress(
-        quest,
-        particles,
-        communities,
-        tensionField,
-        width,
-      );
+      this.updateQuestProgress(quest, particles, tensionField, width);
 
       if (this.isConditionMet(quest.condition)) {
         quest.status = "completed";
@@ -413,7 +405,6 @@ export class QuestManager {
   private updateQuestProgress(
     quest: Quest,
     particles: Particle[],
-    communities: Community[],
     tensionField: Float32Array,
     width: number,
   ): void {
@@ -442,7 +433,7 @@ export class QuestManager {
         quest.progress = Math.min(1, condition.current / condition.target);
         break;
 
-      case "tension":
+      case "tension": {
         let totalTension = 0;
         let count = 0;
         for (let dy = -radius; dy <= radius; dy++) {
@@ -462,6 +453,7 @@ export class QuestManager {
           (1 - condition.current) / (1 - condition.target),
         );
         break;
+      }
 
       case "discovery":
         condition.current = nearbyParticles.length * 10;

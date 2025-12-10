@@ -232,6 +232,7 @@ export enum ClientMessageType {
   SPAWN_ENTITY = "spawn_entity",
   SPAWN_PARTICLES = "spawn_particles",
   SUBSCRIBE_FIELD = "subscribe_field",
+  VIEWPORT_UPDATE = "viewport_update",
 }
 
 export interface StructureData {

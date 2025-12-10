@@ -50,6 +50,27 @@ export interface ChatDatabase {
 }
 
 /**
+ * Tipos para el JSON crudo de entrada
+ */
+interface RawChatMessage {
+  text?: string;
+  message?: string;
+  content?: string;
+  speaker?: string;
+  sender?: string;
+  from?: string;
+  is_from_me?: boolean;
+  isFromMe?: boolean;
+  date?: string;
+  timestamp?: string;
+  created_at?: string;
+}
+
+interface RawChatData {
+  messages?: RawChatMessage[];
+}
+
+/**
  * Detectar emoción de un texto (heurística simple)
  */
 export function detectEmotion(text: string): {
@@ -192,7 +213,9 @@ export function detectEmotion(text: string): {
 /**
  * Parsear JSON de chats
  */
-export function parseChatsFromJSON(jsonData: any): ChatFragment[] {
+export function parseChatsFromJSON(
+  jsonData: RawChatMessage[] | RawChatData,
+): ChatFragment[] {
   const fragments: ChatFragment[] = [];
   let id = 0;
 
@@ -211,7 +234,7 @@ export function parseChatsFromJSON(jsonData: any): ChatFragment[] {
   return fragments;
 }
 
-function parseItem(item: any, id: number): ChatFragment | null {
+function parseItem(item: RawChatMessage, id: number): ChatFragment | null {
   if (!item.text && !item.message && !item.content) return null;
 
   const text = item.text || item.message || item.content;
@@ -286,7 +309,7 @@ export class ChatManager {
   /**
    * Cargar desde JSON
    */
-  loadFromJSON(jsonData: any): void {
+  loadFromJSON(jsonData: RawChatMessage[] | RawChatData): void {
     this.fragments = parseChatsFromJSON(jsonData);
     this.discoveredCount = 0;
   }

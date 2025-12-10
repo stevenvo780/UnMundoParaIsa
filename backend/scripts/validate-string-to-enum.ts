@@ -5,34 +5,36 @@
  * También detecta enums y miembros de enums que no se están utilizando.
  * Ignora valores por defecto del sistema como "number", "string", etc.
  * Genera un reporte detallado.
- * 
+ *
  * v2.0: Separación backend/frontend, exclusión de falsos positivos
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 // Obtener __dirname - calcular desde process.cwd() ya que el script está en scripts/
 // Si estamos en el directorio raíz del proyecto, scripts está en ./scripts
 const projectRoot = process.cwd();
-const __dirname = path.join(projectRoot, 'scripts');
+const __dirname = path.join(projectRoot, "scripts");
 
 // CLI args
 const args = process.argv.slice(2);
-const BACKEND_ONLY = args.includes('--backend-only');
-const FRONTEND_ONLY = args.includes('--frontend-only');
-const VERBOSE = args.includes('--verbose');
-const SHOW_ALL = args.includes('--all');
+const BACKEND_ONLY = args.includes("--backend-only");
+const FRONTEND_ONLY = args.includes("--frontend-only");
+const VERBOSE = args.includes("--verbose");
+const SHOW_ALL = args.includes("--all");
 
 // Validar que no se usen flags contradictorios
 if (BACKEND_ONLY && FRONTEND_ONLY) {
-  console.error('❌ Error: No puedes usar --backend-only y --frontend-only simultáneamente');
+  console.error(
+    "❌ Error: No puedes usar --backend-only y --frontend-only simultáneamente",
+  );
   process.exit(1);
 }
 
 // Directorios a analizar
-const BACKEND_SRC = path.join(__dirname, '../src');
-const FRONTEND_SRC = path.join(__dirname, '../../frontend/src');
+const BACKEND_SRC = path.join(__dirname, "../src");
+const FRONTEND_SRC = path.join(__dirname, "../../frontend/src");
 
 // Patrones de archivos a excluir
 const EXCLUDED_PATTERNS = [
@@ -55,7 +57,7 @@ const CATALOG_DEFINITION_PATTERNS = [
   /Definitions?\.ts$/,
   /Data\.ts$/,
   /Constants\.ts$/,
-  /Enums?\.ts$/,  // Archivos de definición de enums
+  /Enums?\.ts$/, // Archivos de definición de enums
   /Seeds?\.ts$/,
   /Fixtures?\.ts$/,
   /Mocks?\.ts$/,
@@ -63,29 +65,29 @@ const CATALOG_DEFINITION_PATTERNS = [
 
 // Patrones de línea que indican definición de ID (no uso de enum)
 const ID_DEFINITION_PATTERNS = [
-  /^\s*id:\s*[\"']/,           // id: "valor"
-  /^\s*name:\s*[\"']/,         // name: "valor"
-  /^\s*_id:\s*[\"']/,          // _id: "valor"
-  /^\s*key:\s*[\"']/,          // key: "valor"
-  /^\s*code:\s*[\"']/,         // code: "valor"
-  /^\s*label:\s*[\"']/,        // label: "valor"
-  /^\s*title:\s*[\"']/,        // title: "valor"
-  /^\s*description:\s*[\"']/,  // description: "valor"
-  /^\s*\w+Id:\s*[\"']/,        // cualquierId: "valor"
-  /^\s*\[\s*[\"']/,            // ["key"]: valor (objeto indexado)
+  /^\s*id:\s*[\"']/, // id: "valor"
+  /^\s*name:\s*[\"']/, // name: "valor"
+  /^\s*_id:\s*[\"']/, // _id: "valor"
+  /^\s*key:\s*[\"']/, // key: "valor"
+  /^\s*code:\s*[\"']/, // code: "valor"
+  /^\s*label:\s*[\"']/, // label: "valor"
+  /^\s*title:\s*[\"']/, // title: "valor"
+  /^\s*description:\s*[\"']/, // description: "valor"
+  /^\s*\w+Id:\s*[\"']/, // cualquierId: "valor"
+  /^\s*\[\s*[\"']/, // ["key"]: valor (objeto indexado)
   /export\s+const\s+\w+\s*=\s*[\"']/, // export const X = "valor"
   /console\.(log|error|warn|info)\(/, // console.log, etc.
-  /throw\s+new\s+Error\(/,    // throw new Error("mensaje")
-  /Error\(/,                   // new Error("mensaje")
-  /\.emit\(/,                  // event.emit("evento")
-  /\.on\(/,                    // event.on("evento")
-  /\.once\(/,                  // event.once("evento")
-  /\.subscribe\(/,             // observable.subscribe
-  /logger\./,                  // logger.info, etc.
-  /LOG\./,                     // LOG.info, etc.
-  /^\s*\/\//,                  // Comentarios
-  /^\s*\*/,                    // Comentarios multilínea
-  /[\"'][^\"']*\$\{/,            // Template strings con interpolación
+  /throw\s+new\s+Error\(/, // throw new Error("mensaje")
+  /Error\(/, // new Error("mensaje")
+  /\.emit\(/, // event.emit("evento")
+  /\.on\(/, // event.on("evento")
+  /\.once\(/, // event.once("evento")
+  /\.subscribe\(/, // observable.subscribe
+  /logger\./, // logger.info, etc.
+  /LOG\./, // LOG.info, etc.
+  /^\s*\/\//, // Comentarios
+  /^\s*\*/, // Comentarios multilínea
+  /[\"'][^\"']*\$\{/, // Template strings con interpolación
 ];
 
 // Patrones de contextos TypeScript (no son código ejecutable)
@@ -118,100 +120,102 @@ const SUBSTRING_SEARCH_PATTERNS = [
 // Nota: No incluimos letras individuales ya que se filtran por longitud < 2
 const SYSTEM_DEFAULT_VALUES = new Set([
   // Tipos primitivos
-  'number',
-  'string',
-  'boolean',
-  'object',
-  'undefined',
-  'null',
-  'function',
-  'symbol',
-  'bigint',
+  "number",
+  "string",
+  "boolean",
+  "object",
+  "undefined",
+  "null",
+  "function",
+  "symbol",
+  "bigint",
   // Valores comunes de JavaScript/TypeScript
-  'true',
-  'false',
-  'void',
-  'any',
-  'unknown',
-  'never',
+  "true",
+  "false",
+  "void",
+  "any",
+  "unknown",
+  "never",
   // Métodos comunes
-  'toString',
-  'valueOf',
-  'hasOwnProperty',
-  'constructor',
-  'prototype',
+  "toString",
+  "valueOf",
+  "hasOwnProperty",
+  "constructor",
+  "prototype",
   // HTTP y web
-  'get',
-  'post',
-  'put',
-  'delete',
-  'patch',
-  'options',
-  'head',
-  'http',
-  'https',
-  'localhost',
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+  "head",
+  "http",
+  "https",
+  "localhost",
   // Valores de configuración comunes
-  'id',
-  'name',
-  'type',
-  'value',
-  'key',
-  'data',
-  'error',
-  'success',
-  'status',
-  'message',
-  'code',
+  "id",
+  "name",
+  "type",
+  "value",
+  "key",
+  "data",
+  "error",
+  "success",
+  "status",
+  "message",
+  "code",
 ]);
 
 // Patrones para encontrar strings literales que podrían ser enums
 const STRING_LITERAL_PATTERNS = [
   // Comparaciones con === o !==
   {
-    name: 'Comparaciones',
+    name: "Comparaciones",
     regex: /(===|!==|==|!=)\s*[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
     captureGroup: 2,
   },
   // Asignaciones con strings literales (excluye tipos)
   {
-    name: 'Asignaciones',
+    name: "Asignaciones",
     regex: /:\s*[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']\s*[,;\)\}]/g,
     captureGroup: 1,
   },
   // Case statements
   {
-    name: 'Case statements',
+    name: "Case statements",
     regex: /case\s+[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']\s*:/gi,
     captureGroup: 1,
   },
   // Return statements
   {
-    name: 'Return statements',
+    name: "Return statements",
     regex: /return\s+[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
     captureGroup: 1,
   },
   // Set/Map operations
   {
-    name: 'Operaciones Set/Map',
+    name: "Operaciones Set/Map",
     regex: /\.(set|add|has|get|delete)\([\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
     captureGroup: 2,
   },
   // Array methods (excluye includes que es substring)
   {
-    name: 'Métodos de array',
-    regex: /\.(push|find|filter|some|every)\([\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
+    name: "Métodos de array",
+    regex:
+      /\.(push|find|filter|some|every)\([\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
     captureGroup: 2,
   },
   // Switch statements (protegido contra ReDoS con límites)
   {
-    name: 'Switch statements',
-    regex: /switch\s*\([^)]{0,200}\)\s*\{[^}]{0,500}case\s+[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
+    name: "Switch statements",
+    regex:
+      /switch\s*\([^)]{0,200}\)\s*\{[^}]{0,500}case\s+[\"']([a-zA-Z_][a-zA-Z0-9_]*?)[\"']/gi,
     captureGroup: 1,
   },
   // Template literals
   {
-    name: 'Template literals',
+    name: "Template literals",
     regex: /`\$\{(\w+)\.([A-Z_][A-Z0-9_]*)\}`/g,
     captureGroup: 2,
   },
@@ -225,7 +229,7 @@ interface StringOccurrence {
   stringLiteral: string;
   lineContent: string;
   context: string;
-  source: 'backend' | 'frontend';
+  source: "backend" | "frontend";
   isFalsePositive: boolean;
   falsePositiveReason?: string;
 }
@@ -270,7 +274,7 @@ function getAllFiles(dir: string, fileList: string[] = []): string[] {
     if (stat.isDirectory()) {
       getAllFiles(filePath, fileList);
     } else if (
-      file.endsWith('.ts') &&
+      file.endsWith(".ts") &&
       !EXCLUDED_PATTERNS.some((pattern) => pattern.test(filePath))
     ) {
       fileList.push(filePath);
@@ -284,7 +288,7 @@ function getAllFiles(dir: string, fileList: string[] = []): string[] {
  * Extrae todos los valores y miembros de los enums de un archivo
  */
 function extractEnumValues(filePath: string): EnumValues[] {
-  const content = fs.readFileSync(filePath, 'utf8');
+  const content = fs.readFileSync(filePath, "utf8");
   const enums: EnumValues[] = [];
 
   // Buscar enums exportados (protegido contra ReDoS con límites)
@@ -335,9 +339,15 @@ function extractEnumValues(filePath: string): EnumValues[] {
 function findStringLiterals(
   filePath: string,
   content: string,
-): Omit<StringOccurrence, 'source' | 'isFalsePositive' | 'falsePositiveReason'>[] {
-  const occurrences: Omit<StringOccurrence, 'source' | 'isFalsePositive' | 'falsePositiveReason'>[] = [];
-  const lines = content.split('\n');
+): Omit<
+  StringOccurrence,
+  "source" | "isFalsePositive" | "falsePositiveReason"
+>[] {
+  const occurrences: Omit<
+    StringOccurrence,
+    "source" | "isFalsePositive" | "falsePositiveReason"
+  >[] = [];
+  const lines = content.split("\n");
 
   STRING_LITERAL_PATTERNS.forEach((pattern) => {
     let match;
@@ -361,10 +371,9 @@ function findStringLiterals(
         continue;
       }
 
-      const lineNumber =
-        content.substring(0, match.index).split('\n').length;
-      const line = lines[lineNumber - 1] || '';
-      const column = match.index - content.lastIndexOf('\n', match.index) - 1;
+      const lineNumber = content.substring(0, match.index).split("\n").length;
+      const line = lines[lineNumber - 1] || "";
+      const column = match.index - content.lastIndexOf("\n", match.index) - 1;
 
       // Obtener contexto (líneas anteriores y posteriores)
       const contextStart = Math.max(0, lineNumber - 2);
@@ -373,10 +382,10 @@ function findStringLiterals(
         .slice(contextStart, contextEnd)
         .map((l, i) => {
           const num = contextStart + i + 1;
-          const marker = num === lineNumber ? '>>>' : '   ';
-          return `${marker} ${num.toString().padStart(4, ' ')}: ${l}`;
+          const marker = num === lineNumber ? ">>>" : "   ";
+          return `${marker} ${num.toString().padStart(4, " ")}: ${l}`;
         })
-        .join('\n');
+        .join("\n");
 
       occurrences.push({
         file: filePath,
@@ -400,7 +409,7 @@ function findAllEnums(backendSrc: string): Map<string, EnumValues> {
   const enumMap = new Map<string, EnumValues>();
 
   // Buscar enums en el backend
-  const backendConstantsDir = path.join(backendSrc, 'shared/constants');
+  const backendConstantsDir = path.join(backendSrc, "shared/constants");
   if (fs.existsSync(backendConstantsDir)) {
     const enumFiles = getAllFiles(backendConstantsDir);
     enumFiles.forEach((file) => {
@@ -415,7 +424,12 @@ function findAllEnums(backendSrc: string): Map<string, EnumValues> {
   if (enumMap.size === 0) {
     const enumFiles = getAllFiles(backendSrc);
     enumFiles.forEach((file) => {
-      if (file.includes('Enum') || file.includes('enum') || file.includes('constant') || file.includes('Constant')) {
+      if (
+        file.includes("Enum") ||
+        file.includes("enum") ||
+        file.includes("constant") ||
+        file.includes("Constant")
+      ) {
         const enums = extractEnumValues(file);
         enums.forEach((enumData) => {
           enumMap.set(enumData.enumName, enumData);
@@ -430,7 +444,7 @@ function findAllEnums(backendSrc: string): Map<string, EnumValues> {
 // Cache de regex compiladas para mejor rendimiento
 const regexCache = new Map<string, RegExp>();
 
-function getCachedRegex(pattern: string, flags: string = 'g'): RegExp {
+function getCachedRegex(pattern: string, flags: string = "g"): RegExp {
   const key = `${pattern}::${flags}`;
   if (!regexCache.has(key)) {
     regexCache.set(key, new RegExp(pattern, flags));
@@ -445,14 +459,14 @@ function getCachedRegex(pattern: string, flags: string = 'g'): RegExp {
 function countEnumUsages(
   filePath: string,
   content: string,
-  enumMap: Map<string, EnumValues>
+  enumMap: Map<string, EnumValues>,
 ) {
   enumMap.forEach((enumData, enumName) => {
     // NO ignorar el archivo donde se define el enum - puede tener auto-referencias
     // if (filePath === enumData.file) return;
 
     // 1. Buscar uso del Enum como tipo o valor (e.g. "let x: EnumName" o "EnumName.Member")
-    const enumUsageRegex = getCachedRegex(`\\b${enumName}\\b`, 'g');
+    const enumUsageRegex = getCachedRegex(`\\b${enumName}\\b`, "g");
     const matches = content.match(enumUsageRegex);
     if (matches) {
       enumData.usageCount += matches.length;
@@ -464,7 +478,10 @@ function countEnumUsages(
       const usagePositions = new Set<number>();
 
       // 2a. Uso explícito: EnumName.MEMBER
-      const memberUsageRegex = getCachedRegex(`\\b${enumName}\\.${memberName}\\b`, 'g');
+      const memberUsageRegex = getCachedRegex(
+        `\\b${enumName}\\.${memberName}\\b`,
+        "g",
+      );
       let memberMatch;
       while ((memberMatch = memberUsageRegex.exec(content)) !== null) {
         usagePositions.add(memberMatch.index);
@@ -474,8 +491,8 @@ function countEnumUsages(
       // Solo contar si el valor es lo suficientemente específico (>=3 chars, no es palabra común)
       if (memberValue.length >= 3 && !SYSTEM_DEFAULT_VALUES.has(memberValue)) {
         // Escapar caracteres especiales en el valor para regex
-        const escapedValue = memberValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const valueRegex = getCachedRegex(`[\"'\`]${escapedValue}[\"'\`]`, 'g');
+        const escapedValue = memberValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const valueRegex = getCachedRegex(`[\"'\`]${escapedValue}[\"'\`]`, "g");
         let valueMatch;
         while ((valueMatch = valueRegex.exec(content)) !== null) {
           // Solo agregar si no está en la misma posición que un uso explícito
@@ -488,7 +505,8 @@ function countEnumUsages(
       if (usagePositions.size > 0) {
         enumData.memberUsageCounts.set(
           memberName,
-          (enumData.memberUsageCounts.get(memberName) || 0) + usagePositions.size
+          (enumData.memberUsageCounts.get(memberName) || 0) +
+            usagePositions.size,
         );
       }
     });
@@ -502,11 +520,11 @@ async function processFile(
   filePath: string,
   valueToEnums: Map<string, string[]>,
   enumMap: Map<string, EnumValues>,
-  isCatalogFile: boolean
+  isCatalogFile: boolean,
 ): Promise<StringOccurrence[]> {
   return new Promise((resolve) => {
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, "utf8");
       const occurrences: StringOccurrence[] = [];
 
       // 1. Buscar strings literales que deberían ser enums
@@ -517,12 +535,16 @@ async function processFile(
         if (valueToEnums.has(occ.stringLiteral)) {
           // Verificar si es falso positivo
           const lineContent = occ.lineContent;
-          const isIdDefinition = ID_DEFINITION_PATTERNS.some(pattern => pattern.test(lineContent));
+          const isIdDefinition = ID_DEFINITION_PATTERNS.some((pattern) =>
+            pattern.test(lineContent),
+          );
 
           // Si es archivo de catálogo Y es definición de ID, es falso positivo
           if (isCatalogFile && isIdDefinition) {
             if (VERBOSE) {
-              console.log(`   ⚪ Ignorando (catálogo): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`);
+              console.log(
+                `   ⚪ Ignorando (catálogo): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`,
+              );
             }
             return;
           }
@@ -530,32 +552,42 @@ async function processFile(
           // Si es definición de ID en cualquier archivo, probablemente es falso positivo
           if (isIdDefinition) {
             if (VERBOSE) {
-              console.log(`   ⚪ Ignorando (def ID): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`);
+              console.log(
+                `   ⚪ Ignorando (def ID): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`,
+              );
             }
             return;
           }
 
           // Verificar si está en un contexto de tipo TypeScript
-          const isTypeContext = TYPESCRIPT_CONTEXT_PATTERNS.some(pattern => pattern.test(lineContent));
+          const isTypeContext = TYPESCRIPT_CONTEXT_PATTERNS.some((pattern) =>
+            pattern.test(lineContent),
+          );
           if (isTypeContext) {
             if (VERBOSE) {
-              console.log(`   ⚪ Ignorando (tipo TS): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`);
+              console.log(
+                `   ⚪ Ignorando (tipo TS): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`,
+              );
             }
             return;
           }
 
           // Verificar si es una búsqueda de substring
-          const isSubstringSearch = SUBSTRING_SEARCH_PATTERNS.some(pattern => pattern.test(lineContent));
+          const isSubstringSearch = SUBSTRING_SEARCH_PATTERNS.some((pattern) =>
+            pattern.test(lineContent),
+          );
           if (isSubstringSearch) {
             if (VERBOSE) {
-              console.log(`   ⚪ Ignorando (substring): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`);
+              console.log(
+                `   ⚪ Ignorando (substring): "${occ.stringLiteral}" en ${path.basename(filePath)}:${occ.line}`,
+              );
             }
             return;
           }
 
           occurrences.push({
             ...occ,
-            source: 'backend',
+            source: "backend",
             isFalsePositive: false,
           });
         }
@@ -576,10 +608,10 @@ async function processFile(
  * Función principal
  */
 async function main() {
-  console.log('🔍 Validando strings y uso de Enums (SOLO BACKEND)...\n');
+  console.log("🔍 Validando strings y uso de Enums (SOLO BACKEND)...\n");
 
   // Encontrar todos los enums - SOLO DEL BACKEND
-  console.log('📚 Extrayendo enums existentes...');
+  console.log("📚 Extrayendo enums existentes...");
   const enumMap = findAllEnums(BACKEND_SRC);
   console.log(`   Encontrados ${enumMap.size} enums\n`);
 
@@ -599,7 +631,7 @@ async function main() {
   console.log(`   Total de valores únicos en enums: ${valueToEnums.size}\n`);
 
   // Analizar archivos - SOLO BACKEND
-  console.log('🔎 Analizando código fuente (SOLO BACKEND)...\n');
+  console.log("🔎 Analizando código fuente (SOLO BACKEND)...\n");
 
   const backendFiles = getAllFiles(BACKEND_SRC);
   // NO incluir frontend: const frontendFiles = getAllFiles(FRONTEND_SRC);
@@ -614,17 +646,21 @@ async function main() {
   for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
     const batch = allFiles.slice(i, i + BATCH_SIZE);
     const batchPromises = batch.map((filePath) => {
-      const isCatalogFile = CATALOG_DEFINITION_PATTERNS.some(pattern => pattern.test(filePath));
+      const isCatalogFile = CATALOG_DEFINITION_PATTERNS.some((pattern) =>
+        pattern.test(filePath),
+      );
       return processFile(filePath, valueToEnums, enumMap, isCatalogFile);
     });
 
     const batchResults = await Promise.all(batchPromises);
-    batchResults.forEach(occurrences => {
+    batchResults.forEach((occurrences) => {
       missingEnumOccurrences.push(...occurrences);
     });
 
     if (VERBOSE) {
-      console.log(`   Procesados ${Math.min(i + BATCH_SIZE, allFiles.length)}/${allFiles.length} archivos...`);
+      console.log(
+        `   Procesados ${Math.min(i + BATCH_SIZE, allFiles.length)}/${allFiles.length} archivos...`,
+      );
     }
   }
 
@@ -641,41 +677,54 @@ async function main() {
 
   // Ordenar por frecuencia
   const sortedMissing = Array.from(missingByString.entries()).sort(
-    (a, b) => b[1].length - a[1].length
+    (a, b) => b[1].length - a[1].length,
   );
 
-  console.log('📊 REPORTE DE USO DE STRINGS LITERALES (POSIBLES ENUMS)\n');
-  console.log('='.repeat(80));
-  console.log(`Total de ocurrencias detectadas: ${missingEnumOccurrences.length}`);
-  console.log('='.repeat(80));
+  console.log("📊 REPORTE DE USO DE STRINGS LITERALES (POSIBLES ENUMS)\n");
+  console.log("=".repeat(80));
+  console.log(
+    `Total de ocurrencias detectadas: ${missingEnumOccurrences.length}`,
+  );
+  console.log("=".repeat(80));
   console.log();
 
   if (sortedMissing.length === 0) {
-    console.log('✅ ¡Excelente! No se detectaron strings literales que deban ser enums.\n');
+    console.log(
+      "✅ ¡Excelente! No se detectaron strings literales que deban ser enums.\n",
+    );
   } else {
-    sortedMissing.slice(0, 50).forEach(([stringLiteral, occurrences], index) => {
-      const possibleEnums = valueToEnums.get(stringLiteral) || [];
-      console.log(`${(index + 1).toString().padStart(3, ' ')}. "${stringLiteral}" (${occurrences.length} ocurrencias)`);
-      console.log(`      Posibles Enums: ${possibleEnums.join(', ')}`);
+    sortedMissing
+      .slice(0, 50)
+      .forEach(([stringLiteral, occurrences], index) => {
+        const possibleEnums = valueToEnums.get(stringLiteral) || [];
+        console.log(
+          `${(index + 1).toString().padStart(3, " ")}. "${stringLiteral}" (${occurrences.length} ocurrencias)`,
+        );
+        console.log(`      Posibles Enums: ${possibleEnums.join(", ")}`);
 
-      const examples = occurrences.slice(0, 3);
-      examples.forEach((occ) => {
-        const relativePath = path.relative(path.join(__dirname, '..'), occ.file);
-        console.log(`      ${relativePath}:${occ.line} (${occ.pattern})`);
+        const examples = occurrences.slice(0, 3);
+        examples.forEach((occ) => {
+          const relativePath = path.relative(
+            path.join(__dirname, ".."),
+            occ.file,
+          );
+          console.log(`      ${relativePath}:${occ.line} (${occ.pattern})`);
+        });
+        if (occurrences.length > 3) {
+          console.log(`      ... y ${occurrences.length - 3} más`);
+        }
+        console.log();
       });
-      if (occurrences.length > 3) {
-        console.log(`      ... y ${occurrences.length - 3} más`);
-      }
-      console.log();
-    });
   }
 
   // --- REPORTE 2: Enums sin uso ---
 
-  console.log('📉 REPORTE DE ENUMS SIN USO (INFORMATIVO)\n');
-  console.log('='.repeat(80));
-  console.log('ℹ️  Estos enums están definidos pero no se usan en el backend.');
-  console.log('   Pueden estar en uso en el frontend o reservados para futuro uso.\n');
+  console.log("📉 REPORTE DE ENUMS SIN USO (INFORMATIVO)\n");
+  console.log("=".repeat(80));
+  console.log("ℹ️  Estos enums están definidos pero no se usan en el backend.");
+  console.log(
+    "   Pueden estar en uso en el frontend o reservados para futuro uso.\n",
+  );
 
   const unusedEnums: EnumValues[] = [];
 
@@ -686,34 +735,34 @@ async function main() {
   });
 
   if (unusedEnums.length === 0) {
-    console.log('✅ Todos los Enums definidos están en uso.\n');
+    console.log("✅ Todos los Enums definidos están en uso.\n");
   } else {
     console.log(`📊 ${unusedEnums.length} Enums no usados en backend:\n`);
     unusedEnums.forEach((e) => {
-      const relativePath = path.relative(path.join(__dirname, '..'), e.file);
+      const relativePath = path.relative(path.join(__dirname, ".."), e.file);
       console.log(`   - ${e.enumName} (en ${relativePath})`);
     });
     console.log();
   }
 
   // Guardar reporte completo en JSON
-  const reportPath = path.join(__dirname, '../enum-validation-report.json');
+  const reportPath = path.join(__dirname, "../enum-validation-report.json");
   const report = {
     summary: {
       totalEnums: enumMap.size,
       unusedEnums: unusedEnums.length,
       missingEnumOccurrences: missingEnumOccurrences.length,
     },
-    unusedEnums: unusedEnums.map(e => ({
+    unusedEnums: unusedEnums.map((e) => ({
       name: e.enumName,
-      file: path.relative(path.join(__dirname, '..'), e.file)
+      file: path.relative(path.join(__dirname, ".."), e.file),
     })),
     missingEnumUsages: sortedMissing.map(([stringLiteral, occurrences]) => ({
       stringLiteral,
       possibleEnums: valueToEnums.get(stringLiteral),
       count: occurrences.length,
       occurrences: occurrences.map((occ) => ({
-        file: path.relative(path.join(__dirname, '..'), occ.file),
+        file: path.relative(path.join(__dirname, ".."), occ.file),
         line: occ.line,
         lineContent: occ.lineContent,
       })),
@@ -723,27 +772,33 @@ async function main() {
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
   // --- RESUMEN FINAL ---
-  console.log('\n' + '═'.repeat(80));
-  console.log('📋 RESUMEN FINAL');
-  console.log('═'.repeat(80));
+  console.log("\n" + "═".repeat(80));
+  console.log("📋 RESUMEN FINAL");
+  console.log("═".repeat(80));
 
   if (missingEnumOccurrences.length === 0 && unusedEnums.length === 0) {
-    console.log('✅ ESTADO: LIMPIO - Enums correctamente definidos y usados');
+    console.log("✅ ESTADO: LIMPIO - Enums correctamente definidos y usados");
   } else if (missingEnumOccurrences.length === 0) {
-    console.log('✅ ESTADO: LIMPIO - No hay strings que deban convertirse a enums');
+    console.log(
+      "✅ ESTADO: LIMPIO - No hay strings que deban convertirse a enums",
+    );
   } else if (missingEnumOccurrences.length <= 5) {
-    console.log(`⚠️  ESTADO: CASI LIMPIO - ${missingEnumOccurrences.length} string(s) pendiente(s) de revisar`);
+    console.log(
+      `⚠️  ESTADO: CASI LIMPIO - ${missingEnumOccurrences.length} string(s) pendiente(s) de revisar`,
+    );
   } else {
-    console.log(`❌ ESTADO: PENDIENTE - ${missingEnumOccurrences.length} strings deben convertirse a enums`);
+    console.log(
+      `❌ ESTADO: PENDIENTE - ${missingEnumOccurrences.length} strings deben convertirse a enums`,
+    );
   }
 
   console.log(`\n   📊 Strings a corregir: ${missingEnumOccurrences.length}`);
   console.log(`   📚 Enums sin uso: ${unusedEnums.length}`);
-  console.log('\n✅ Reporte completo guardado en: ' + reportPath);
+  console.log("\n✅ Reporte completo guardado en: " + reportPath);
 }
 
 // Ejecutar main y manejar errores
 main().catch((error) => {
-  console.error('❌ Error fatal:', error);
+  console.error("❌ Error fatal:", error);
   process.exit(1);
 });
