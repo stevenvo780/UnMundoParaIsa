@@ -3,7 +3,7 @@
  */
 
 export {
-  type TimeOfDay,
+  TimeOfDay,
   type DayNightState,
   type DayNightConfig,
   type TimeModifiers,

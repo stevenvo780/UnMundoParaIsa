@@ -3,13 +3,20 @@
  * Mantienen el equilibrio y evitan estados degenerados
  */
 
-export type ThermostatType =
-  | "population"
-  | "resources"
-  | "energy"
-  | "tension"
-  | "diversity"
-  | "activity";
+export enum ThermostatType {
+  POPULATION = "population",
+  RESOURCES = "resources",
+  ENERGY = "energy",
+  TENSION = "tension",
+  DIVERSITY = "diversity",
+  ACTIVITY = "activity",
+}
+
+export enum ThermostatTrend {
+  RISING = "rising",
+  STABLE = "stable",
+  FALLING = "falling",
+}
 
 export interface ThermostatReading {
   current: number;
@@ -39,7 +46,7 @@ export interface ThermostatConfig {
 }
 
 const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
-  population: {
+  [ThermostatType.POPULATION]: {
     target: 500,
     min: 50,
     max: 2000,
@@ -47,7 +54,7 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     kI: 0.01,
     kD: 0.05,
   },
-  resources: {
+  [ThermostatType.RESOURCES]: {
     target: 0.6,
     min: 0.2,
     max: 1.0,
@@ -55,7 +62,7 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     kI: 0.02,
     kD: 0.1,
   },
-  energy: {
+  [ThermostatType.ENERGY]: {
     target: 50,
     min: 20,
     max: 100,
@@ -63,7 +70,7 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     kI: 0.015,
     kD: 0.08,
   },
-  tension: {
+  [ThermostatType.TENSION]: {
     target: 0.3,
     min: 0.0,
     max: 0.8,
@@ -71,7 +78,7 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     kI: 0.03,
     kD: 0.15,
   },
-  diversity: {
+  [ThermostatType.DIVERSITY]: {
     target: 0.7,
     min: 0.3,
     max: 1.0,
@@ -79,7 +86,7 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     kI: 0.005,
     kD: 0.05,
   },
-  activity: {
+  [ThermostatType.ACTIVITY]: {
     target: 0.5,
     min: 0.1,
     max: 1.0,
@@ -221,15 +228,15 @@ export class Thermostat {
   /**
    * Obtener tendencia
    */
-  getTrend(): "rising" | "stable" | "falling" {
-    if (this.history.length < 5) return "stable";
+  getTrend(): ThermostatTrend {
+    if (this.history.length < 5) return ThermostatTrend.STABLE;
 
     const recent = this.history.slice(-5);
     const avgChange = (recent[4] - recent[0]) / 4;
 
-    if (avgChange > 0.01) return "rising";
-    if (avgChange < -0.01) return "falling";
-    return "stable";
+    if (avgChange > 0.01) return ThermostatTrend.RISING;
+    if (avgChange < -0.01) return ThermostatTrend.FALLING;
+    return ThermostatTrend.STABLE;
   }
 
   /**
@@ -273,12 +280,12 @@ export class ThermostatBank {
     configs?: Partial<Record<ThermostatType, Partial<ThermostatConfig>>>,
   ) {
     const types: ThermostatType[] = [
-      "population",
-      "resources",
-      "energy",
-      "tension",
-      "diversity",
-      "activity",
+      ThermostatType.POPULATION,
+      ThermostatType.RESOURCES,
+      ThermostatType.ENERGY,
+      ThermostatType.TENSION,
+      ThermostatType.DIVERSITY,
+      ThermostatType.ACTIVITY,
     ];
 
     for (const type of types) {
@@ -381,22 +388,22 @@ export class ThermostatBank {
 
         if (output > 0) {
           switch (type) {
-            case "population":
+            case ThermostatType.POPULATION:
               action = "Aumentar fertilidad o reducir mortalidad";
               break;
-            case "resources":
+            case ThermostatType.RESOURCES:
               action = "Incrementar regeneración de recursos";
               break;
-            case "energy":
+            case ThermostatType.ENERGY:
               action = "Mejorar acceso a alimento";
               break;
-            case "diversity":
+            case ThermostatType.DIVERSITY:
               action = "Fomentar migración y cruce genético";
               break;
-            case "activity":
+            case ThermostatType.ACTIVITY:
               action = "Incrementar estímulos ambientales";
               break;
-            case "tension":
+            case ThermostatType.TENSION:
               action = "Permitir algo de conflicto saludable";
               break;
             default:
@@ -404,22 +411,22 @@ export class ThermostatBank {
           }
         } else {
           switch (type) {
-            case "population":
+            case ThermostatType.POPULATION:
               action = "Limitar reproducción o recursos";
               break;
-            case "resources":
+            case ThermostatType.RESOURCES:
               action = "Incrementar consumo o decay";
               break;
-            case "energy":
+            case ThermostatType.ENERGY:
               action = "Aumentar costo de actividades";
               break;
-            case "tension":
+            case ThermostatType.TENSION:
               action = "Reducir competencia, fomentar cooperación";
               break;
-            case "diversity":
+            case ThermostatType.DIVERSITY:
               action = "Dejar que evolución natural reduzca variantes";
               break;
-            case "activity":
+            case ThermostatType.ACTIVITY:
               action = "Reducir estímulos, permitir descanso";
               break;
             default:
@@ -455,11 +462,11 @@ export class ThermostatBank {
    */
   getStats(): Record<
     ThermostatType,
-    { output: number; trend: string; healthy: boolean }
+    { output: number; trend: ThermostatTrend; healthy: boolean }
   > {
     const stats: Record<
       string,
-      { output: number; trend: string; healthy: boolean }
+      { output: number; trend: ThermostatTrend; healthy: boolean }
     > = {};
 
     for (const [type, thermostat] of this.thermostats) {
@@ -472,7 +479,7 @@ export class ThermostatBank {
 
     return stats as Record<
       ThermostatType,
-      { output: number; trend: string; healthy: boolean }
+      { output: number; trend: ThermostatTrend; healthy: boolean }
     >;
   }
 }
@@ -510,10 +517,10 @@ export class WorldBalancer {
    * Calcular parámetros ajustados
    */
   getAdjustedParameters(): WorldParameters {
-    const pop = this.bank.get("population")?.getOutput() ?? 0;
-    const res = this.bank.get("resources")?.getOutput() ?? 0;
-    const ten = this.bank.get("tension")?.getOutput() ?? 0;
-    const div = this.bank.get("diversity")?.getOutput() ?? 0;
+    const pop = this.bank.get(ThermostatType.POPULATION)?.getOutput() ?? 0;
+    const res = this.bank.get(ThermostatType.RESOURCES)?.getOutput() ?? 0;
+    const ten = this.bank.get(ThermostatType.TENSION)?.getOutput() ?? 0;
+    const div = this.bank.get(ThermostatType.DIVERSITY)?.getOutput() ?? 0;
 
     return {
       fertilityMultiplier: this.baseParams.fertilityMultiplier + pop * 0.2,

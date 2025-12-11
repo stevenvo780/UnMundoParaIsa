@@ -3,7 +3,7 @@
  */
 
 export {
-  type BehaviorType,
+  BehaviorType,
   type BehaviorConfig,
   type BiodiversityStats,
   BEHAVIOR_CONFIGS,

@@ -5,15 +5,16 @@
 
 import { BehaviorType, getBehaviorType } from "../biodiversity/BehaviorTypes";
 
-export type TimeOfDay =
-  | "dawn"
-  | "morning"
-  | "noon"
-  | "afternoon"
-  | "dusk"
-  | "evening"
-  | "night"
-  | "midnight";
+export enum TimeOfDay {
+  DAWN = "dawn",
+  MORNING = "morning",
+  NOON = "noon",
+  AFTERNOON = "afternoon",
+  DUSK = "dusk",
+  EVENING = "evening",
+  NIGHT = "night",
+  MIDNIGHT = "midnight",
+}
 
 export interface DayNightState {
   tick: number;
@@ -59,7 +60,7 @@ export interface TimeModifiers {
 }
 
 const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
-  dawn: {
+  [TimeOfDay.DAWN]: {
     foodWeight: 1.2,
     waterWeight: 1.0,
     trailWeight: 0.5,
@@ -68,7 +69,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 0.9,
     activityLevel: 0.7,
   },
-  morning: {
+  [TimeOfDay.MORNING]: {
     foodWeight: 1.3,
     waterWeight: 1.1,
     trailWeight: 0.4,
@@ -77,7 +78,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 1.0,
     activityLevel: 0.9,
   },
-  noon: {
+  [TimeOfDay.NOON]: {
     foodWeight: 1.0,
     waterWeight: 1.5,
     trailWeight: 0.3,
@@ -86,7 +87,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 1.1,
     activityLevel: 0.8,
   },
-  afternoon: {
+  [TimeOfDay.AFTERNOON]: {
     foodWeight: 1.1,
     waterWeight: 1.2,
     trailWeight: 0.4,
@@ -95,7 +96,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 1.0,
     activityLevel: 0.85,
   },
-  dusk: {
+  [TimeOfDay.DUSK]: {
     foodWeight: 1.4,
     waterWeight: 0.8,
     trailWeight: 0.6,
@@ -104,7 +105,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 0.95,
     activityLevel: 0.75,
   },
-  evening: {
+  [TimeOfDay.EVENING]: {
     foodWeight: 1.0,
     waterWeight: 0.7,
     trailWeight: 0.8,
@@ -113,7 +114,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 0.9,
     activityLevel: 0.6,
   },
-  night: {
+  [TimeOfDay.NIGHT]: {
     foodWeight: 0.5,
     waterWeight: 0.5,
     trailWeight: 1.2,
@@ -122,7 +123,7 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
     metabolismMod: 0.7,
     activityLevel: 0.3,
   },
-  midnight: {
+  [TimeOfDay.MIDNIGHT]: {
     foodWeight: 0.3,
     waterWeight: 0.3,
     trailWeight: 1.5,
@@ -136,28 +137,28 @@ const TIME_MODIFIERS: Record<TimeOfDay, TimeModifiers> = {
 const BEHAVIOR_TIME_BONUSES: Partial<
   Record<BehaviorType, Partial<Record<TimeOfDay, number>>>
 > = {
-  hunter: {
-    dawn: 1.3,
-    dusk: 1.2,
-    night: 0.8,
+  [BehaviorType.HUNTER]: {
+    [TimeOfDay.DAWN]: 1.3,
+    [TimeOfDay.DUSK]: 1.2,
+    [TimeOfDay.NIGHT]: 0.8,
   },
-  nomad: {
-    morning: 1.2,
-    afternoon: 1.1,
-    night: 0.6,
+  [BehaviorType.NOMAD]: {
+    [TimeOfDay.MORNING]: 1.2,
+    [TimeOfDay.AFTERNOON]: 1.1,
+    [TimeOfDay.NIGHT]: 0.6,
   },
-  settler: {
-    noon: 1.1,
-    night: 1.2,
+  [BehaviorType.SETTLER]: {
+    [TimeOfDay.NOON]: 1.1,
+    [TimeOfDay.NIGHT]: 1.2,
   },
-  guardian: {
-    night: 1.5,
-    midnight: 1.4,
+  [BehaviorType.GUARDIAN]: {
+    [TimeOfDay.NIGHT]: 1.5,
+    [TimeOfDay.MIDNIGHT]: 1.4,
   },
-  explorer: {
-    morning: 1.3,
-    afternoon: 1.2,
-    night: 0.5,
+  [BehaviorType.EXPLORER]: {
+    [TimeOfDay.MORNING]: 1.3,
+    [TimeOfDay.AFTERNOON]: 1.2,
+    [TimeOfDay.NIGHT]: 0.5,
   },
 };
 
@@ -202,14 +203,14 @@ export class DayNightCycle {
   private getTimeOfDay(progress: number): TimeOfDay {
     const { dawnStart, dayStart, duskStart, nightStart } = this.config;
 
-    if (progress < dawnStart) return "midnight";
-    if (progress < dayStart) return "dawn";
-    if (progress < 0.45) return "morning";
-    if (progress < 0.55) return "noon";
-    if (progress < duskStart) return "afternoon";
-    if (progress < nightStart) return "dusk";
-    if (progress < 0.95) return "evening";
-    return "night";
+    if (progress < dawnStart) return TimeOfDay.MIDNIGHT;
+    if (progress < dayStart) return TimeOfDay.DAWN;
+    if (progress < 0.45) return TimeOfDay.MORNING;
+    if (progress < 0.55) return TimeOfDay.NOON;
+    if (progress < duskStart) return TimeOfDay.AFTERNOON;
+    if (progress < nightStart) return TimeOfDay.DUSK;
+    if (progress < 0.95) return TimeOfDay.EVENING;
+    return TimeOfDay.NIGHT;
   }
 
   /**

@@ -11,6 +11,12 @@
 import { AnimalType } from "./AnimalEnums";
 import { BiomeType } from "../core/BiomeResolver";
 
+export enum SpecialPreyType {
+  HUMAN = "human",
+}
+
+export type PreyType = AnimalType | SpecialPreyType;
+
 export interface AnimalConfig {
   type: AnimalType;
   displayName: string;
@@ -40,7 +46,7 @@ export interface AnimalConfig {
   waterConsumptionRate: number;
 
   isPredator?: boolean;
-  preyTypes?: (AnimalType | "human")[];
+  preyTypes?: PreyType[];
   huntingRange?: number;
   attackDamage?: number;
 
@@ -236,7 +242,7 @@ export const ANIMAL_CONFIGS: Record<string, AnimalConfig> = {
     vegetationConsumptionRate: 0,
     waterConsumptionRate: 3,
     isPredator: true,
-    preyTypes: [AnimalType.RABBIT, AnimalType.DEER, "human"],
+    preyTypes: [AnimalType.RABBIT, AnimalType.DEER, SpecialPreyType.HUMAN],
     huntingRange: 250,
     attackDamage: 20,
     spawnProbability: 0.15,

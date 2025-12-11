@@ -282,23 +282,24 @@ export class AssetLoader {
     if (!this.assets) throw new Error("Assets no cargados");
 
     // Mapeo de biomas a assets disponibles (similar a V3 biomeMapping.ts)
-    const biomeToAsset: Record<string, "forest" | "grassland"> = {
-      forest: "forest",
-      mystical: "forest", // Bosque místico usa assets de forest
-      swamp: "forest", // Pantano usa assets de forest (más oscuros)
-      wetland: "forest", // Humedal usa assets de forest
-      grassland: "grassland",
-      village: "grassland", // Pueblo usa assets de grassland
-      desert: "grassland", // Desierto usa grassland (más árido)
-      tundra: "grassland", // Tundra usa grassland
-      mountain: "grassland", // Montaña usa grassland
-      mountainous: "grassland", // Montañoso usa grassland
-      beach: "grassland", // Playa usa grassland
+    const biomeToAsset: Record<string, TerrainAssetType> = {
+      forest: TerrainAssetType.FOREST,
+      mystical: TerrainAssetType.FOREST, // Bosque místico usa assets de forest
+      swamp: TerrainAssetType.FOREST, // Pantano usa assets de forest (más oscuros)
+      wetland: TerrainAssetType.FOREST, // Humedal usa assets de forest
+      grassland: TerrainAssetType.GRASSLAND,
+      village: TerrainAssetType.GRASSLAND, // Pueblo usa assets de grassland
+      desert: TerrainAssetType.GRASSLAND, // Desierto usa grassland (más árido)
+      tundra: TerrainAssetType.GRASSLAND, // Tundra usa grassland
+      mountain: TerrainAssetType.GRASSLAND, // Montaña usa grassland
+      mountainous: TerrainAssetType.GRASSLAND, // Montañoso usa grassland
+      beach: TerrainAssetType.GRASSLAND, // Playa usa grassland
     };
 
-    const assetType = biomeToAsset[biome.toLowerCase()] ?? "grassland";
+    const assetType =
+      biomeToAsset[biome.toLowerCase()] ?? TerrainAssetType.GRASSLAND;
     const tiles =
-      assetType === "forest"
+      assetType === TerrainAssetType.FOREST
         ? this.assets.terrain.forest
         : this.assets.terrain.grassland;
 
@@ -324,4 +325,8 @@ export class AssetLoader {
       Math.abs(Math.floor(x * 3 + y * 5)) % this.assets.water.length;
     return this.assets.water[index];
   }
+}
+enum TerrainAssetType {
+  FOREST = "forest",
+  GRASSLAND = "grassland",
 }

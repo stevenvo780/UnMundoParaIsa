@@ -8,6 +8,23 @@
 const WORLD_WIDTH = 512;
 const WORLD_HEIGHT = 512;
 
+export enum CarrierTaskStatus {
+  PENDING = "pending",
+  PICKUP = "pickup",
+  DELIVERY = "delivery",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}
+
+export enum CarrierAction {
+  MOVE_TO_SOURCE = "move_to_source",
+  MOVE_TO_TARGET = "move_to_target",
+  PICKUP = "pickup",
+  DELIVER = "deliver",
+  DONE = "done",
+  FAILED = "failed",
+}
+
 export interface CarrierTask {
   id: string;
   carrierId: number;
@@ -18,7 +35,7 @@ export interface CarrierTask {
   resourceType: string;
   amount: number;
   progress: number;
-  status: "pending" | "pickup" | "delivery" | "completed" | "failed";
+  status: CarrierTaskStatus;
   createdAt: number;
   priority: number;
 }
@@ -117,7 +134,7 @@ export class CarrierSystem {
           resourceType: request.resourceType,
           amount: request.amount,
           progress: 0,
-          status: "pending",
+          status: CarrierTaskStatus.PENDING,
           createdAt: Date.now(),
           priority: request.priority,
         };
@@ -154,19 +171,13 @@ export class CarrierSystem {
     carrierX: number,
     carrierY: number,
   ): {
-    action:
-      | "move_to_source"
-      | "move_to_target"
-      | "pickup"
-      | "deliver"
-      | "done"
-      | "failed";
+    action: CarrierAction;
     targetX: number;
     targetY: number;
   } {
     const task = this.tasks.get(taskId);
     if (!task) {
-      return { action: "failed", targetX: 0, targetY: 0 };
+      return { action: CarrierAction.FAILED, targetX: 0, targetY: 0 };
     }
 
     const distToSource = Math.hypot(
@@ -179,34 +190,34 @@ export class CarrierSystem {
     );
 
     switch (task.status) {
-      case "pending":
-        task.status = "pickup";
+      case CarrierTaskStatus.PENDING:
+        task.status = CarrierTaskStatus.PICKUP;
         return {
-          action: "move_to_source",
+          action: CarrierAction.MOVE_TO_SOURCE,
           targetX: task.sourceX,
           targetY: task.sourceY,
         };
 
-      case "pickup":
+      case CarrierTaskStatus.PICKUP:
         if (distToSource < 2) {
-          task.status = "delivery";
+          task.status = CarrierTaskStatus.DELIVERY;
           return {
-            action: "pickup",
+            action: CarrierAction.PICKUP,
             targetX: task.targetX,
             targetY: task.targetY,
           };
         }
         return {
-          action: "move_to_source",
+          action: CarrierAction.MOVE_TO_SOURCE,
           targetX: task.sourceX,
           targetY: task.sourceY,
         };
 
-      case "delivery":
+      case CarrierTaskStatus.DELIVERY:
         if (distToTarget < 2) {
-          task.status = "completed";
+          task.status = CarrierTaskStatus.COMPLETED;
           return {
-            action: "deliver",
+            action: CarrierAction.DELIVER,
             targetX: task.targetX,
             targetY: task.targetY,
           };
@@ -219,17 +230,21 @@ export class CarrierSystem {
               task.targetY - task.sourceY,
             );
         return {
-          action: "move_to_target",
+          action: CarrierAction.MOVE_TO_TARGET,
           targetX: task.targetX,
           targetY: task.targetY,
         };
 
-      case "completed":
+      case CarrierTaskStatus.COMPLETED:
         this.completeTask(taskId);
-        return { action: "done", targetX: carrierX, targetY: carrierY };
+        return {
+          action: CarrierAction.DONE,
+          targetX: carrierX,
+          targetY: carrierY,
+        };
 
       default:
-        return { action: "failed", targetX: 0, targetY: 0 };
+        return { action: CarrierAction.FAILED, targetX: 0, targetY: 0 };
     }
   }
 
@@ -250,7 +265,7 @@ export class CarrierSystem {
   cancelTask(taskId: string): void {
     const task = this.tasks.get(taskId);
     if (task) {
-      task.status = "failed";
+      task.status = CarrierTaskStatus.FAILED;
       this.assignedCarriers.delete(task.carrierId);
       this.tasks.delete(taskId);
     }
@@ -264,7 +279,10 @@ export class CarrierSystem {
     const timeout = this.config.timeoutTicks * 50;
 
     for (const [taskId, task] of this.tasks) {
-      if (now - task.createdAt > timeout && task.status !== "completed") {
+      if (
+        now - task.createdAt > timeout &&
+        task.status !== CarrierTaskStatus.COMPLETED
+      ) {
         this.cancelTask(taskId);
       }
     }
@@ -296,14 +314,14 @@ export class CarrierSystem {
     activeCarriers: number;
     pendingRequests: number;
     completedTasks: number;
-    tasksByStatus: Record<string, number>;
+    tasksByStatus: Record<CarrierTaskStatus, number>;
   } {
-    const tasksByStatus: Record<string, number> = {
-      pending: 0,
-      pickup: 0,
-      delivery: 0,
-      completed: 0,
-      failed: 0,
+    const tasksByStatus: Record<CarrierTaskStatus, number> = {
+      [CarrierTaskStatus.PENDING]: 0,
+      [CarrierTaskStatus.PICKUP]: 0,
+      [CarrierTaskStatus.DELIVERY]: 0,
+      [CarrierTaskStatus.COMPLETED]: 0,
+      [CarrierTaskStatus.FAILED]: 0,
     };
 
     for (const task of this.tasks.values()) {
@@ -313,7 +331,7 @@ export class CarrierSystem {
     return {
       activeCarriers: this.assignedCarriers.size,
       pendingRequests: this.pendingRequests.length,
-      completedTasks: tasksByStatus.completed,
+      completedTasks: tasksByStatus[CarrierTaskStatus.COMPLETED],
       tasksByStatus,
     };
   }
@@ -323,7 +341,9 @@ export class CarrierSystem {
    */
   getActiveTasks(): CarrierTask[] {
     return Array.from(this.tasks.values()).filter(
-      (t) => t.status !== "completed" && t.status !== "failed",
+      (t) =>
+        t.status !== CarrierTaskStatus.COMPLETED &&
+        t.status !== CarrierTaskStatus.FAILED,
     );
   }
 

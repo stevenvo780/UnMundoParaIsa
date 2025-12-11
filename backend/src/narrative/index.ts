@@ -4,7 +4,7 @@
  */
 
 export {
-  type SemanticFieldType,
+  SemanticFieldType,
   type SemanticFieldConfig,
   SemanticField,
   SemanticFieldManager,
@@ -25,7 +25,7 @@ export {
 
 export {
   type Artifact,
-  type ArtifactType,
+  ArtifactType,
   type ArtifactSpawnCondition,
   type ArtifactStats,
   ArtifactManager,
@@ -48,6 +48,7 @@ export {
   type Character,
   type Hero,
   type CharacterEvent,
+  CharacterEventType,
   type MaterializationStats,
   generateName,
   generateTraits,

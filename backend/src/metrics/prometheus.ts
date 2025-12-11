@@ -886,11 +886,11 @@ export function recordTrade(): void {
 }
 
 export function recordWsMessage(
-  direction: "sent" | "received",
+  direction: WebSocketDirection,
   type: string,
   sizeBytes: number,
 ): void {
-  if (direction === "sent") {
+  if (direction === WebSocketDirection.SENT) {
     wsMessagesSent.labels(type).inc();
   } else {
     wsMessagesReceived.labels(type).inc();
@@ -933,4 +933,8 @@ export async function getMetrics(): Promise<string> {
  */
 export function resetMetrics(): void {
   metricsRegistry.resetMetrics();
+}
+export enum WebSocketDirection {
+  SENT = "sent",
+  RECEIVED = "received",
 }

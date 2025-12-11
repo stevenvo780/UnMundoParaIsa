@@ -5,13 +5,14 @@
 
 import { ChatFragment, Emotion } from "./ChatParser";
 
-export type ArtifactType =
-  | "letter"
-  | "photograph"
-  | "melody"
-  | "tear"
-  | "star"
-  | "memory";
+export enum ArtifactType {
+  LETTER = "letter",
+  PHOTOGRAPH = "photograph",
+  MELODY = "melody",
+  TEAR = "tear",
+  STAR = "star",
+  MEMORY = "memory",
+}
 
 export interface Artifact {
   id: number;
@@ -39,42 +40,42 @@ export interface ArtifactSpawnCondition {
 
 const SPAWN_CONDITIONS: ArtifactSpawnCondition[] = [
   {
-    type: "letter",
+    type: ArtifactType.LETTER,
     emotion: Emotion.LOVE,
     minFieldValue: 0.6,
     spawnChance: 0.1,
     cooldown: 200,
   },
   {
-    type: "photograph",
+    type: ArtifactType.PHOTOGRAPH,
     emotion: Emotion.JOY,
     minFieldValue: 0.5,
     spawnChance: 0.15,
     cooldown: 150,
   },
   {
-    type: "melody",
+    type: ArtifactType.MELODY,
     emotion: Emotion.JOY,
     minFieldValue: 0.7,
     spawnChance: 0.08,
     cooldown: 250,
   },
   {
-    type: "tear",
+    type: ArtifactType.TEAR,
     emotion: Emotion.MELANCHOLY,
     minFieldValue: 0.4,
     spawnChance: 0.12,
     cooldown: 180,
   },
   {
-    type: "star",
+    type: ArtifactType.STAR,
     emotion: Emotion.WONDER,
     minFieldValue: 0.5,
     spawnChance: 0.1,
     cooldown: 200,
   },
   {
-    type: "memory",
+    type: ArtifactType.MEMORY,
     emotion: Emotion.NOSTALGIA,
     minFieldValue: 0.5,
     spawnChance: 0.1,
@@ -333,12 +334,12 @@ export class ArtifactManager {
    */
   getStats(): ArtifactStats {
     const byType: Record<ArtifactType, number> = {
-      letter: 0,
-      photograph: 0,
-      melody: 0,
-      tear: 0,
-      star: 0,
-      memory: 0,
+      [ArtifactType.LETTER]: 0,
+      [ArtifactType.PHOTOGRAPH]: 0,
+      [ArtifactType.MELODY]: 0,
+      [ArtifactType.TEAR]: 0,
+      [ArtifactType.STAR]: 0,
+      [ArtifactType.MEMORY]: 0,
     };
 
     let discovered = 0;

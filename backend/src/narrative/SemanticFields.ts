@@ -5,12 +5,13 @@
 
 import { FieldConfig } from "../types";
 
-export type SemanticFieldType =
-  | "joy"
-  | "nostalgia"
-  | "love"
-  | "wonder"
-  | "melancholy";
+export enum SemanticFieldType {
+  JOY = "joy",
+  NOSTALGIA = "nostalgia",
+  LOVE = "love",
+  WONDER = "wonder",
+  MELANCHOLY = "melancholy",
+}
 
 export interface SemanticFieldConfig extends FieldConfig {
   resonanceDecay: number;
@@ -19,7 +20,7 @@ export interface SemanticFieldConfig extends FieldConfig {
 }
 
 const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
-  joy: {
+  [SemanticFieldType.JOY]: {
     diffusion: 0.15,
     decay: 0.08,
     maxValue: 1.0,
@@ -27,7 +28,7 @@ const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
     influenceRadius: 8,
     behaviorEffect: 0.3,
   },
-  nostalgia: {
+  [SemanticFieldType.NOSTALGIA]: {
     diffusion: 0.05,
     decay: 0.02,
     maxValue: 1.0,
@@ -35,7 +36,7 @@ const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
     influenceRadius: 15,
     behaviorEffect: 0.2,
   },
-  love: {
+  [SemanticFieldType.LOVE]: {
     diffusion: 0.1,
     decay: 0.03,
     maxValue: 1.0,
@@ -43,7 +44,7 @@ const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
     influenceRadius: 12,
     behaviorEffect: 0.5,
   },
-  wonder: {
+  [SemanticFieldType.WONDER]: {
     diffusion: 0.2,
     decay: 0.1,
     maxValue: 1.0,
@@ -51,7 +52,7 @@ const SEMANTIC_CONFIGS: Record<SemanticFieldType, SemanticFieldConfig> = {
     influenceRadius: 10,
     behaviorEffect: 0.25,
   },
-  melancholy: {
+  [SemanticFieldType.MELANCHOLY]: {
     diffusion: 0.03,
     decay: 0.01,
     maxValue: 1.0,

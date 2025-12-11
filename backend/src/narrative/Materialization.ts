@@ -59,16 +59,19 @@ export interface Hero extends BaseCharacter {
 
 export interface CharacterEvent {
   tick: number;
-  type:
-    | "born"
-    | "paired"
-    | "child"
-    | "discovery"
-    | "migration"
-    | "conflict"
-    | "survival";
+  type: CharacterEventType;
   description: string;
   location: { x: number; y: number };
+}
+
+export enum CharacterEventType {
+  BORN = "born",
+  PAIRED = "paired",
+  CHILD = "child",
+  DISCOVERY = "discovery",
+  MIGRATION = "migration",
+  CONFLICT = "conflict",
+  SURVIVAL = "survival",
 }
 
 const FIRST_NAMES = {
@@ -262,7 +265,7 @@ export class MaterializationManager {
       events: [
         {
           tick: this.tick,
-          type: "born",
+          type: CharacterEventType.BORN,
           description: "Materializó en el mundo",
           location: { x: particle.x, y: particle.y },
         },
@@ -286,7 +289,7 @@ export class MaterializationManager {
     if (character.age < this.config.minAgeForHero) return false;
 
     const discoveries = character.events.filter(
-      (e) => e.type === "discovery",
+      (e) => e.type === CharacterEventType.DISCOVERY,
     ).length;
     return discoveries >= this.config.minDiscoveries;
   }
@@ -301,7 +304,11 @@ export class MaterializationManager {
       title: generateTitle(character.seed),
       dialogues: [],
       achievements: character.events
-        .filter((e) => e.type === "discovery" || e.type === "survival")
+        .filter(
+          (e) =>
+            e.type === CharacterEventType.DISCOVERY ||
+            e.type === CharacterEventType.SURVIVAL,
+        )
         .map((e) => e.description),
       legacy: `${character.name} dejó su marca en el mundo`,
       discoveredFragments: [],
@@ -371,7 +378,7 @@ export class MaterializationManager {
     if (character) {
       character.events.push({
         tick: this.tick,
-        type: "survival",
+        type: CharacterEventType.SURVIVAL,
         description: `Vivió ${character.age} ciclos`,
         location: { x: character.x, y: character.y },
       });

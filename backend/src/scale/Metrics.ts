@@ -10,9 +10,15 @@ export interface MetricSample {
   timestamp: number;
 }
 
+export enum MetricType {
+  GAUGE = "gauge",
+  COUNTER = "counter",
+  HISTOGRAM = "histogram",
+}
+
 export interface MetricDefinition {
   name: string;
-  type: "gauge" | "counter" | "histogram";
+  type: MetricType;
   description: string;
   unit?: string;
   labels?: string[];
@@ -25,7 +31,7 @@ export interface HistogramBucket {
 
 export interface MetricSnapshot {
   name: string;
-  type: string;
+  type: MetricType;
   value: number;
   min?: number;
   max?: number;
@@ -85,7 +91,7 @@ class Metric {
     this.definition = definition;
     this.maxSamples = maxSamples;
 
-    if (definition.type === "histogram") {
+    if (definition.type === MetricType.HISTOGRAM) {
       this.histogramBuckets = [
         0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
       ];
@@ -103,7 +109,7 @@ class Metric {
     }
 
     if (
-      this.definition.type === "histogram" &&
+      this.definition.type === MetricType.HISTOGRAM &&
       this.histogramBuckets &&
       this.histogramCounts
     ) {
@@ -148,7 +154,7 @@ class Metric {
     };
 
     if (
-      this.definition.type === "histogram" &&
+      this.definition.type === MetricType.HISTOGRAM &&
       this.histogramBuckets &&
       this.histogramCounts
     ) {
@@ -191,103 +197,103 @@ export class MetricsCollector {
   private registerDefaultMetrics(): void {
     this.register({
       name: "simulation.tick",
-      type: "counter",
+      type: MetricType.COUNTER,
       description: "Current tick number",
     });
     this.register({
       name: "simulation.tick_time_ms",
-      type: "histogram",
+      type: MetricType.HISTOGRAM,
       description: "Time per tick in ms",
       unit: "ms",
     });
     this.register({
       name: "simulation.fps",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Frames per second",
     });
 
     this.register({
       name: "population.total",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Total particle count",
     });
     this.register({
       name: "population.births",
-      type: "counter",
+      type: MetricType.COUNTER,
       description: "Total births",
     });
     this.register({
       name: "population.deaths",
-      type: "counter",
+      type: MetricType.COUNTER,
       description: "Total deaths",
     });
     this.register({
       name: "population.density",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Particles per chunk",
     });
     this.register({
       name: "population.avg_energy",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Average energy",
     });
     this.register({
       name: "population.avg_age",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Average age in ticks",
     });
 
     this.register({
       name: "economy.total_food",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Total food in world",
     });
     this.register({
       name: "economy.total_water",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Total water in world",
     });
     this.register({
       name: "economy.demand_satisfaction",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Demand satisfaction ratio",
     });
     this.register({
       name: "economy.active_reactions",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Active reactions count",
     });
 
     this.register({
       name: "social.communities",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Number of communities",
     });
     this.register({
       name: "social.avg_tension",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Average tension level",
     });
     this.register({
       name: "social.active_conflicts",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Active conflicts",
     });
 
     this.register({
       name: "performance.memory_mb",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Memory usage in MB",
       unit: "MB",
     });
     this.register({
       name: "performance.ws_clients",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "WebSocket clients connected",
     });
     this.register({
       name: "performance.msg_per_sec",
-      type: "gauge",
+      type: MetricType.GAUGE,
       description: "Messages per second",
     });
   }

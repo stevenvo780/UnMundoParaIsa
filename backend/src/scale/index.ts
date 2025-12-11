@@ -6,13 +6,14 @@
 export {
   type FlowVector,
   type FlowTarget,
+  FlowTargetType,
   type FlowFieldConfig,
   FlowField,
   FlowFieldManager,
 } from "./FlowFields";
 
 export {
-  type LODLevel,
+  LODLevel,
   type LODConfig,
   type FocusPoint,
   type LODRegion,
@@ -20,7 +21,8 @@ export {
 } from "./LOD";
 
 export {
-  type ThermostatType,
+  ThermostatType,
+  ThermostatTrend,
   type ThermostatReading,
   type ThermostatConfig,
   Thermostat,
@@ -32,6 +34,7 @@ export {
 export {
   type MetricSample,
   type MetricDefinition,
+  MetricType,
   type MetricSnapshot,
   type DashboardData,
   MetricsCollector,

@@ -11,13 +11,14 @@ export interface FlowVector {
   magnitude: number;
 }
 
-export type FlowTarget =
-  | FieldType.FOOD
-  | FieldType.WATER
-  | "shelter"
-  | "community"
-  | "artifact"
-  | "custom";
+export enum FlowTargetType {
+  SHELTER = "shelter",
+  COMMUNITY = "community",
+  ARTIFACT = "artifact",
+  CUSTOM = "custom",
+}
+
+export type FlowTarget = FieldType | FlowTargetType;
 
 export interface FlowFieldConfig {
   width: number;

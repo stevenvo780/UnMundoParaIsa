@@ -15,7 +15,7 @@ export interface Conflict {
   epicenterX: number;
   epicenterY: number;
   intensity: number;
-  phase: "brewing" | "active" | "resolution" | "aftermath";
+  phase: ConflictPhase;
   startTick: number;
   duration: number;
   casualties: { community1: number; community2: number };
@@ -124,7 +124,7 @@ export class ConflictManager {
       epicenterX,
       epicenterY,
       intensity: tension,
-      phase: "brewing",
+      phase: ConflictPhase.BREWING,
       startTick: tick,
       duration: Math.floor(
         this.config.conflictDuration * (0.5 + tension * 0.5),
@@ -148,14 +148,14 @@ export class ConflictManager {
       const progress = ticksElapsed / conflict.duration;
 
       if (progress < 0.1) {
-        conflict.phase = "brewing";
+        conflict.phase = ConflictPhase.BREWING;
       } else if (progress < 0.8) {
-        conflict.phase = "active";
+        conflict.phase = ConflictPhase.ACTIVE;
         this.processActiveCombat(conflict, getCommunityStrength);
       } else if (progress < 1.0) {
-        conflict.phase = "resolution";
+        conflict.phase = ConflictPhase.RESOLUTION;
       } else {
-        conflict.phase = "aftermath";
+        conflict.phase = ConflictPhase.AFTERMATH;
         const outcome = this.resolveConflict(conflict);
         resolved.push(outcome);
         this.conflictHistory.push(conflict);
@@ -335,4 +335,10 @@ export class ConflictManager {
       avgIntensity: totalHistorical > 0 ? totalIntensity / totalHistorical : 0,
     };
   }
+}
+export enum ConflictPhase {
+  BREWING = "brewing",
+  ACTIVE = "active",
+  RESOLUTION = "resolution",
+  AFTERMATH = "aftermath",
 }

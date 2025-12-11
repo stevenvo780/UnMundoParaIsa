@@ -16,29 +16,27 @@ import {
   idx,
 } from "../types";
 
-// Economy
 import { DemandManager } from "../economy/Demand";
 import { ResourceFlowSystem } from "../economy/Advection";
 
-// Social
 import { getSignature, SignatureField } from "../social/Signatures";
 import { CommunityDetector } from "../social/Communities";
 import { TensionField } from "../social/Tension";
 
-// Narrative
-import { SemanticFieldManager } from "../narrative/SemanticFields";
+import {
+  SemanticFieldManager,
+  SemanticFieldType,
+} from "../narrative/SemanticFields";
 import { ArtifactManager } from "../narrative/Artifacts";
 import { EventManager, WorldState } from "../narrative/Events";
 import { MaterializationManager } from "../narrative/Materialization";
 
-// Scale
 import { FlowFieldManager } from "../scale/FlowFields";
 import { LODManager } from "../scale/LOD";
 import { ThermostatBank } from "../scale/Thermostats";
 import { InfiniteChunkManager } from "./InfiniteChunkManager";
 import { CHUNK_SIZE } from "./Chunk";
 
-// Structures
 import { StructureManager } from "./StructureManager";
 
 export class World {
@@ -46,13 +44,10 @@ export class World {
   readonly height: number;
   readonly config: SimulationConfig;
 
-  // Referencia al chunk manager infinito (inyectado desde server)
   private infiniteChunks?: InfiniteChunkManager;
 
-  // Sistema de estructuras emergentes
   private structureManager!: StructureManager;
 
-  // Core
   private fields: Map<FieldType, Field> = new Map();
   private particles: Particle[] = [];
   private particleIdCounter = 0;
@@ -61,30 +56,22 @@ export class World {
   private paused = false;
   private lastTickTime = 0;
 
-  // Métricas
   private births = 0;
   private deaths = 0;
 
-  // === Nuevos sistemas integrados ===
-
-  // Core - Chunks y Scheduler
   private scheduler!: Scheduler;
 
-  // Economy
   private demandManager!: DemandManager;
   private resourceFlow!: ResourceFlowSystem;
 
-  // Social
   private communities!: CommunityDetector;
   private tension!: TensionField;
 
-  // Narrative
   private semanticFields!: SemanticFieldManager;
   private artifacts!: ArtifactManager;
   private events!: EventManager;
   private materialization!: MaterializationManager;
 
-  // Scale
   private flowFields!: FlowFieldManager;
   private lod!: LODManager;
   private thermostats!: ThermostatBank;
@@ -94,10 +81,8 @@ export class World {
     this.width = this.config.worldWidth;
     this.height = this.config.worldHeight;
 
-    // Inicializar campos base
     this.initializeFields();
 
-    // Inicializar sistemas
     this.initializeSystems();
   }
 
@@ -105,10 +90,8 @@ export class World {
    * Inicializar todos los subsistemas
    */
   private initializeSystems(): void {
-    // Core
     this.scheduler = new Scheduler();
 
-    // Economy
     this.demandManager = new DemandManager(this.width, this.height);
     this.resourceFlow = new ResourceFlowSystem(this.width, this.height, [
       FieldType.FOOD,
@@ -116,25 +99,20 @@ export class World {
       FieldType.STONE,
     ]);
 
-    // Social
     this.communities = new CommunityDetector();
     this.tension = new TensionField(this.width, this.height);
 
-    // Narrative
     this.semanticFields = new SemanticFieldManager(this.width, this.height);
     this.artifacts = new ArtifactManager(this.width, this.height);
     this.events = new EventManager();
     this.materialization = new MaterializationManager();
 
-    // Scale
     this.flowFields = new FlowFieldManager();
     this.lod = new LODManager();
     this.thermostats = new ThermostatBank();
 
-    // Structures
     this.structureManager = new StructureManager();
 
-    // Registrar tareas en scheduler
     this.registerScheduledTasks();
   }
 
@@ -142,7 +120,6 @@ export class World {
    * Registrar tareas con diferentes frecuencias
    */
   private registerScheduledTasks(): void {
-    // FAST (cada tick): movimiento partículas, consumo, producción de comida
     this.scheduler.register({
       id: "particles",
       rate: "FAST",
@@ -159,10 +136,9 @@ export class World {
       id: "food-production",
       rate: "FAST",
       fn: () => this.updateFoodProduction(),
-      priority: 0, // Antes de partículas: producción primero
+      priority: 0,
     });
 
-    // MEDIUM (cada 5 ticks): economía, social
     this.scheduler.register({
       id: "economy",
       rate: "MEDIUM",
@@ -176,13 +152,11 @@ export class World {
       priority: 11,
     });
 
-    // SLOW (cada 20 ticks): crecimiento ESTRUCTURAL, narrativa, escala, termostatos, estructuras
-    // Nota: La producción de comida de árboles se movió a FAST para equilibrar consumo
     this.scheduler.register({
       id: "growth",
       rate: "SLOW",
-      fn: () => this.updateTreeGrowth(), // Solo crecimiento de árboles, NO producción
-      priority: 19, // Antes que narrativa
+      fn: () => this.updateTreeGrowth(),
+      priority: 19,
     });
     this.scheduler.register({
       id: "narrative",
@@ -210,21 +184,17 @@ export class World {
     });
   }
 
-  // === Métodos de actualización por subsistema ===
-
   /**
    * Actualizar economía (MEDIUM rate)
    * Integra: Demand, Reactions, Advection, Stockpiles
    */
   private updateEconomy(): void {
-    // 1. Obtener campos necesarios
     const populationField = this.getField(FieldType.POPULATION)?.getBuffer();
     const foodField = this.getField(FieldType.FOOD);
     const waterField = this.getField(FieldType.WATER);
 
     if (!populationField || !foodField || !waterField) return;
 
-    // 2. Actualizar campos de demanda
     const resourceFields = new Map<string, Float32Array>();
     resourceFields.set(FieldType.FOOD, foodField.getBuffer());
     resourceFields.set(FieldType.WATER, waterField.getBuffer());
@@ -236,14 +206,8 @@ export class World {
 
     this.demandManager.update(populationField, resourceFields);
 
-    // === CRAFTING/CONSTRUCCIONES DESACTIVADOS ===
-    // Los habitantes no craftean ni construyen por ahora
-    // Solo recolectan recursos naturales
-
-    // 3. Advección de recursos (flujo hacia demanda)
     const foodDemand = this.demandManager.getDemandField(FieldType.FOOD);
     if (foodDemand) {
-      // Construir arrays de gradiente
       const size = this.width * this.height;
       const gradX = new Float32Array(size);
       const gradY = new Float32Array(size);
@@ -263,7 +227,7 @@ export class World {
         gradY,
         foodField.getBuffer(),
       );
-      // Copiar valores advectados de vuelta al campo
+
       const buffer = foodField.getBuffer();
       for (let i = 0; i < advectedFood.length; i++) {
         buffer[i] = advectedFood[i];
@@ -276,17 +240,14 @@ export class World {
    * Integra: Signatures, Communities, Tension
    */
   private updateSocial(): void {
-    // 1. Obtener campos necesarios
     const populationField = this.getField(FieldType.POPULATION)?.getBuffer();
     const foodField = this.getField(FieldType.FOOD)?.getBuffer();
     const waterField = this.getField(FieldType.WATER)?.getBuffer();
 
     if (!populationField || !foodField || !waterField) return;
 
-    // 2. Construir SignatureField desde partículas
     const signatureField = this.buildSignatureField();
 
-    // 3. Detectar comunidades
     this.communities.detect(
       this.particles,
       populationField,
@@ -294,27 +255,23 @@ export class World {
       this.height,
     );
 
-    // 4. Calcular tensión social
     this.tension.calculate(signatureField, populationField, {
       food: foodField,
       water: waterField,
     });
 
-    // 5. Detectar y procesar conflictos si hay alta tensión
     const conflicts = this.tension.detectConflicts(this.tick);
     for (const conflict of conflicts) {
-      // Dispersar partículas en zona de conflicto
       const radius = 5;
       for (const particle of this.particles) {
         if (!particle.alive) continue;
         const dx = particle.x - conflict.x;
         const dy = particle.y - conflict.y;
         if (Math.sqrt(dx * dx + dy * dy) < radius) {
-          // Dispersar: mover hacia afuera
           const angle = Math.atan2(dy, dx);
           particle.x += Math.cos(angle) * 2;
           particle.y += Math.sin(angle) * 2;
-          particle.energy -= 0.1 * conflict.tension; // Desgaste por conflicto
+          particle.energy -= 0.1 * conflict.tension;
         }
       }
     }
@@ -327,14 +284,12 @@ export class World {
   private buildSignatureField(): SignatureField {
     const field = new SignatureField(this.width, this.height);
 
-    // Depositar firmas de partículas
     for (const p of this.particles) {
       if (!p.alive) continue;
       const x = Math.floor(p.x);
       const y = Math.floor(p.y);
       if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
 
-      // Convertir seed a signature
       const signature = getSignature(p.seed);
       field.deposit(x, y, signature, 1.0);
     }
@@ -347,13 +302,10 @@ export class World {
    * Integra: SemanticFields, Artifacts, Events, Materialization
    */
   private updateNarrative(): void {
-    // 1. Actualizar campos semánticos
     this.semanticFields.step();
 
-    // 2. Actualizar artefactos
     this.artifacts.update();
 
-    // 3. Construir estado actual para eventos
     const allCommunities = this.communities.getAll();
     const conflicts = this.tension.getRecentConflicts();
 
@@ -376,39 +328,35 @@ export class World {
       artifacts: this.artifacts.getAll(),
     };
 
-    // 4. Procesar eventos narrativos
     this.events.process(worldState, this.previousWorldState || worldState);
     this.previousWorldState = worldState;
 
-    // 5. Materializar personajes de partículas longevas
     this.materialization.setTick(this.tick);
     for (const particle of this.particles) {
       if (!particle.alive) continue;
 
-      // Usar tick actual como estimación de edad (tick - estimated birth)
-      const estimatedAge = Math.floor(particle.energy * 1000); // Aproximación
+      const estimatedAge = Math.floor(particle.energy * 1000);
       if (this.materialization.canMaterialize(particle, estimatedAge)) {
         this.materialization.materialize(particle, estimatedAge);
       }
     }
 
-    // 6. Aplicar efectos semánticos al mundo
     this.applySemanticEffects();
   }
 
-  // Estado anterior para comparación de eventos
   private previousWorldState?: WorldState;
 
   /**
    * Aplicar efectos de campos semánticos al mundo
    */
   private applySemanticEffects(): void {
-    const joyField = this.semanticFields.getField("joy");
-    const nostalgiaField = this.semanticFields.getField("nostalgia");
+    const joyField = this.semanticFields.getField(SemanticFieldType.JOY);
+    const nostalgiaField = this.semanticFields.getField(
+      SemanticFieldType.NOSTALGIA,
+    );
 
     if (!joyField || !nostalgiaField) return;
 
-    // Joy aumenta reproducción, nostalgia reduce movimiento
     for (const particle of this.particles) {
       if (!particle.alive) continue;
 
@@ -418,15 +366,12 @@ export class World {
       const joy = joyField.get(x, y);
       const nostalgia = nostalgiaField.get(x, y);
 
-      // Bonus de energía por joy
       if (joy > 0.5) {
         particle.energy += 0.01 * joy;
       }
 
-      // Reducir velocidad por nostalgia (simulado con energía)
       if (nostalgia > 0.5) {
-        // Las partículas en zonas nostálgicas tienden a quedarse
-        particle.energy = Math.min(particle.energy, 0.8); // Cap de energía
+        particle.energy = Math.min(particle.energy, 0.8);
       }
     }
   }
@@ -436,7 +381,6 @@ export class World {
    * Integra: FlowFields, LOD
    */
   private updateScale(): void {
-    // 1. Actualizar FlowFields desde campos de recursos
     const food = this.getField(FieldType.FOOD);
     const water = this.getField(FieldType.WATER);
 
@@ -447,8 +391,6 @@ export class World {
       this.flowFields.updateFromField(FieldType.WATER, water.getBuffer());
     }
 
-    // 2. Actualizar LOD (Level of Detail)
-    // Agregar puntos de foco basados en comunidades activas
     this.lod.clearFocusPoints();
 
     const communities = this.communities.getAll();
@@ -463,7 +405,6 @@ export class World {
       }
     }
 
-    // Recalcular niveles LOD
     this.lod.updateLevels();
   }
 
@@ -477,7 +418,6 @@ export class World {
       this.particles.reduce((sum, p) => sum + (p.alive ? p.energy : 0), 0) /
       Math.max(1, particleCount);
 
-    // Actualizar termostatos
     this.thermostats.updateAll({
       population: particleCount,
       resources: foodAvg,
@@ -530,17 +470,14 @@ export class World {
    * Si está fuera del campo original, consulta al chunk manager
    */
   getFieldValueAt(type: FieldType, x: number, y: number): number {
-    // Truncar coordenadas a enteros
     const ix = Math.floor(x);
     const iy = Math.floor(y);
 
-    // Primero intentar en el campo local
     if (ix >= 0 && ix < this.width && iy >= 0 && iy < this.height) {
       const field = this.fields.get(type);
       return field ? field.get(ix, iy) : 0;
     }
 
-    // Fuera del rango local: consultar chunk infinito
     if (this.infiniteChunks) {
       const chunk = this.infiniteChunks.getChunkAt(ix, iy);
       if (chunk) {
@@ -548,7 +485,7 @@ export class World {
         const localY = ((iy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
         return chunk.getValue(type, localX, localY);
       }
-      // Si no hay chunk, generarlo
+
       const newChunk = this.infiniteChunks.ensureChunkActive(
         Math.floor(ix / CHUNK_SIZE),
         Math.floor(iy / CHUNK_SIZE),
@@ -565,18 +502,15 @@ export class World {
    * Establecer valor de campo en cualquier coordenada (soporta infinito)
    */
   setFieldValueAt(type: FieldType, x: number, y: number, value: number): void {
-    // Truncar coordenadas a enteros
     const ix = Math.floor(x);
     const iy = Math.floor(y);
 
-    // En campo local
     if (ix >= 0 && ix < this.width && iy >= 0 && iy < this.height) {
       const field = this.fields.get(type);
       if (field) field.set(ix, iy, value);
       return;
     }
 
-    // En chunk infinito
     if (this.infiniteChunks) {
       const chunk = this.infiniteChunks.ensureChunkActive(
         Math.floor(ix / CHUNK_SIZE),
@@ -593,9 +527,8 @@ export class World {
    * Con chunks infinitos, cualquier posición es válida
    */
   isValidPosition(x: number, y: number): boolean {
-    // Con mundo infinito, todo es válido
     if (this.infiniteChunks) return true;
-    // Sin mundo infinito, limitar al área original
+
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
@@ -606,16 +539,13 @@ export class World {
     Logger.info(`[World] Generating world with seed ${seed}`);
     const rng = this.createRNG(seed);
 
-    // Generar oases de comida
     const foodField = this.getField(FieldType.FOOD)!;
     const waterField = this.getField(FieldType.WATER)!;
     const treesField = this.getField(FieldType.TREES)!;
     const costField = this.getField(FieldType.COST)!;
 
-    // Base noise para terreno
     costField.initWithNoise(0.3, 0.2, seed);
 
-    // Crear oases
     const oasisCount = 5;
     const oases: Array<{
       x: number;
@@ -633,7 +563,6 @@ export class World {
       });
     }
 
-    // Oasis central garantizado
     oases.push({
       x: Math.floor(this.width / 2),
       y: Math.floor(this.height / 2),
@@ -643,22 +572,16 @@ export class World {
 
     foodField.initWithOases(oases);
 
-    // === BIOMA HÚMEDO: Agua abundante en TODO el mapa ===
-    // Llenar todo con agua (simula un bioma tropical/húmedo)
     const waterBuffer = waterField.getBuffer();
     for (let i = 0; i < waterBuffer.length; i++) {
-      // Base alta de agua + variación con ruido
-      waterBuffer[i] = 0.6 + Math.random() * 0.3; // 60-90% agua en todo el mapa
+      waterBuffer[i] = 0.6 + Math.random() * 0.3;
     }
 
-    // Árboles dispersos
     treesField.initWithNoise(0.3, 0.3, seed + 1000);
 
-    // === SPAWN INICIAL: Solo Stev e Isa ===
     const centerX = Math.floor(this.width / 2);
     const centerY = Math.floor(this.height / 2);
 
-    // Stev (seed específico para comportamiento consistente)
     this.particles.push({
       id: this.particleIdCounter++,
       x: centerX - 3,
@@ -666,11 +589,10 @@ export class World {
       vx: 0,
       vy: 0,
       energy: 0.85,
-      seed: 0x57455600, // 'STEV' en hex
+      seed: 0x57455600,
       alive: true,
     });
 
-    // Isa (seed específico)
     this.particles.push({
       id: this.particleIdCounter++,
       x: centerX + 3,
@@ -678,7 +600,7 @@ export class World {
       vx: 0,
       vy: 0,
       energy: 0.85,
-      seed: 0x00495341, // 'ISA' en hex
+      seed: 0x00495341,
       alive: true,
     });
   }
@@ -701,7 +623,7 @@ export class World {
           id: this.particleIdCounter++,
           x,
           y,
-          vx: 0, // Velocidad inicial
+          vx: 0,
           vy: 0,
           energy: 0.5 + rng() * 0.3,
           seed: Math.floor(rng() * 0xffffffff),
@@ -720,20 +642,15 @@ export class World {
 
     const startTime = performance.now();
 
-    // Reset contadores
     this.births = 0;
     this.deaths = 0;
 
-    // Ejecutar scheduler (gestiona FAST/MEDIUM/SLOW)
     this.scheduler.step();
 
-    // 3. Crecimiento de recursos (siempre, por ahora fuera del scheduler)
     this.updateGrowth();
 
-    // 4. Actualizar campo de población
     this.updatePopulationField();
 
-    // 5. Limpiar partículas muertas
     this.cleanDeadParticles();
 
     this.tick++;
@@ -747,67 +664,52 @@ export class World {
 
     const { weights, lifecycle } = this.config;
 
-    // Buffer de consumo (solo para área local)
     const consumption = new Float32Array(this.width * this.height);
 
     for (const p of this.particles) {
       if (!p.alive) continue;
 
-      // === INICIALIZAR VELOCIDAD SI NO EXISTE ===
       if (p.vx === undefined || isNaN(p.vx)) p.vx = 0;
       if (p.vy === undefined || isNaN(p.vy)) p.vy = 0;
       if (isNaN(p.energy)) p.energy = 0.5;
 
-      // === PROTECCIÓN DE ESTRUCTURAS ===
-      // Las partículas cerca de estructuras gastan menos energía
       const protectionBonus = this.structureManager.getProtectionBonus(
         p.x,
         p.y,
       );
-      const metabolismReduction = protectionBonus * 0.5; // Hasta 50% menos metabolismo
+      const metabolismReduction = protectionBonus * 0.5;
 
-      // Metabolismo base (reducido si hay protección)
       p.energy -= lifecycle.baseMetabolism * (1 - metabolismReduction);
 
-      // Muerte por falta de energía
       if (p.energy <= 0) {
         p.alive = false;
         this.deaths++;
         continue;
       }
 
-      // === CONSUMO REAL DE RECURSOS ===
-      // Las partículas DEBEN encontrar comida o mueren
       const foodHere = this.getFieldValueAt(FieldType.FOOD, p.x, p.y);
       const waterHere = this.getFieldValueAt(FieldType.WATER, p.x, p.y);
 
-      // Truncar posición para índices
       const px = Math.floor(p.x);
       const py = Math.floor(p.y);
 
-      // Consumir comida proporcionalmente a lo que hay
-      // Consumo BAJO para equilibrio sostenible
-      const maxConsume = 0.02; // Reducido para equilibrio
-      const actualConsume = Math.min(maxConsume, foodHere * 0.2); // 20% de lo disponible
+      const maxConsume = 0.02;
+      const actualConsume = Math.min(maxConsume, foodHere * 0.2);
       const energyGain = actualConsume * lifecycle.consumptionEfficiency;
       p.energy += energyGain;
 
-      // REDUCIR el campo de comida - consumo REAL
       if (actualConsume > 0.001) {
         if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
           consumption[idx(px, py, this.width)] += actualConsume;
         } else {
-          // En chunks infinitos, reducir directamente
           const newFoodValue = Math.max(0, foodHere - actualConsume);
           this.setFieldValueAt(FieldType.FOOD, p.x, p.y, newFoodValue);
         }
       }
 
-      // Necesidad de agua - sin agua se debilitan gradualmente
       if (waterHere < 0.15) {
         p.energy -= 0.003 * (1 - waterHere / 0.15); // Sed moderada
       } else {
-        // Consumir agua también (menos que comida)
         const waterConsume = Math.min(0.02, waterHere * 0.2);
         this.setFieldValueAt(
           FieldType.WATER,
@@ -817,24 +719,17 @@ export class World {
         );
       }
 
-      // Hambre: si no hay comida, buscan más agresivamente (ya en gradientes)
-      // No penalizar extra aquí - el metabolismo base es suficiente
-
-      // Clamp energía
       p.energy = Math.min(1.0, Math.max(0, p.energy));
 
-      // === MUERTE POR INANICIÓN ===
       if (p.energy <= 0) {
         p.alive = false;
         this.deaths++;
         continue;
       }
 
-      // === INTENTAR CONSTRUIR ESTRUCTURA ===
-      // Solo partículas MUY bien alimentadas construyen (requiere excedente)
       if (p.energy > 0.85 && Math.random() < 0.03) {
         const trailHere = this.getFieldValueAt(FieldType.TRAIL0, p.x, p.y);
-        // Construir cuesta energía
+
         if (
           this.structureManager.tryCreateStructure(
             p.x,
@@ -846,15 +741,12 @@ export class World {
             this.tick,
           )
         ) {
-          p.energy -= 0.15; // Coste de construcción
+          p.energy -= 0.15;
         }
       }
 
-      // === MOVIMIENTO FLUIDO CON VELOCIDAD ===
-      // Calcular dirección objetivo por gradiente
       const dir = this.chooseDirectionInfinite(p, weights);
 
-      // Convertir dirección discreta a velocidad objetivo
       const MAX_VELOCITY = 2.0;
       const VELOCITY_DAMPING = 0.85;
       const ACCELERATION = 0.3;
@@ -862,45 +754,36 @@ export class World {
       const targetVx = dir.dx * MAX_VELOCITY;
       const targetVy = dir.dy * MAX_VELOCITY;
 
-      // Interpolar velocidad actual hacia objetivo (suavizado)
       p.vx = p.vx * VELOCITY_DAMPING + targetVx * ACCELERATION;
       p.vy = p.vy * VELOCITY_DAMPING + targetVy * ACCELERATION;
 
-      // Clamp velocidad máxima
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
       if (speed > MAX_VELOCITY) {
         p.vx = (p.vx / speed) * MAX_VELOCITY;
         p.vy = (p.vy / speed) * MAX_VELOCITY;
       }
 
-      // Aplicar velocidad a posición
       const newX = p.x + p.vx;
       const newY = p.y + p.vy;
 
-      // Permitir movimiento infinito
       if (this.isValidPosition(newX, newY)) {
         p.x = newX;
         p.y = newY;
 
-        // Coste de movimiento proporcional a velocidad
         const movementMagnitude = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
         p.energy -= lifecycle.movementCost * movementMagnitude * 0.5;
 
-        // Depositar trail
         this.depositTrailInfinite(p);
       } else {
-        // Rebote suave en límites inválidos
         p.vx *= -0.5;
         p.vy *= -0.5;
       }
 
-      // Reproducción
       if (p.energy >= lifecycle.reproductionThreshold) {
         this.reproduce(p);
       }
     }
 
-    // Aplicar consumo al campo de comida
     const foodBuffer = food.getBuffer();
     for (let i = 0; i < consumption.length; i++) {
       foodBuffer[i] = Math.max(0, foodBuffer[i] - consumption[i]);
@@ -930,20 +813,17 @@ export class World {
     let bestScore = -Infinity;
     let bestDir = { dx: 0, dy: 0 };
 
-    // Factor de presión: cuando energía baja, aumenta exploración
-    const energyPressure = 1.0 - p.energy; // 0 cuando lleno, 1 cuando hambriento
+    const energyPressure = 1.0 - p.energy;
     const explorationBonus = weights.exploration * (1 + energyPressure);
 
     for (const dir of DIRS) {
       const nx = p.x + dir.dx;
       const ny = p.y + dir.dy;
 
-      // No limitar a bordes del mundo - ahora es infinito
       if (!this.isValidPosition(nx, ny)) {
         continue;
       }
 
-      // Obtener valores de campo
       const foodVal = this.getFieldValueAt(FieldType.FOOD, nx, ny);
       const waterVal = this.getFieldValueAt(FieldType.WATER, nx, ny);
       const trailVal = this.getFieldValueAt(FieldType.TRAIL0, nx, ny);
@@ -951,10 +831,7 @@ export class World {
       const costVal = this.getFieldValueAt(FieldType.COST, nx, ny);
       const populationVal = this.getFieldValueAt(FieldType.POPULATION, nx, ny);
 
-      // Calcular score con crowding y exploration
-      // - crowding: evitar zonas con alta densidad de población
-      // - exploration: bonus por bajo trail (zonas no visitadas)
-      const explorationVal = 1.0 - Math.min(1, trailVal * 2); // 1 si no hay trail, 0 si hay mucho
+      const explorationVal = 1.0 - Math.min(1, trailVal * 2);
 
       const score =
         weights.food * foodVal +
@@ -962,9 +839,9 @@ export class World {
         weights.trail * trailVal +
         weights.danger * dangerVal +
         weights.cost * costVal +
-        weights.crowding * populationVal + // Negativo: evitar zonas pobladas
-        explorationBonus * explorationVal + // Positivo: buscar zonas nuevas
-        this.noise(p.seed, nx, ny) * 0.3; // Aumentado ruido para dispersión
+        weights.crowding * populationVal +
+        explorationBonus * explorationVal +
+        this.noise(p.seed, nx, ny) * 0.3;
 
       if (score > bestScore) {
         bestScore = score;
@@ -987,7 +864,6 @@ export class World {
       this.getField(FieldType.TRAIL3)!,
     ];
 
-    // Truncar coordenadas a enteros
     const px = Math.floor(p.x);
     const py = Math.floor(p.y);
 
@@ -1002,28 +878,23 @@ export class World {
    * Si está fuera, actualiza el chunk correspondiente
    */
   private depositTrailInfinite(p: Particle): void {
-    // Truncar coordenadas
     const px = Math.floor(p.x);
     const py = Math.floor(p.y);
 
-    // Si está dentro del área local, usar método normal
     if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
       this.depositTrail(p);
       return;
     }
 
-    // Fuera del área local: depositar en chunk infinito
     if (this.infiniteChunks) {
       const sig = this.getSignature(p.seed);
       const chunkX = Math.floor(px / CHUNK_SIZE);
       const chunkY = Math.floor(py / CHUNK_SIZE);
       const chunk = this.infiniteChunks.ensureChunkActive(chunkX, chunkY);
 
-      // Calcular coordenadas locales dentro del chunk (ya enteras)
       const localX = ((px % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       const localY = ((py % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 
-      // Añadir trail a los 4 canales del chunk usando Field.add()
       chunk.getField(FieldType.TRAIL0)?.add(localX, localY, sig[0] * 0.1);
       chunk.getField(FieldType.TRAIL1)?.add(localX, localY, sig[1] * 0.1);
       chunk.getField(FieldType.TRAIL2)?.add(localX, localY, sig[2] * 0.1);
@@ -1050,35 +921,29 @@ export class World {
   private reproduce(parent: Particle): void {
     const { lifecycle } = this.config;
 
-    // === COOLDOWN: No puede reproducirse muy seguido ===
-    const REPRODUCTION_COOLDOWN = 100; // 100 ticks (~5 segundos) entre reproducciones
+    const REPRODUCTION_COOLDOWN = 100;
     if (
       parent.lastReproductionTick &&
       this.tick - parent.lastReproductionTick < REPRODUCTION_COOLDOWN
     ) {
-      return; // Aún en cooldown
+      return;
     }
 
-    // === VERIFICAR RECURSOS EN LA ZONA ===
     const foodHere = this.getFieldValueAt(FieldType.FOOD, parent.x, parent.y);
     const waterHere = this.getFieldValueAt(FieldType.WATER, parent.x, parent.y);
 
-    // Necesita comida mínima más alta
     if (foodHere < 0.05) {
-      return; // Sin comida suficiente para criar
+      return;
     }
 
-    // Agua abundante favorece reproducción (bioma húmedo)
     const waterBonus = Math.min(1.3, 0.7 + waterHere * 0.6);
 
-    // === Límite global de población ===
     const aliveCount = this.particles.filter((p) => p.alive).length;
     const MAX_GLOBAL_POPULATION = 500;
     if (aliveCount >= MAX_GLOBAL_POPULATION) {
       return;
     }
 
-    // === Control de densidad local ===
     const localDensity = this.particles.filter(
       (p) =>
         p.alive &&
@@ -1088,25 +953,22 @@ export class World {
 
     const MAX_LOCAL_DENSITY = 25;
     if (localDensity >= MAX_LOCAL_DENSITY) {
-      return; // Zona saturada
+      return;
     }
 
-    // === Probabilidad BAJA base - reproducción es difícil ===
-    const isFounder = parent.seed === 0x57455600 || parent.seed === 0x00495341; // Stev o Isa
-    const founderBonus = isFounder ? 1.5 : 1.0; // Fundadores tienen bonus moderado
+    const isFounder = parent.seed === 0x57455600 || parent.seed === 0x00495341;
+    const founderBonus = isFounder ? 1.5 : 1.0;
 
     const resourceFactor = Math.min(1, foodHere * 2);
     const densityFactor = 1 - (localDensity / MAX_LOCAL_DENSITY) * 0.4;
-    // Probabilidad base MUY BAJA: 12% máximo
+
     const reproductionChance =
       resourceFactor * densityFactor * waterBonus * founderBonus * 0.12;
 
     if (Math.random() > reproductionChance) {
-      return; // Falló - sin coste
+      return;
     }
 
-    // === CONSUMIR RECURSOS para reproducirse ===
-    // La reproducción CUESTA recursos del ambiente
     const reproductionFoodCost = 0.15;
     this.setFieldValueAt(
       FieldType.FOOD,
@@ -1115,10 +977,8 @@ export class World {
       Math.max(0, foodHere - reproductionFoodCost),
     );
 
-    // Coste de energía del padre
     parent.energy -= lifecycle.reproductionCost;
 
-    // Mutar seed
     let childSeed = parent.seed;
     for (let i = 0; i < 32; i++) {
       if (Math.random() < lifecycle.mutationRate) {
@@ -1126,24 +986,20 @@ export class World {
       }
     }
 
-    // Spawn cerca del padre pero no encima
     const angle = Math.random() * Math.PI * 2;
-    const dist = 2 + Math.random() * 4; // Un poco más lejos
+    const dist = 2 + Math.random() * 4;
     const cx = Math.floor(parent.x + Math.cos(angle) * dist);
     const cy = Math.floor(parent.y + Math.sin(angle) * dist);
 
-    // Verificar que hay espacio y recursos donde nacerá
     const spawnFood = this.getFieldValueAt(FieldType.FOOD, cx, cy);
     if (!this.isValidPosition(cx, cy) || spawnFood < 0.1) {
-      // No hay buen lugar para nacer, el intento falla
-      // Devolver parte de la energía al padre
       parent.energy += lifecycle.reproductionCost * 0.3;
       return;
     }
 
     const newId = this.particleIdCounter++;
-    // Los hijos nacen con energía BAJA - deben encontrar comida rápido
-    const childEnergy = 0.35 + Math.random() * 0.15; // 35-50% energía
+
+    const childEnergy = 0.35 + Math.random() * 0.15;
 
     this.particles.push({
       id: newId,
@@ -1186,12 +1042,11 @@ export class World {
 
     const treesBuffer = trees.getBuffer();
     const foodBuffer = food.getBuffer();
-    // Tasa ALTA para equilibrar consumo de 100+ partículas
-    const productionRate = 0.03; // Aumentado
+
+    const productionRate = 0.03;
 
     for (let i = 0; i < treesBuffer.length; i++) {
       if (treesBuffer[i] > 0.01) {
-        // Umbral más bajo
         const production = treesBuffer[i] * productionRate;
         foodBuffer[i] = Math.min(
           food.config.maxValue,
@@ -1201,7 +1056,6 @@ export class World {
     }
   }
 
-  // Mantener para compatibilidad - llama a ambas funciones
   private updateGrowth(): void {
     this.updateTreeGrowth();
     this.updateFoodProduction();
@@ -1246,10 +1100,6 @@ export class World {
       return s / 0x7fffffff;
     };
   }
-
-  // ============================================
-  // Getters y control
-  // ============================================
 
   getTick(): number {
     return this.tick;
@@ -1323,7 +1173,7 @@ export class World {
       tickTimeMs: this.lastTickTime,
       particleCount: this.getParticleCount(),
       totalDensity: this.getField(FieldType.POPULATION)!.getSum(),
-      activeChunks: 1, // Por ahora solo un chunk global
+      activeChunks: 1,
       fieldAverages,
       births: this.births,
       deaths: this.deaths,
@@ -1359,27 +1209,22 @@ export class World {
       };
     }
 
-    // Calcular diversidad de seeds (complejidad)
     const seedSet = new Set(aliveParticles.map((p) => p.seed));
     const complexity = Math.min(1, seedSet.size / Math.max(count, 1));
 
-    // Coherencia: qué tan agrupadas están las partículas
     const communities = this.communities.getAll();
     const coherence =
       communities.length > 0
         ? Math.min(1, communities.length / Math.sqrt(count))
         : 0;
 
-    // Adaptabilidad: ratio de energía promedio sobre máximo teórico
     const avgEnergy =
       aliveParticles.reduce((s, p) => s + (p.energy ?? 0), 0) / count;
     const adaptability = Math.min(1, avgEnergy / 100);
 
-    // Sostenibilidad: balance nacimientos/muertes
     const totalEvents = this.births + this.deaths;
     const sustainability = totalEvents > 0 ? this.births / totalEvents : 0.5;
 
-    // Entropía: dispersión de partículas (varianza de posiciones)
     const avgX = aliveParticles.reduce((s, p) => s + p.x, 0) / count;
     const avgY = aliveParticles.reduce((s, p) => s + p.y, 0) / count;
     const varX =
@@ -1389,19 +1234,16 @@ export class World {
     const maxVar = (this.width * this.height) / 4;
     const entropy = Math.min(1, Math.sqrt(varX + varY) / Math.sqrt(maxVar));
 
-    // Autopoiesis: capacidad de reproducción (births/population)
     const autopoiesis =
       count > 0
         ? Math.min(1, ((this.births / Math.max(this.tick, 1)) * 100) / count)
         : 0;
 
-    // Novedad: variación reciente (aproximado)
     const novelty = Math.min(
       1,
       (this.births + this.deaths) / Math.max(count, 1),
     );
 
-    // Estabilidad: inverso de la tensión
     const tensionStats = this.tension.getStats();
     const stability = 1 - Math.min(1, tensionStats.average);
 
@@ -1429,7 +1271,6 @@ export class World {
   } {
     const aliveParticles = this.particles.filter((p) => p.alive);
 
-    // Clasificar por tipo de comportamiento basado en seed
     const behaviorCounts: Record<string, number> = {
       forager: 0,
       hunter: 0,
@@ -1444,7 +1285,6 @@ export class World {
 
     const total = aliveParticles.length;
 
-    // Índice de Shannon
     let shannon = 0;
     if (total > 0) {
       for (const count of Object.values(behaviorCounts)) {
@@ -1455,7 +1295,6 @@ export class World {
       }
     }
 
-    // Tipo dominante
     let dominantType = "forager";
     let dominantCount = 0;
     for (const [type, count] of Object.entries(behaviorCounts)) {
@@ -1548,9 +1387,8 @@ export class World {
   } {
     const aliveParticles = this.particles.filter((p) => p.alive);
     const totalEnergy = aliveParticles.reduce((s, p) => s + (p.energy ?? 0), 0);
-    const previousEnergy = this.particles.length * 50; // baseline
+    const previousEnergy = this.particles.length * 50;
 
-    // Calcular escasez basada en campos de recursos
     const foodField = this.getField(FieldType.FOOD);
     const waterField = this.getField(FieldType.WATER);
     const foodAvg = foodField?.getAverage() ?? 0;
@@ -1567,10 +1405,10 @@ export class World {
         water: waterField?.getSum() ?? 0,
       },
       production: {
-        food: this.births * 10, // aproximado
+        food: this.births * 10,
       },
       consumption: {
-        food: this.deaths * 5, // aproximado
+        food: this.deaths * 5,
       },
     };
   }
@@ -1595,17 +1433,12 @@ export class World {
     const seasonProgress = (this.tick % ticksPerSeason) / ticksPerSeason;
     const lunarPhase = (this.tick % (ticksPerDay * 30)) / (ticksPerDay * 30);
 
-    // Fase del día: 0=noche, 1=amanecer, 2=día, 3=atardecer
     let phase = 0;
-    if (dayProgress < 0.2)
-      phase = 0; // noche
-    else if (dayProgress < 0.3)
-      phase = 1; // amanecer
-    else if (dayProgress < 0.7)
-      phase = 2; // día
-    else if (dayProgress < 0.8)
-      phase = 3; // atardecer
-    else phase = 0; // noche
+    if (dayProgress < 0.2) phase = 0;
+    else if (dayProgress < 0.3) phase = 1;
+    else if (dayProgress < 0.7) phase = 2;
+    else if (dayProgress < 0.8) phase = 3;
+    else phase = 0;
 
     return {
       timeOfDay: dayProgress,
@@ -1624,7 +1457,6 @@ export class World {
     active: Record<string, number>;
     progress: number;
   } {
-    // Por ahora placeholder - se integrará con EmergentQuests
     return {
       active: {
         community_growth: 0,
@@ -1666,7 +1498,6 @@ export class World {
         if (buffer[i] > 0.001) nonZero++;
       }
 
-      // Calcular gradiente promedio manualmente
       for (let y = 1; y < this.height - 1; y++) {
         for (let x = 1; x < this.width - 1; x++) {
           const i = y * this.width + x;

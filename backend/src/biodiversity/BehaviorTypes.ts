@@ -8,15 +8,16 @@
 
 import { Particle } from "../types";
 
-export type BehaviorType =
-  | "forager"
-  | "hunter"
-  | "nomad"
-  | "settler"
-  | "guardian"
-  | "explorer"
-  | "gatherer"
-  | "breeder";
+export enum BehaviorType {
+  FORAGER = "forager",
+  HUNTER = "hunter",
+  NOMAD = "nomad",
+  SETTLER = "settler",
+  GUARDIAN = "guardian",
+  EXPLORER = "explorer",
+  GATHERER = "gatherer",
+  BREEDER = "breeder",
+}
 
 export interface BehaviorConfig {
   foodWeight: number;
@@ -31,7 +32,7 @@ export interface BehaviorConfig {
 }
 
 export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
-  forager: {
+  [BehaviorType.FORAGER]: {
     foodWeight: 1.2,
     waterWeight: 0.8,
     trailWeight: 0.3,
@@ -42,7 +43,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 1.0,
     socialRadius: 5,
   },
-  hunter: {
+  [BehaviorType.HUNTER]: {
     foodWeight: 0.5,
     waterWeight: 0.3,
     trailWeight: 0.8,
@@ -53,7 +54,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 1.4,
     socialRadius: 8,
   },
-  nomad: {
+  [BehaviorType.NOMAD]: {
     foodWeight: 0.8,
     waterWeight: 1.0,
     trailWeight: -0.5,
@@ -64,7 +65,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 1.2,
     socialRadius: 3,
   },
-  settler: {
+  [BehaviorType.SETTLER]: {
     foodWeight: 1.0,
     waterWeight: 1.0,
     trailWeight: 0.7,
@@ -75,7 +76,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 0.8,
     socialRadius: 7,
   },
-  guardian: {
+  [BehaviorType.GUARDIAN]: {
     foodWeight: 0.6,
     waterWeight: 0.6,
     trailWeight: 0.5,
@@ -86,7 +87,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 1.1,
     socialRadius: 10,
   },
-  explorer: {
+  [BehaviorType.EXPLORER]: {
     foodWeight: 0.7,
     waterWeight: 0.7,
     trailWeight: -0.8,
@@ -97,7 +98,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 1.3,
     socialRadius: 2,
   },
-  gatherer: {
+  [BehaviorType.GATHERER]: {
     foodWeight: 1.5,
     waterWeight: 1.2,
     trailWeight: 0.2,
@@ -108,7 +109,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorType, BehaviorConfig> = {
     speedMod: 0.9,
     socialRadius: 4,
   },
-  breeder: {
+  [BehaviorType.BREEDER]: {
     foodWeight: 1.3,
     waterWeight: 1.0,
     trailWeight: 0.6,
@@ -129,14 +130,14 @@ export function getBehaviorType(seed: number): BehaviorType {
   const bits = seed & 0x07;
 
   const types: BehaviorType[] = [
-    "forager",
-    "hunter",
-    "nomad",
-    "settler",
-    "guardian",
-    "explorer",
-    "gatherer",
-    "breeder",
+    BehaviorType.FORAGER,
+    BehaviorType.HUNTER,
+    BehaviorType.NOMAD,
+    BehaviorType.SETTLER,
+    BehaviorType.GUARDIAN,
+    BehaviorType.EXPLORER,
+    BehaviorType.GATHERER,
+    BehaviorType.BREEDER,
   ];
 
   return types[bits];
@@ -155,14 +156,14 @@ export function getParticleBehavior(particle: Particle): BehaviorConfig {
  */
 export function getBehaviorColor(type: BehaviorType): number {
   const colors: Record<BehaviorType, number> = {
-    forager: 0x4caf50,
-    hunter: 0xf44336,
-    nomad: 0xff9800,
-    settler: 0x2196f3,
-    guardian: 0x9c27b0,
-    explorer: 0xffeb3b,
-    gatherer: 0x795548,
-    breeder: 0xe91e63,
+    [BehaviorType.FORAGER]: 0x4caf50,
+    [BehaviorType.HUNTER]: 0xf44336,
+    [BehaviorType.NOMAD]: 0xff9800,
+    [BehaviorType.SETTLER]: 0x2196f3,
+    [BehaviorType.GUARDIAN]: 0x9c27b0,
+    [BehaviorType.EXPLORER]: 0xffeb3b,
+    [BehaviorType.GATHERER]: 0x795548,
+    [BehaviorType.BREEDER]: 0xe91e63,
   };
   return colors[type];
 }
@@ -172,14 +173,14 @@ export function getBehaviorColor(type: BehaviorType): number {
  */
 export function getBehaviorName(type: BehaviorType): string {
   const names: Record<BehaviorType, string> = {
-    forager: "Recolector",
-    hunter: "Cazador",
-    nomad: "Nómada",
-    settler: "Colono",
-    guardian: "Guardián",
-    explorer: "Explorador",
-    gatherer: "Cosechador",
-    breeder: "Criador",
+    [BehaviorType.FORAGER]: "Recolector",
+    [BehaviorType.HUNTER]: "Cazador",
+    [BehaviorType.NOMAD]: "Nómada",
+    [BehaviorType.SETTLER]: "Colono",
+    [BehaviorType.GUARDIAN]: "Guardián",
+    [BehaviorType.EXPLORER]: "Explorador",
+    [BehaviorType.GATHERER]: "Cosechador",
+    [BehaviorType.BREEDER]: "Criador",
   };
   return names[type];
 }
@@ -199,14 +200,14 @@ export function calculateBiodiversity(
 ): BiodiversityStats {
   const alive = particles.filter((p) => p.alive);
   const counts: Record<BehaviorType, number> = {
-    forager: 0,
-    hunter: 0,
-    nomad: 0,
-    settler: 0,
-    guardian: 0,
-    explorer: 0,
-    gatherer: 0,
-    breeder: 0,
+    [BehaviorType.FORAGER]: 0,
+    [BehaviorType.HUNTER]: 0,
+    [BehaviorType.NOMAD]: 0,
+    [BehaviorType.SETTLER]: 0,
+    [BehaviorType.GUARDIAN]: 0,
+    [BehaviorType.EXPLORER]: 0,
+    [BehaviorType.GATHERER]: 0,
+    [BehaviorType.BREEDER]: 0,
   };
 
   for (const p of alive) {
@@ -215,11 +216,14 @@ export function calculateBiodiversity(
   }
 
   let maxCount = 0;
-  let dominant: BehaviorType = "forager";
-  for (const [type, count] of Object.entries(counts)) {
+  let dominant: BehaviorType = BehaviorType.FORAGER;
+  for (const [type, count] of Object.entries(counts) as [
+    BehaviorType,
+    number,
+  ][]) {
     if (count > maxCount) {
       maxCount = count;
-      dominant = type as BehaviorType;
+      dominant = type;
     }
   }
 
