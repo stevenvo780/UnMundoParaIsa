@@ -5,7 +5,12 @@
 
 import { WORLD } from "../types";
 
-export type LODLevel = "high" | "medium" | "low" | "dormant";
+export enum LODLevel {
+  HIGH = "high",
+  MEDIUM = "medium",
+  LOW = "low",
+  DORMANT = "dormant",
+}
 
 export interface LODConfig {
   thresholds: {
@@ -106,7 +111,7 @@ export class LODManager {
 
     this.levelCache = new Array<LODLevel>(
       this.gridWidth * this.gridHeight,
-    ).fill("dormant");
+    ).fill(LODLevel.DORMANT);
 
     this.initializeRegions();
   }
@@ -120,7 +125,7 @@ export class LODManager {
           y: gy * this.regionSize,
           width: this.regionSize,
           height: this.regionSize,
-          level: "dormant",
+          level: LODLevel.DORMANT,
           tickRate: this.config.tickRates.dormant,
           ticksSinceUpdate: 0,
         });
@@ -192,10 +197,10 @@ export class LODManager {
   private distanceToLevel(dist: number): LODLevel {
     const t = this.config.thresholds;
 
-    if (dist < t.high) return "high";
-    if (dist < t.medium) return "medium";
-    if (dist < t.low) return "low";
-    return "dormant";
+    if (dist < t.high) return LODLevel.HIGH;
+    if (dist < t.medium) return LODLevel.MEDIUM;
+    if (dist < t.low) return LODLevel.LOW;
+    return LODLevel.DORMANT;
   }
 
   /**
@@ -210,7 +215,7 @@ export class LODManager {
     const gy = Math.floor(worldY / this.regionSize);
 
     if (gx < 0 || gx >= this.gridWidth || gy < 0 || gy >= this.gridHeight) {
-      return "dormant";
+      return LODLevel.DORMANT;
     }
 
     return this.levelCache[gy * this.gridWidth + gx];
@@ -312,10 +317,10 @@ export class LODManager {
     }
 
     const counts: Record<LODLevel, number> = {
-      high: 0,
-      medium: 0,
-      low: 0,
-      dormant: 0,
+      [LODLevel.HIGH]: 0,
+      [LODLevel.MEDIUM]: 0,
+      [LODLevel.LOW]: 0,
+      [LODLevel.DORMANT]: 0,
     };
 
     for (const region of this.regions.values()) {
@@ -335,10 +340,10 @@ export class LODManager {
 
     const map: string[][] = [];
     const symbols: Record<LODLevel, string> = {
-      high: "H",
-      medium: "M",
-      low: "L",
-      dormant: ".",
+      [LODLevel.HIGH]: "H",
+      [LODLevel.MEDIUM]: "M",
+      [LODLevel.LOW]: "L",
+      [LODLevel.DORMANT]: ".",
     };
 
     for (let gy = 0; gy < this.gridHeight; gy++) {

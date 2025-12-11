@@ -14,7 +14,11 @@ export interface ChunkCoord {
   cy: number;
 }
 
-export type ChunkState = "dormant" | "active" | "hyper";
+export enum ChunkState {
+  DORMANT = "dormant",
+  ACTIVE = "active",
+  HYPER = "hyper",
+}
 
 /**
  * Chunk - Subdivisión del mundo
@@ -26,7 +30,7 @@ export class Chunk {
   readonly worldY: number;
 
   private fields: Map<FieldType, Field> = new Map();
-  private _state: ChunkState = "dormant";
+  private _state: ChunkState = ChunkState.DORMANT;
   private lastActiveTime = 0;
 
   private _biomes: Uint8Array | null = null;
@@ -84,7 +88,7 @@ export class Chunk {
    * Activar chunk - crear campos si no existen
    */
   activate(): void {
-    if (this._state !== "dormant") return;
+    if (this._state !== ChunkState.DORMANT) return;
 
     const fieldTypes: FieldType[] = [
       FieldType.FOOD,
@@ -107,7 +111,7 @@ export class Chunk {
       this.fields.set(type, field);
     }
 
-    this._state = "active";
+    this._state = ChunkState.ACTIVE;
     this.lastActiveTime = Date.now();
   }
 
@@ -115,10 +119,10 @@ export class Chunk {
    * Poner chunk en modo hyper (actualización más frecuente)
    */
   setHyper(): void {
-    if (this._state === "dormant") {
+    if (this._state === ChunkState.DORMANT) {
       this.activate();
     }
-    this._state = "hyper";
+    this._state = ChunkState.HYPER;
     this.lastActiveTime = Date.now();
   }
 
@@ -126,10 +130,10 @@ export class Chunk {
    * Dormir chunk - liberar memoria
    */
   sleep(): void {
-    if (this._state === "dormant") return;
+    if (this._state === ChunkState.DORMANT) return;
 
     this.fields.clear();
-    this._state = "dormant";
+    this._state = ChunkState.DORMANT;
   }
 
   /**
@@ -181,7 +185,7 @@ export class Chunk {
    * Paso de difusión para todos los campos
    */
   diffuseDecayStep(): void {
-    if (this._state === "dormant") return;
+    if (this._state === ChunkState.DORMANT) return;
 
     for (const field of this.fields.values()) {
       field.diffuseDecayStep();
@@ -192,7 +196,7 @@ export class Chunk {
    * Paso de crecimiento para recursos
    */
   growthStep(): void {
-    if (this._state === "dormant") return;
+    if (this._state === ChunkState.DORMANT) return;
 
     this.getField(FieldType.FOOD)?.growthStep();
     this.getField(FieldType.TREES)?.growthStep();
@@ -251,7 +255,7 @@ export class Chunk {
   static deserialize(data: ChunkData): Chunk {
     const chunk = new Chunk(data.cx, data.cy);
 
-    if (data.state !== "dormant") {
+    if (data.state !== ChunkState.DORMANT) {
       chunk.activate();
 
       for (const [type, buffer] of Object.entries(data.fields)) {

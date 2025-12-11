@@ -7,20 +7,21 @@ import { ChatFragment, Emotion } from "./ChatParser";
 import { Artifact } from "./Artifacts";
 import { Particle } from "../types";
 
-export type EventType =
-  | "artifact_discovered"
-  | "community_formed"
-  | "community_extinct"
-  | "first_birth"
-  | "mass_birth"
-  | "mass_death"
-  | "conflict_started"
-  | "peace_restored"
-  | "migration"
-  | "discovery"
-  | "love_pair"
-  | "elder"
-  | "hero_born";
+export enum EventType {
+  ARTIFACT_DISCOVERED = "artifact_discovered",
+  COMMUNITY_FORMED = "community_formed",
+  COMMUNITY_EXTINCT = "community_extinct",
+  FIRST_BIRTH = "first_birth",
+  MASS_BIRTH = "mass_birth",
+  MASS_DEATH = "mass_death",
+  CONFLICT_STARTED = "conflict_started",
+  PEACE_RESTORED = "peace_restored",
+  MIGRATION = "migration",
+  DISCOVERY = "discovery",
+  LOVE_PAIR = "love_pair",
+  ELDER = "elder",
+  HERO_BORN = "hero_born",
+}
 
 export interface NarrativeEvent {
   id: number;
@@ -137,7 +138,7 @@ export class EventManager {
   private registerDefaultConditions(): void {
     this.conditions = [
       {
-        type: "artifact_discovered",
+        type: EventType.ARTIFACT_DISCOVERED,
         check: (state, prev): EventTrigger | null => {
           const newDiscovered = state.artifacts.filter(
             (a) =>
@@ -163,7 +164,7 @@ export class EventManager {
       },
 
       {
-        type: "community_formed",
+        type: EventType.COMMUNITY_FORMED,
         check: (state, prev): EventTrigger | null => {
           const newCommunities = state.communities.filter(
             (c) => !prev.communities.find((p) => p.id === c.id),
@@ -182,11 +183,11 @@ export class EventManager {
         },
         cooldown: 100,
         priority: 3,
-        emotionHint: "joy",
+        emotionHint: Emotion.JOY,
       },
 
       {
-        type: "mass_birth",
+        type: EventType.MASS_BIRTH,
         check: (state, prev): EventTrigger | null => {
           if (state.births < 10) return null;
 
@@ -209,11 +210,11 @@ export class EventManager {
         },
         cooldown: 200,
         priority: 4,
-        emotionHint: "joy",
+        emotionHint: Emotion.JOY,
       },
 
       {
-        type: "mass_death",
+        type: EventType.MASS_DEATH,
         check: (state, prev): EventTrigger | null => {
           if (state.deaths < 10) return null;
 
@@ -236,11 +237,11 @@ export class EventManager {
         },
         cooldown: 200,
         priority: 4,
-        emotionHint: "melancholy",
+        emotionHint: Emotion.MELANCHOLY,
       },
 
       {
-        type: "conflict_started",
+        type: EventType.CONFLICT_STARTED,
         check: (state, prev): EventTrigger | null => {
           const newConflicts = state.conflicts.filter(
             (c) =>
@@ -263,7 +264,7 @@ export class EventManager {
         },
         cooldown: 150,
         priority: 2,
-        emotionHint: "melancholy",
+        emotionHint: Emotion.MELANCHOLY,
       },
     ];
 

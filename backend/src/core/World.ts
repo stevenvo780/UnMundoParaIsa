@@ -5,6 +5,7 @@
 
 import { Field } from "./Field";
 import { Scheduler } from "./Scheduler";
+import { Logger } from "../utils/Logger";
 import {
   FieldType,
   DEFAULT_FIELD_CONFIGS,
@@ -602,6 +603,7 @@ export class World {
    * Generar mundo inicial con oases
    */
   generate(seed: number = this.config.seed): void {
+    Logger.info(`[World] Generating world with seed ${seed}`);
     const rng = this.createRNG(seed);
 
     // Generar oases de comida
@@ -1289,6 +1291,7 @@ export class World {
   }
 
   reset(): void {
+    Logger.info("[World] Resetting simulation");
     this.tick = 0;
     this.particles = [];
     this.particleIdCounter = 0;

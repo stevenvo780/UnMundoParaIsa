@@ -6,7 +6,11 @@
 import { Particle } from "../types";
 import { getSignature } from "../social/Signatures";
 
-export type EntityType = "particle" | "character" | "hero";
+export enum EntityType {
+  PARTICLE = "particle",
+  CHARACTER = "character",
+  HERO = "hero",
+}
 
 /**
  * BaseCharacter - Propiedades comunes
@@ -38,14 +42,14 @@ export interface BaseCharacter {
  * Character - Partícula materializada con identidad
  */
 export interface Character extends BaseCharacter {
-  type: "character";
+  type: EntityType.CHARACTER;
 }
 
 /**
  * Hero - Personaje notable con diálogos
  */
 export interface Hero extends BaseCharacter {
-  type: "hero";
+  type: EntityType.HERO;
   title: string;
   dialogues: string[];
   achievements: string[];
@@ -244,7 +248,7 @@ export class MaterializationManager {
       id: this.nextId++,
       particleId: particle.id,
       name: generateName(particle.seed),
-      type: "character",
+      type: EntityType.CHARACTER,
 
       x: particle.x,
       y: particle.y,
@@ -293,7 +297,7 @@ export class MaterializationManager {
   promoteToHero(character: Character): Hero {
     const hero: Hero = {
       ...character,
-      type: "hero",
+      type: EntityType.HERO,
       title: generateTitle(character.seed),
       dialogues: [],
       achievements: character.events

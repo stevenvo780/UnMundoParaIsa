@@ -11,10 +11,10 @@ export {
 } from "./SemanticFields";
 
 export {
-  type Speaker,
-  type Emotion,
-  type TimeOfDay,
-  type ContextType,
+  Speaker,
+  Emotion,
+  TimeOfDay,
+  ContextType,
   type ChatFragment,
   type ChatDatabase,
   type ChatStats,
@@ -32,7 +32,7 @@ export {
 } from "./Artifacts";
 
 export {
-  type EventType,
+  EventType,
   type NarrativeEvent,
   type EventData,
   type EventTrigger,
@@ -43,7 +43,7 @@ export {
 } from "./Events";
 
 export {
-  type EntityType,
+  EntityType,
   type BaseCharacter,
   type Character,
   type Hero,

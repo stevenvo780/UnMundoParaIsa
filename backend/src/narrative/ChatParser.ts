@@ -3,23 +3,37 @@
  * Extrae emociones y crea triggers para el mundo
  */
 
-export type Speaker = "isa" | "stev";
-export type Emotion =
-  | "joy"
-  | "nostalgia"
-  | "love"
-  | "wonder"
-  | "melancholy"
-  | "neutral";
-export type TimeOfDay = "dawn" | "day" | "dusk" | "night" | "any";
-export type ContextType =
-  | "pair"
-  | "birth"
-  | "death"
-  | "community"
-  | "discovery"
-  | "conflict"
-  | "any";
+export enum Speaker {
+  ISA = "isa",
+  STEV = "stev",
+}
+
+export enum Emotion {
+  JOY = "joy",
+  NOSTALGIA = "nostalgia",
+  LOVE = "love",
+  WONDER = "wonder",
+  MELANCHOLY = "melancholy",
+  NEUTRAL = "neutral",
+}
+
+export enum TimeOfDay {
+  DAWN = "dawn",
+  DAY = "day",
+  DUSK = "dusk",
+  NIGHT = "night",
+  ANY = "any",
+}
+
+export enum ContextType {
+  PAIR = "pair",
+  BIRTH = "birth",
+  DEATH = "death",
+  COMMUNITY = "community",
+  DISCOVERY = "discovery",
+  CONFLICT = "conflict",
+  ANY = "any",
+}
 
 export interface ChatFragment {
   id: string;
@@ -73,119 +87,120 @@ interface RawChatData {
 /**
  * Detectar emoción de un texto (heurística simple)
  */
+type EmotionPattern = { words: string[]; baseIntensity: number };
+
 export function detectEmotion(text: string): {
   emotion: Emotion;
   intensity: number;
 } {
   const lower = text.toLowerCase();
 
-  const patterns: Record<Emotion, { words: string[]; baseIntensity: number }> =
-    {
-      joy: {
-        words: [
-          "jaja",
-          "haha",
-          "😂",
-          "😊",
-          "🥰",
-          "feliz",
-          "happy",
-          "genial",
-          "increíble",
-          "wonderful",
-          "amazing",
-          "love",
-          "te amo",
-          "te quiero",
-          "❤️",
-          "💕",
-        ],
-        baseIntensity: 0.7,
-      },
-      love: {
-        words: [
-          "te amo",
-          "i love you",
-          "mi amor",
-          "my love",
-          "beso",
-          "kiss",
-          "abrazo",
-          "hug",
-          "❤️",
-          "💕",
-          "💗",
-          "heart",
-          "corazón",
-          "forever",
-          "siempre",
-        ],
-        baseIntensity: 0.9,
-      },
-      nostalgia: {
-        words: [
-          "recuerdo",
-          "remember",
-          "antes",
-          "cuando",
-          "aquella vez",
-          "miss",
-          "extraño",
-          "ojalá",
-          "wish",
-          "tiempo",
-          "años",
-        ],
-        baseIntensity: 0.6,
-      },
-      wonder: {
-        words: [
-          "wow",
-          "increíble",
-          "amazing",
-          "beautiful",
-          "hermoso",
-          "✨",
-          "🌟",
-          "mira",
-          "look",
-          "descubrí",
-          "found",
-        ],
-        baseIntensity: 0.65,
-      },
-      melancholy: {
-        words: [
-          "triste",
-          "sad",
-          "difícil",
-          "hard",
-          "llorar",
-          "cry",
-          "dolor",
-          "pain",
-          "solo",
-          "alone",
-          "lejos",
-          "far",
-          "extraño",
-          "miss",
-        ],
-        baseIntensity: 0.5,
-      },
-      neutral: {
-        words: [],
-        baseIntensity: 0.3,
-      },
-    };
+  const patterns: Record<Emotion, EmotionPattern> = {
+    [Emotion.JOY]: {
+      words: [
+        "jaja",
+        "haha",
+        "😂",
+        "😊",
+        "🥰",
+        "feliz",
+        "happy",
+        "genial",
+        "increíble",
+        "wonderful",
+        "amazing",
+        "love",
+        "te amo",
+        "te quiero",
+        "❤️",
+        "💕",
+      ],
+      baseIntensity: 0.7,
+    },
+    [Emotion.LOVE]: {
+      words: [
+        "te amo",
+        "i love you",
+        "mi amor",
+        "my love",
+        "beso",
+        "kiss",
+        "abrazo",
+        "hug",
+        "❤️",
+        "💕",
+        "💗",
+        "heart",
+        "corazón",
+        "forever",
+        "siempre",
+      ],
+      baseIntensity: 0.9,
+    },
+    [Emotion.NOSTALGIA]: {
+      words: [
+        "recuerdo",
+        "remember",
+        "antes",
+        "cuando",
+        "aquella vez",
+        "miss",
+        "extraño",
+        "ojalá",
+        "wish",
+        "tiempo",
+        "años",
+      ],
+      baseIntensity: 0.6,
+    },
+    [Emotion.WONDER]: {
+      words: [
+        "wow",
+        "increíble",
+        "amazing",
+        "beautiful",
+        "hermoso",
+        "✨",
+        "🌟",
+        "mira",
+        "look",
+        "descubrí",
+        "found",
+      ],
+      baseIntensity: 0.65,
+    },
+    [Emotion.MELANCHOLY]: {
+      words: [
+        "triste",
+        "sad",
+        "difícil",
+        "hard",
+        "llorar",
+        "cry",
+        "dolor",
+        "pain",
+        "solo",
+        "alone",
+        "lejos",
+        "far",
+        "extraño",
+        "miss",
+      ],
+      baseIntensity: 0.5,
+    },
+    [Emotion.NEUTRAL]: {
+      words: [],
+      baseIntensity: 0.3,
+    },
+  };
 
-  let bestMatch: Emotion = "neutral";
+  let bestMatch: Emotion = Emotion.NEUTRAL;
   let bestScore = 0;
   let intensity = 0.3;
 
   for (const [emotion, config] of Object.entries(patterns) as [
     Emotion,
-    typeof patterns.joy,
+    EmotionPattern,
   ][]) {
     let score = 0;
     for (const word of config.words) {
@@ -241,15 +256,17 @@ function parseItem(item: RawChatMessage, id: number): ChatFragment | null {
   if (!text || typeof text !== "string" || text.length < 5) return null;
 
   const speaker: Speaker =
-    item.speaker === "isa" || item.sender === "isa" || item.from === "isa"
-      ? "isa"
-      : item.speaker === "stev" ||
-          item.sender === "stev" ||
-          item.from === "stev"
-        ? "stev"
+    item.speaker === Speaker.ISA ||
+    item.sender === Speaker.ISA ||
+    item.from === Speaker.ISA
+      ? Speaker.ISA
+      : item.speaker === Speaker.STEV ||
+          item.sender === Speaker.STEV ||
+          item.from === Speaker.STEV
+        ? Speaker.STEV
         : item.is_from_me || item.isFromMe
-          ? "stev"
-          : "isa";
+          ? Speaker.STEV
+          : Speaker.ISA;
 
   const { emotion, intensity } = detectEmotion(text);
 
@@ -277,12 +294,15 @@ function generateTrigger(
   intensity: number,
 ): ChatFragment["trigger"] {
   const triggers: Record<Emotion, Partial<ChatFragment["trigger"]>> = {
-    joy: { field: "joy", context: "any" },
-    love: { field: "love", context: "pair" },
-    nostalgia: { field: "nostalgia", time: "dusk" },
-    wonder: { field: "wonder", context: "discovery" },
-    melancholy: { field: "melancholy", time: "night" },
-    neutral: { context: "any" },
+    [Emotion.JOY]: { field: "joy", context: ContextType.ANY },
+    [Emotion.LOVE]: { field: "love", context: ContextType.PAIR },
+    [Emotion.NOSTALGIA]: { field: "nostalgia", time: TimeOfDay.DUSK },
+    [Emotion.WONDER]: { field: "wonder", context: ContextType.DISCOVERY },
+    [Emotion.MELANCHOLY]: {
+      field: "melancholy",
+      time: TimeOfDay.NIGHT,
+    },
+    [Emotion.NEUTRAL]: { context: ContextType.ANY },
   };
 
   return {
@@ -342,14 +362,14 @@ export class ChatManager {
       if (
         context &&
         f.trigger?.context &&
-        f.trigger.context !== "any" &&
+        f.trigger.context !== ContextType.ANY &&
         f.trigger.context !== context
       )
         return false;
       if (
         time &&
         f.trigger?.time &&
-        f.trigger.time !== "any" &&
+        f.trigger.time !== TimeOfDay.ANY &&
         f.trigger.time !== time
       )
         return false;
@@ -383,14 +403,17 @@ export class ChatManager {
    */
   getStats(): ChatStats {
     const byEmotion: Record<Emotion, number> = {
-      joy: 0,
-      love: 0,
-      nostalgia: 0,
-      wonder: 0,
-      melancholy: 0,
-      neutral: 0,
+      [Emotion.JOY]: 0,
+      [Emotion.LOVE]: 0,
+      [Emotion.NOSTALGIA]: 0,
+      [Emotion.WONDER]: 0,
+      [Emotion.MELANCHOLY]: 0,
+      [Emotion.NEUTRAL]: 0,
     };
-    const bySpeaker: Record<Speaker, number> = { isa: 0, stev: 0 };
+    const bySpeaker: Record<Speaker, number> = {
+      [Speaker.ISA]: 0,
+      [Speaker.STEV]: 0,
+    };
 
     for (const f of this.fragments) {
       byEmotion[f.emotion]++;

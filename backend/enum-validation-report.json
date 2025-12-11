@@ -2,42 +2,8 @@
   "summary": {
     "totalEnums": 3,
     "unusedEnums": 0,
-    "missingEnumOccurrences": 3
+    "missingEnumOccurrences": 0
   },
   "unusedEnums": [],
-  "missingEnumUsages": [
-    {
-      "stringLiteral": "water",
-      "possibleEnums": [
-        "AnimalTargetType"
-      ],
-      "count": 2,
-      "occurrences": [
-        {
-          "file": "src/core/World.ts",
-          "line": 229,
-          "lineContent": "resourceFields.set(\"water\", waterField.getBuffer());"
-        },
-        {
-          "file": "src/economy/Reactions.ts",
-          "line": 42,
-          "lineContent": "requires: { labor: 0.05, field: { type: \"water\", minValue: 0.3 } },"
-        }
-      ]
-    },
-    {
-      "stringLiteral": "food",
-      "possibleEnums": [
-        "AnimalTargetType"
-      ],
-      "count": 1,
-      "occurrences": [
-        {
-          "file": "src/core/World.ts",
-          "line": 228,
-          "lineContent": "resourceFields.set(\"food\", foodField.getBuffer());"
-        }
-      ]
-    }
-  ]
+  "missingEnumUsages": []
 }

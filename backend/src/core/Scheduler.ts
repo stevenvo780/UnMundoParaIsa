@@ -7,7 +7,12 @@ import { Logger } from "../utils/Logger";
  * SLOW: Cada 20 ticks (crecimiento, termostatos)
  */
 
-export type UpdateRate = "FAST" | "MEDIUM" | "SLOW";
+export const UpdateRate = {
+  FAST: "FAST",
+  MEDIUM: "MEDIUM",
+  SLOW: "SLOW",
+} as const;
+export type UpdateRate = (typeof UpdateRate)[keyof typeof UpdateRate];
 
 export interface ScheduledTask {
   id: string;
@@ -90,9 +95,9 @@ export class Scheduler {
 
     for (const task of sortedTasks) {
       const shouldRun =
-        (task.rate === "FAST" && runFast) ||
-        (task.rate === "MEDIUM" && runMedium) ||
-        (task.rate === "SLOW" && runSlow);
+        (task.rate === UpdateRate.FAST && runFast) ||
+        (task.rate === UpdateRate.MEDIUM && runMedium) ||
+        (task.rate === UpdateRate.SLOW && runSlow);
 
       if (!shouldRun) continue;
 
@@ -109,9 +114,9 @@ export class Scheduler {
         task.fn();
         tasksRun++;
 
-        if (task.rate === "FAST") fastRun++;
-        else if (task.rate === "MEDIUM") mediumRun++;
-        else if (task.rate === "SLOW") slowRun++;
+        if (task.rate === UpdateRate.FAST) fastRun++;
+        else if (task.rate === UpdateRate.MEDIUM) mediumRun++;
+        else if (task.rate === UpdateRate.SLOW) slowRun++;
       } catch (e) {
         Logger.error(`[Scheduler] Error in task ${task.id}:`, e);
       }
