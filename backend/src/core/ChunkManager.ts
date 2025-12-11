@@ -31,7 +31,6 @@ export class ChunkManager {
 
   private chunks: Map<string, Chunk> = new Map();
   private activeChunks: Set<string> = new Set();
-  private hyperChunks: Set<string> = new Set();
 
   private focusX = 0;
   private focusY = 0;
@@ -220,7 +219,6 @@ export class ChunkManager {
     }
 
     this.activeChunks = newActive;
-    this.hyperChunks = newHyper;
   }
 
   /**

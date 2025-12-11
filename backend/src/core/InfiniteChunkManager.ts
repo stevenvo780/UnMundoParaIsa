@@ -70,8 +70,6 @@ export class InfiniteChunkManager {
 
   private biomeResolver: BiomeResolver;
 
-  private focusCenters: Array<{ x: number; y: number; priority: number }> = [];
-
   private onChunkGenerated?: (chunk: ChunkSnapshot) => void;
   private onChunkUnloaded?: (cx: number, cy: number) => void;
 
@@ -304,7 +302,7 @@ export class InfiniteChunkManager {
         } else if (biome === BiomeType.SWAMP || biome === BiomeType.WETLAND) {
           food *= 0.8;
         }
-        chunk.setValue("food", lx, ly, Math.min(1, food * 0.5));
+        chunk.setValue(FieldType.FOOD, lx, ly, Math.min(1, food * 0.5));
 
         let water =
           0.5 + 0.5 * this.waterNoise(gx * WATER_SCALE, gy * WATER_SCALE);
@@ -315,13 +313,13 @@ export class InfiniteChunkManager {
           biome === BiomeType.LAKE ||
           biome === BiomeType.RIVER
         ) {
-          chunk.setValue("water", lx, ly, 1.0);
+          chunk.setValue(FieldType.WATER, lx, ly, 1.0);
         } else if (biome === BiomeType.SWAMP || biome === BiomeType.WETLAND) {
-          chunk.setValue("water", lx, ly, 0.7 + water * 0.3);
+          chunk.setValue(FieldType.WATER, lx, ly, 0.7 + water * 0.3);
         } else if (biome === BiomeType.BEACH) {
-          chunk.setValue("water", lx, ly, water > 0.5 ? 0.4 : 0);
+          chunk.setValue(FieldType.WATER, lx, ly, water > 0.5 ? 0.4 : 0);
         } else if (water > 0.6) {
-          chunk.setValue("water", lx, ly, (water - 0.6) * 2.5);
+          chunk.setValue(FieldType.WATER, lx, ly, (water - 0.6) * 2.5);
         }
 
         const treePotential = this.treeNoise(gx * TREE_SCALE, gy * TREE_SCALE);
@@ -329,7 +327,7 @@ export class InfiniteChunkManager {
 
         if (treeDensity > 0 && treePotential > 1 - treeDensity) {
           chunk.setValue(
-            "trees",
+            FieldType.TREES,
             lx,
             ly,
             (treePotential - (1 - treeDensity)) * (1 / treeDensity),
@@ -339,7 +337,7 @@ export class InfiniteChunkManager {
         const stone =
           0.5 + 0.5 * this.stoneNoise(gx * STONE_SCALE, gy * STONE_SCALE);
         if (stone > 0.7 && water < 0.3) {
-          chunk.setValue("stone", lx, ly, (stone - 0.7) * 3.33);
+          chunk.setValue(FieldType.STONE, lx, ly, (stone - 0.7) * 3.33);
         }
       }
     }
@@ -396,10 +394,6 @@ export class InfiniteChunkManager {
         this.chunkAccessTimes.set(key, Date.now());
       }
     }
-
-    this.focusCenters = [
-      { x: viewport.centerX, y: viewport.centerY, priority: 1 },
-    ];
 
     return newChunks;
   }
@@ -531,7 +525,7 @@ export class InfiniteChunkManager {
   serializeChunk(chunk: Chunk, generated: boolean = false): ChunkSnapshot {
     const fields: Partial<Record<FieldType, ArrayBuffer>> = {};
 
-    const activeFields: FieldType[] = ["food", "water", "trees", "stone"];
+    const activeFields: FieldType[] = [FieldType.FOOD, FieldType.WATER, FieldType.TREES, FieldType.STONE];
     for (const type of activeFields) {
       const field = chunk.getField(type);
       if (field) {

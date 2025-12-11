@@ -48,17 +48,12 @@ export class ConflictManager {
   private cooldowns: Map<string, number> = new Map();
   private config: ConflictConfig;
   private conflictIdCounter = 0;
-  private currentTick = 0;
-  private width: number;
-  private height: number;
 
   constructor(
-    width: number = WORLD_WIDTH,
-    height: number = WORLD_HEIGHT,
+    _width: number = WORLD_WIDTH,
+    _height: number = WORLD_HEIGHT,
     config: Partial<ConflictConfig> = {},
   ) {
-    this.width = width;
-    this.height = height;
     this.config = {
       tensionThreshold: config.tensionThreshold ?? 0.7,
       conflictDuration: config.conflictDuration ?? 100,
@@ -82,7 +77,6 @@ export class ConflictManager {
     }>,
     tick: number,
   ): Conflict[] {
-    this.currentTick = tick;
     const newConflicts: Conflict[] = [];
 
     for (const data of tensionData) {
@@ -147,7 +141,6 @@ export class ConflictManager {
     tick: number,
     getCommunityStrength: (communityId: string) => number,
   ): { resolved: ConflictOutcome[]; ongoing: Conflict[] } {
-    this.currentTick = tick;
     const resolved: ConflictOutcome[] = [];
 
     for (const [conflictId, conflict] of this.activeConflicts) {

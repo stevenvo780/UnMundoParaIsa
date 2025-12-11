@@ -3,7 +3,7 @@
  * Precomputa direcciones de movimiento hacia objetivos
  */
 
-import { WORLD } from "../types";
+import { WORLD, FieldType } from "../types";
 
 export interface FlowVector {
   dx: number;
@@ -12,8 +12,8 @@ export interface FlowVector {
 }
 
 export type FlowTarget =
-  | "food"
-  | "water"
+  | FieldType.FOOD
+  | FieldType.WATER
   | "shelter"
   | "community"
   | "artifact"

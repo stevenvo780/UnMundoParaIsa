@@ -87,18 +87,18 @@ export class Chunk {
     if (this._state !== "dormant") return;
 
     const fieldTypes: FieldType[] = [
-      "food",
-      "water",
-      "cost",
-      "danger",
-      "trees",
-      "stone",
-      "trail0",
-      "trail1",
-      "trail2",
-      "trail3",
-      "population",
-      "labor",
+      FieldType.FOOD,
+      FieldType.WATER,
+      FieldType.COST,
+      FieldType.DANGER,
+      FieldType.TREES,
+      FieldType.STONE,
+      FieldType.TRAIL0,
+      FieldType.TRAIL1,
+      FieldType.TRAIL2,
+      FieldType.TRAIL3,
+      FieldType.POPULATION,
+      FieldType.LABOR,
     ];
 
     for (const type of fieldTypes) {
@@ -194,8 +194,8 @@ export class Chunk {
   growthStep(): void {
     if (this._state === "dormant") return;
 
-    this.getField("food")?.growthStep();
-    this.getField("trees")?.growthStep();
+    this.getField(FieldType.FOOD)?.growthStep();
+    this.getField(FieldType.TREES)?.growthStep();
   }
 
   /**

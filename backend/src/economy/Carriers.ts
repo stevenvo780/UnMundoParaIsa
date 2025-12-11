@@ -50,16 +50,12 @@ export class CarrierSystem {
   private assignedCarriers: Set<number> = new Set();
   private config: CarrierConfig;
   private taskIdCounter = 0;
-  private width: number;
-  private height: number;
 
   constructor(
-    width: number = WORLD_WIDTH,
-    height: number = WORLD_HEIGHT,
+    _width: number = WORLD_WIDTH,
+    _height: number = WORLD_HEIGHT,
     config: Partial<CarrierConfig> = {},
   ) {
-    this.width = width;
-    this.height = height;
     this.config = {
       maxCarriers: config.maxCarriers ?? 100,
       carryCapacity: config.carryCapacity ?? 10,

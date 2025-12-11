@@ -15,6 +15,8 @@ import {
   Particle,
   ChunkSnapshot,
   ViewportData,
+  ServerMessageType,
+  ClientMessageType,
 } from "./types";
 import {
   getMetrics,
@@ -54,7 +56,15 @@ world.generate(Date.now());
 
 wss.on("connection", (ws: WebSocket) => {
   clients.add(ws);
-  subscriptions.set(ws, new Set(["food", "water", "trail0", "population"]));
+  subscriptions.set(
+    ws,
+    new Set<FieldType>([
+      FieldType.FOOD,
+      FieldType.WATER,
+      FieldType.TRAIL0,
+      FieldType.POPULATION,
+    ]),
+  );
   wsConnectionsActive.inc();
 
   sendInit(ws);
@@ -87,31 +97,35 @@ wss.on("connection", (ws: WebSocket) => {
 
 function handleClientMessage(ws: WebSocket, msg: ClientMessage): void {
   switch (msg.type) {
-    case "start":
+    case ClientMessageType.START:
       world.resume();
-      broadcast({ type: "tick", tick: world.getTick() });
+      broadcast({ type: ServerMessageType.TICK, tick: world.getTick() });
       break;
 
-    case "pause":
+    case ClientMessageType.PAUSE:
       world.pause();
       break;
 
-    case "resume":
+    case ClientMessageType.RESUME:
       world.resume();
       break;
 
-    case "reset":
+    case ClientMessageType.RESET:
       world.reset();
-      broadcast({ type: "init", config: world.config, tick: 0 });
+      broadcast({
+        type: ServerMessageType.INIT,
+        config: world.config,
+        tick: 0,
+      });
       break;
 
-    case "set_config":
+    case ClientMessageType.SET_CONFIG:
       if (msg.config) {
         Object.assign(world.config, msg.config);
       }
       break;
 
-    case "spawn_particles":
+    case ClientMessageType.SPAWN_PARTICLES:
       if (msg.spawn) {
         world.spawnParticlesAt(
           msg.spawn.x,
@@ -122,9 +136,9 @@ function handleClientMessage(ws: WebSocket, msg: ClientMessage): void {
       }
       break;
 
-    case "subscribe_field":
+    case ClientMessageType.SUBSCRIBE_FIELD:
       if (msg.subscribeFields) {
-        const subs = subscriptions.get(ws) || new Set();
+        const subs = subscriptions.get(ws) || new Set<FieldType>();
         for (const field of msg.subscribeFields) {
           subs.add(field);
         }
@@ -132,7 +146,7 @@ function handleClientMessage(ws: WebSocket, msg: ClientMessage): void {
       }
       break;
 
-    case "viewport_update":
+    case ClientMessageType.VIEWPORT_UPDATE:
       if (msg.viewport) {
         clientViewports.set(ws, msg.viewport);
 
@@ -143,7 +157,7 @@ function handleClientMessage(ws: WebSocket, msg: ClientMessage): void {
       }
       break;
 
-    case "request_chunks":
+    case ClientMessageType.REQUEST_CHUNKS:
       if (msg.chunkRequests) {
         const chunks: ChunkSnapshot[] = [];
         for (const coord of msg.chunkRequests) {
@@ -168,7 +182,7 @@ function sendInit(ws: WebSocket): void {
   const initialChunks = infiniteChunks.getChunksForViewport(initialViewport);
 
   const msg: ServerMessage = {
-    type: "init",
+    type: ServerMessageType.INIT,
     tick: world.getTick(),
     config: world.config,
     particles: world.getParticles(),
@@ -213,7 +227,7 @@ function sendFieldUpdates(ws: WebSocket): void {
   }
 
   const msg: ServerMessage = {
-    type: "field_update",
+    type: ServerMessageType.FIELD_UPDATE,
     tick: world.getTick(),
     fields: fields as ServerMessage["fields"],
   };
@@ -238,7 +252,7 @@ function sendChunkData(ws: WebSocket, chunks: ChunkSnapshot[]): void {
     }));
 
     const msg: ServerMessage = {
-      type: "chunk_data",
+      type: ServerMessageType.CHUNK_DATA,
       tick: world.getTick(),
       chunks: serializedChunks as unknown as ChunkSnapshot[],
     };
@@ -275,7 +289,7 @@ function gameLoop(): void {
     }
 
     const tickMsg: ServerMessage = {
-      type: "tick",
+      type: ServerMessageType.TICK,
       tick: world.getTick(),
       particles:
         particles.length <= 1000 ? particles : sampleParticles(particles, 1000),
@@ -294,7 +308,7 @@ function gameLoop(): void {
       const metrics = world.getMetrics();
       const chunkStats = infiniteChunks.getStats();
       const metricsMsg: ServerMessage = {
-        type: "metrics",
+        type: ServerMessageType.METRICS,
         metrics: metrics,
       };
       broadcast(metricsMsg);

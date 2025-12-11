@@ -118,7 +118,6 @@ function verifyChecksum(data: SaveData): boolean {
 export class PersistenceManager {
   private config: PersistenceConfig;
   private lastAutoSave = 0;
-  private saveHistory: SaveData[] = [];
 
   private totalBirths = 0;
   private totalDeaths = 0;

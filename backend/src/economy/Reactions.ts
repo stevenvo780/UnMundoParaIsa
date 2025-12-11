@@ -3,6 +3,8 @@
  * DSL JSON para definir transformaciones de recursos
  */
 
+import { FieldType } from "../types";
+
 export interface Reaction {
   id: string;
   name: string;
@@ -13,7 +15,7 @@ export interface Reaction {
     building?: string;
     minPopulation?: number;
     field?: {
-      type: string;
+      type: FieldType;
       minValue: number;
     };
   };
@@ -39,7 +41,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Recolectar agua",
     inputs: {},
     outputs: { water: 1 },
-    requires: { labor: 0.05, field: { type: "water", minValue: 0.3 } },
+    requires: { labor: 0.05, field: { type: FieldType.WATER, minValue: 0.3 } },
     rate: 0.8,
     priority: 1,
   },
@@ -134,7 +136,7 @@ export class ReactionProcessor {
     labor: number,
     buildings: Set<string>,
     population: number,
-    fields: Record<string, number>,
+    fields: Partial<Record<FieldType, number>>,
   ): boolean {
     for (const [resource, amount] of Object.entries(reaction.inputs)) {
       if ((resources[resource] || 0) < amount) {
@@ -162,7 +164,8 @@ export class ReactionProcessor {
       }
 
       if (reaction.requires.field) {
-        const fieldValue = fields[reaction.requires.field.type] || 0;
+        const fieldValue =
+          fields[reaction.requires.field.type] ?? 0;
         if (fieldValue < reaction.requires.field.minValue) {
           return false;
         }

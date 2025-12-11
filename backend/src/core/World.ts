@@ -110,9 +110,9 @@ export class World {
     // Economy
     this.demandManager = new DemandManager(this.width, this.height);
     this.resourceFlow = new ResourceFlowSystem(this.width, this.height, [
-      "food",
-      "water",
-      "stone",
+      FieldType.FOOD,
+      FieldType.WATER,
+      FieldType.STONE,
     ]);
 
     // Social
@@ -217,21 +217,21 @@ export class World {
    */
   private updateEconomy(): void {
     // 1. Obtener campos necesarios
-    const populationField = this.getField("population")?.getBuffer();
-    const foodField = this.getField("food");
-    const waterField = this.getField("water");
+    const populationField = this.getField(FieldType.POPULATION)?.getBuffer();
+    const foodField = this.getField(FieldType.FOOD);
+    const waterField = this.getField(FieldType.WATER);
 
     if (!populationField || !foodField || !waterField) return;
 
     // 2. Actualizar campos de demanda
     const resourceFields = new Map<string, Float32Array>();
-    resourceFields.set("food", foodField.getBuffer());
-    resourceFields.set("water", waterField.getBuffer());
+    resourceFields.set(FieldType.FOOD, foodField.getBuffer());
+    resourceFields.set(FieldType.WATER, waterField.getBuffer());
 
-    const treesField = this.getField("trees");
-    const stoneField = this.getField("stone");
-    if (treesField) resourceFields.set("trees", treesField.getBuffer());
-    if (stoneField) resourceFields.set("stone", stoneField.getBuffer());
+    const treesField = this.getField(FieldType.TREES);
+    const stoneField = this.getField(FieldType.STONE);
+    if (treesField) resourceFields.set(FieldType.TREES, treesField.getBuffer());
+    if (stoneField) resourceFields.set(FieldType.STONE, stoneField.getBuffer());
 
     this.demandManager.update(populationField, resourceFields);
 
@@ -240,7 +240,7 @@ export class World {
     // Solo recolectan recursos naturales
 
     // 3. Advección de recursos (flujo hacia demanda)
-    const foodDemand = this.demandManager.getDemandField("food");
+    const foodDemand = this.demandManager.getDemandField(FieldType.FOOD);
     if (foodDemand) {
       // Construir arrays de gradiente
       const size = this.width * this.height;
@@ -257,7 +257,7 @@ export class World {
       }
 
       const advectedFood = this.resourceFlow.updateFlow(
-        "food",
+        FieldType.FOOD,
         gradX,
         gradY,
         foodField.getBuffer(),
@@ -276,9 +276,9 @@ export class World {
    */
   private updateSocial(): void {
     // 1. Obtener campos necesarios
-    const populationField = this.getField("population")?.getBuffer();
-    const foodField = this.getField("food")?.getBuffer();
-    const waterField = this.getField("water")?.getBuffer();
+    const populationField = this.getField(FieldType.POPULATION)?.getBuffer();
+    const foodField = this.getField(FieldType.FOOD)?.getBuffer();
+    const waterField = this.getField(FieldType.WATER)?.getBuffer();
 
     if (!populationField || !foodField || !waterField) return;
 
@@ -436,14 +436,14 @@ export class World {
    */
   private updateScale(): void {
     // 1. Actualizar FlowFields desde campos de recursos
-    const food = this.getField("food");
-    const water = this.getField("water");
+    const food = this.getField(FieldType.FOOD);
+    const water = this.getField(FieldType.WATER);
 
     if (food) {
-      this.flowFields.updateFromField("food", food.getBuffer());
+      this.flowFields.updateFromField(FieldType.FOOD, food.getBuffer());
     }
     if (water) {
-      this.flowFields.updateFromField("water", water.getBuffer());
+      this.flowFields.updateFromField(FieldType.WATER, water.getBuffer());
     }
 
     // 2. Actualizar LOD (Level of Detail)
@@ -471,7 +471,7 @@ export class World {
    */
   private updateThermostats(): void {
     const particleCount = this.getParticleCount();
-    const foodAvg = this.getField("food")?.getAverage() ?? 0.5;
+    const foodAvg = this.getField(FieldType.FOOD)?.getAverage() ?? 0.5;
     const avgEnergy =
       this.particles.reduce((sum, p) => sum + (p.alive ? p.energy : 0), 0) /
       Math.max(1, particleCount);
@@ -489,18 +489,18 @@ export class World {
    */
   private initializeFields(): void {
     const fieldsToCreate: FieldType[] = [
-      "food",
-      "water",
-      "cost",
-      "danger",
-      "trees",
-      "stone",
-      "trail0",
-      "trail1",
-      "trail2",
-      "trail3",
-      "population",
-      "labor",
+      FieldType.FOOD,
+      FieldType.WATER,
+      FieldType.COST,
+      FieldType.DANGER,
+      FieldType.TREES,
+      FieldType.STONE,
+      FieldType.TRAIL0,
+      FieldType.TRAIL1,
+      FieldType.TRAIL2,
+      FieldType.TRAIL3,
+      FieldType.POPULATION,
+      FieldType.LABOR,
     ];
 
     for (const fieldType of fieldsToCreate) {
@@ -605,10 +605,10 @@ export class World {
     const rng = this.createRNG(seed);
 
     // Generar oases de comida
-    const foodField = this.getField("food")!;
-    const waterField = this.getField("water")!;
-    const treesField = this.getField("trees")!;
-    const costField = this.getField("cost")!;
+    const foodField = this.getField(FieldType.FOOD)!;
+    const waterField = this.getField(FieldType.WATER)!;
+    const treesField = this.getField(FieldType.TREES)!;
+    const costField = this.getField(FieldType.COST)!;
 
     // Base noise para terreno
     costField.initWithNoise(0.3, 0.2, seed);
@@ -741,7 +741,7 @@ export class World {
    * NOTA: Usa getFieldValueAt para soporte de mundo infinito
    */
   private updateParticles(): void {
-    const food = this.getField("food")!;
+    const food = this.getField(FieldType.FOOD)!;
 
     const { weights, lifecycle } = this.config;
 
@@ -776,8 +776,8 @@ export class World {
 
       // === CONSUMO REAL DE RECURSOS ===
       // Las partículas DEBEN encontrar comida o mueren
-      const foodHere = this.getFieldValueAt("food", p.x, p.y);
-      const waterHere = this.getFieldValueAt("water", p.x, p.y);
+      const foodHere = this.getFieldValueAt(FieldType.FOOD, p.x, p.y);
+      const waterHere = this.getFieldValueAt(FieldType.WATER, p.x, p.y);
 
       // Truncar posición para índices
       const px = Math.floor(p.x);
@@ -797,7 +797,7 @@ export class World {
         } else {
           // En chunks infinitos, reducir directamente
           const newFoodValue = Math.max(0, foodHere - actualConsume);
-          this.setFieldValueAt("food", p.x, p.y, newFoodValue);
+          this.setFieldValueAt(FieldType.FOOD, p.x, p.y, newFoodValue);
         }
       }
 
@@ -808,7 +808,7 @@ export class World {
         // Consumir agua también (menos que comida)
         const waterConsume = Math.min(0.02, waterHere * 0.2);
         this.setFieldValueAt(
-          "water",
+          FieldType.WATER,
           p.x,
           p.y,
           Math.max(0, waterHere - waterConsume),
@@ -831,7 +831,7 @@ export class World {
       // === INTENTAR CONSTRUIR ESTRUCTURA ===
       // Solo partículas MUY bien alimentadas construyen (requiere excedente)
       if (p.energy > 0.85 && Math.random() < 0.03) {
-        const trailHere = this.getFieldValueAt("trail0", p.x, p.y);
+        const trailHere = this.getFieldValueAt(FieldType.TRAIL0, p.x, p.y);
         // Construir cuesta energía
         if (
           this.structureManager.tryCreateStructure(
@@ -942,12 +942,12 @@ export class World {
       }
 
       // Obtener valores de campo
-      const foodVal = this.getFieldValueAt("food", nx, ny);
-      const waterVal = this.getFieldValueAt("water", nx, ny);
-      const trailVal = this.getFieldValueAt("trail0", nx, ny);
-      const dangerVal = this.getFieldValueAt("danger", nx, ny);
-      const costVal = this.getFieldValueAt("cost", nx, ny);
-      const populationVal = this.getFieldValueAt("population", nx, ny);
+      const foodVal = this.getFieldValueAt(FieldType.FOOD, nx, ny);
+      const waterVal = this.getFieldValueAt(FieldType.WATER, nx, ny);
+      const trailVal = this.getFieldValueAt(FieldType.TRAIL0, nx, ny);
+      const dangerVal = this.getFieldValueAt(FieldType.DANGER, nx, ny);
+      const costVal = this.getFieldValueAt(FieldType.COST, nx, ny);
+      const populationVal = this.getFieldValueAt(FieldType.POPULATION, nx, ny);
 
       // Calcular score con crowding y exploration
       // - crowding: evitar zonas con alta densidad de población
@@ -979,10 +979,10 @@ export class World {
   private depositTrail(p: Particle): void {
     const sig = this.getSignature(p.seed);
     const trailFields = [
-      this.getField("trail0")!,
-      this.getField("trail1")!,
-      this.getField("trail2")!,
-      this.getField("trail3")!,
+      this.getField(FieldType.TRAIL0)!,
+      this.getField(FieldType.TRAIL1)!,
+      this.getField(FieldType.TRAIL2)!,
+      this.getField(FieldType.TRAIL3)!,
     ];
 
     // Truncar coordenadas a enteros
@@ -1022,10 +1022,10 @@ export class World {
       const localY = ((py % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 
       // Añadir trail a los 4 canales del chunk usando Field.add()
-      chunk.getField("trail0")?.add(localX, localY, sig[0] * 0.1);
-      chunk.getField("trail1")?.add(localX, localY, sig[1] * 0.1);
-      chunk.getField("trail2")?.add(localX, localY, sig[2] * 0.1);
-      chunk.getField("trail3")?.add(localX, localY, sig[3] * 0.1);
+      chunk.getField(FieldType.TRAIL0)?.add(localX, localY, sig[0] * 0.1);
+      chunk.getField(FieldType.TRAIL1)?.add(localX, localY, sig[1] * 0.1);
+      chunk.getField(FieldType.TRAIL2)?.add(localX, localY, sig[2] * 0.1);
+      chunk.getField(FieldType.TRAIL3)?.add(localX, localY, sig[3] * 0.1);
     }
   }
 
@@ -1058,8 +1058,8 @@ export class World {
     }
 
     // === VERIFICAR RECURSOS EN LA ZONA ===
-    const foodHere = this.getFieldValueAt("food", parent.x, parent.y);
-    const waterHere = this.getFieldValueAt("water", parent.x, parent.y);
+    const foodHere = this.getFieldValueAt(FieldType.FOOD, parent.x, parent.y);
+    const waterHere = this.getFieldValueAt(FieldType.WATER, parent.x, parent.y);
 
     // Necesita comida mínima más alta
     if (foodHere < 0.05) {
@@ -1107,7 +1107,7 @@ export class World {
     // La reproducción CUESTA recursos del ambiente
     const reproductionFoodCost = 0.15;
     this.setFieldValueAt(
-      "food",
+      FieldType.FOOD,
       parent.x,
       parent.y,
       Math.max(0, foodHere - reproductionFoodCost),
@@ -1131,7 +1131,7 @@ export class World {
     const cy = Math.floor(parent.y + Math.sin(angle) * dist);
 
     // Verificar que hay espacio y recursos donde nacerá
-    const spawnFood = this.getFieldValueAt("food", cx, cy);
+    const spawnFood = this.getFieldValueAt(FieldType.FOOD, cx, cy);
     if (!this.isValidPosition(cx, cy) || spawnFood < 0.1) {
       // No hay buen lugar para nacer, el intento falla
       // Devolver parte de la energía al padre
@@ -1170,7 +1170,7 @@ export class World {
    * Solo hace crecer los árboles, la producción de comida está en FAST
    */
   private updateTreeGrowth(): void {
-    const trees = this.getField("trees")!;
+    const trees = this.getField(FieldType.TREES)!;
     trees.growthStep();
   }
 
@@ -1179,8 +1179,8 @@ export class World {
    * Los árboles producen comida cada tick para equilibrar consumo
    */
   private updateFoodProduction(): void {
-    const food = this.getField("food")!;
-    const trees = this.getField("trees")!;
+    const food = this.getField(FieldType.FOOD)!;
+    const trees = this.getField(FieldType.TREES)!;
 
     const treesBuffer = trees.getBuffer();
     const foodBuffer = food.getBuffer();
@@ -1209,7 +1209,7 @@ export class World {
    * Actualizar campo de población
    */
   private updatePopulationField(): void {
-    const pop = this.getField("population")!;
+    const pop = this.getField(FieldType.POPULATION)!;
     pop.fill(0);
 
     for (const p of this.particles) {
@@ -1319,7 +1319,7 @@ export class World {
       tick: this.tick,
       tickTimeMs: this.lastTickTime,
       particleCount: this.getParticleCount(),
-      totalDensity: this.getField("population")!.getSum(),
+      totalDensity: this.getField(FieldType.POPULATION)!.getSum(),
       activeChunks: 1, // Por ahora solo un chunk global
       fieldAverages,
       births: this.births,
@@ -1548,8 +1548,8 @@ export class World {
     const previousEnergy = this.particles.length * 50; // baseline
 
     // Calcular escasez basada en campos de recursos
-    const foodField = this.getField("food");
-    const waterField = this.getField("water");
+    const foodField = this.getField(FieldType.FOOD);
+    const waterField = this.getField(FieldType.WATER);
     const foodAvg = foodField?.getAverage() ?? 0;
     const waterAvg = waterField?.getAverage() ?? 0;
 

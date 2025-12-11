@@ -13,19 +13,20 @@ export const WORLD = {
   VELOCITY_DAMPING: 0.85,
 } as const;
 
-export type FieldType =
-  | "food"
-  | "water"
-  | "cost"
-  | "danger"
-  | "trees"
-  | "stone"
-  | "trail0"
-  | "trail1"
-  | "trail2"
-  | "trail3"
-  | "population"
-  | "labor";
+export enum FieldType {
+  FOOD = "food",
+  WATER = "water",
+  COST = "cost",
+  DANGER = "danger",
+  TREES = "trees",
+  STONE = "stone",
+  TRAIL0 = "trail0",
+  TRAIL1 = "trail1",
+  TRAIL2 = "trail2",
+  TRAIL3 = "trail3",
+  POPULATION = "population",
+  LABOR = "labor",
+}
 
 export interface FieldConfig {
   diffusion: number;
@@ -36,30 +37,30 @@ export interface FieldConfig {
 }
 
 export const DEFAULT_FIELD_CONFIGS: Record<FieldType, FieldConfig> = {
-  food: {
+  [FieldType.FOOD]: {
     diffusion: 0.03,
     decay: 0.002,
     maxValue: 1.0,
     growthRate: 0.0,
     growthCap: 0.0,
   },
-  water: { diffusion: 0.02, decay: 0.001, maxValue: 1.0 },
-  cost: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  danger: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
-  trees: {
+  [FieldType.WATER]: { diffusion: 0.02, decay: 0.001, maxValue: 1.0 },
+  [FieldType.COST]: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  [FieldType.DANGER]: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
+  [FieldType.TREES]: {
     diffusion: 0.0,
     decay: 0.0,
     maxValue: 1.0,
     growthRate: 0.003,
     growthCap: 1.0,
   },
-  stone: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  trail0: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
-  trail1: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
-  trail2: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
-  trail3: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
-  population: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
-  labor: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
+  [FieldType.STONE]: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  [FieldType.TRAIL0]: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  [FieldType.TRAIL1]: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  [FieldType.TRAIL2]: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  [FieldType.TRAIL3]: { diffusion: 0.1, decay: 0.08, maxValue: 1.0 },
+  [FieldType.POPULATION]: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
+  [FieldType.LABOR]: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
 };
 
 export interface Particle {
@@ -159,26 +160,32 @@ export function fromIdx(
   };
 }
 
-export type ServerMessageType =
-  | "init"
-  | "tick"
-  | "metrics"
-  | "field_update"
-  | "particles_update"
-  | "chunk_data"
-  | "chunk_unload"
-  | "error";
+export enum ServerMessageType {
+  INIT = "init",
+  TICK = "tick",
+  METRICS = "metrics",
+  FIELD_UPDATE = "field_update",
+  PARTICLES_UPDATE = "particles_update",
+  CHUNK_DATA = "chunk_data",
+  CHUNK_UNLOAD = "chunk_unload",
+  ERROR = "error",
+}
 
-export type ClientMessageType =
-  | "start"
-  | "pause"
-  | "resume"
-  | "reset"
-  | "set_config"
-  | "spawn_particles"
-  | "subscribe_field"
-  | "request_chunks"
-  | "viewport_update";
+export enum ClientMessageType {
+  JOIN = "join",
+  LEAVE = "leave",
+  INPUT = "input",
+  START = "start",
+  PAUSE = "pause",
+  RESUME = "resume",
+  RESET = "reset",
+  SET_CONFIG = "set_config",
+  SPAWN_ENTITY = "spawn_entity",
+  SPAWN_PARTICLES = "spawn_particles",
+  SUBSCRIBE_FIELD = "subscribe_field",
+  REQUEST_CHUNKS = "request_chunks",
+  VIEWPORT_UPDATE = "viewport_update",
+}
 
 export interface StructureData {
   id: number;

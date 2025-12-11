@@ -4,6 +4,7 @@
  *
  * Defines all animal types and states used in the simulation.
  */
+import { FieldType } from "../types";
 
 /**
  * Enumeration of animal types.
@@ -37,7 +38,7 @@ export enum AnimalState {
  * Enumeration of animal target types.
  */
 export enum AnimalTargetType {
-  FOOD = "food",
-  WATER = "water",
+  FOOD = FieldType.FOOD,
+  WATER = FieldType.WATER,
   MATE = "mate",
 }
