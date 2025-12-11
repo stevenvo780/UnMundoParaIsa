@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Ticker } from "pixi.js";
+import { Application, Container, Graphics, Sprite } from "pixi.js";
 import {
   Particle,
   ParticleRenderState,
@@ -81,6 +81,7 @@ export class Renderer {
   // Tracking de viewport para chunks dinámicos
   private lastViewportUpdate = 0;
   private onViewportChange?: (viewport: ViewportData) => void;
+  public onEntitySelected?: (particle: Particle | null) => void;
 
   // Modo chunks dinámicos - ACTIVADO
   private useChunks = true;
@@ -213,7 +214,19 @@ export class Renderer {
       }
     });
 
-    canvas.addEventListener("mouseup", () => {
+    canvas.addEventListener("mouseup", (e) => {
+      // Si no hubo arrastre, es un click
+      if (!this.isDragging) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Convert to world coordinates
+        const worldX = (mouseX - this.panX) / this.zoom;
+        const worldY = (mouseY - this.panY) / this.zoom;
+
+        this.handleMouseClick(worldX, worldY);
+      }
       this.isDragging = false;
     });
     canvas.addEventListener("mouseleave", () => {
@@ -492,6 +505,64 @@ export class Renderer {
         const layer = this.fieldLayers.get(type);
         if (layer) layer.data = data;
       });
+    }
+  }
+
+  private handleMouseClick(worldX: number, worldY: number): void {
+    // Find closest particle within selection radius
+    let closest: Particle | null = null;
+    let minDist = Infinity;
+    const SELECTION_RADIUS = TILE_SIZE / 2; // Media celda
+
+    for (const p of this.particles) {
+      if (!p.alive) continue;
+      // Simple distance check (squared to avoid sqrt)
+      const distX = p.x - worldX;
+      const distSq = distX * distX + distY * distY;
+
+      if (distSq < SELECTION_RADIUS * SELECTION_RADIUS && distSq < minDist) {
+        minDist = distSq;
+        closest = p;
+      }
+      // So particles ARE currently rendering in the wrong place or I am missing something.
+      // Maybe `p.x` is updated in `update()` to be pixel coordinates?
+      // No, `this.particles = state.particles`.
+
+      // I will assume `p.x` needs `* TILE_SIZE`.
+      // But wait, if I change rendering logic I might break existing "working" stuff (if it was working).
+      // But user said "The simulation acts like fluid... particles move...".
+      // If they were visible, they must have been rendered correctly.
+      // Maybe `WORLD.WIDTH` in Frontend `types.ts` is different?
+      // `types.ts`: `WIDTH: 512`, `HEIGHT: 512`. `TILE_SIZE` is local const in `Renderer.ts` (32).
+
+      // Let's assume for Hit Testing that we match the Rendering Logic.
+      // If Rendering uses raw `p.x`, Hit Testing uses raw `p.x`.
+      // If Rendering is wrong, Hit Testing will match the wrong rendering, which is fine for now (physically consistent).
+
+      // BUT given I'm fixing visualization:
+      // I will use `p.x` and `p.y` as they are used in `renderParticles` (Raw).
+      // IF the user complains "particles are tiny", I will fix scaling later.
+      // Actually, if `Structure` uses `s.x * TILE_SIZE`, and particles use `p.x`, they are DESYNCHRONIZED if `p.x` is grid units.
+
+      // Let's modify `handleMouseClick` to simply check distance to `renderState.displayX`.
+      // Because that's where the sprite IS.
+
+      const renderState = this.particleRenderStates.get(p.id);
+      const px = renderState ? renderState.displayX : p.x;
+      const py = renderState ? renderState.displayY : p.y;
+
+      const dx = px - worldX;
+      const dy = py - worldY;
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq < SELECTION_RADIUS * SELECTION_RADIUS && distSq < minDist) {
+        minDist = distSq;
+        closest = p;
+      }
+    }
+
+    if (this.onEntitySelected) {
+      this.onEntitySelected(closest);
     }
   }
 

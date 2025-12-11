@@ -13,16 +13,14 @@ import {
   DEFAULT_CONFIG,
   SimulationMetrics,
   Particle,
-  idx,
 } from "../types";
 
 import { DemandManager } from "../economy/Demand";
 import { ResourceFlowSystem } from "../economy/Advection";
 import {
   ReactionProcessor,
-  DEFAULT_REACTIONS,
-  Reaction,
 } from "../economy/Reactions";
+import { StockpileManager, StockpileData } from "../economy/Stockpiles"; // Import StockpileManager
 
 import { getSignature, SignatureField } from "../social/Signatures";
 import { CommunityDetector } from "../social/Communities";
@@ -42,6 +40,7 @@ import { ThermostatBank } from "../scale/Thermostats";
 import { InfiniteChunkManager } from "./InfiniteChunkManager";
 import { CHUNK_SIZE } from "./Chunk";
 
+import { QuestManager } from "../quests/EmergentQuests";
 import { StructureManager, StructureType } from "./StructureManager";
 import { AgentBehaviorSystem } from "./AgentBehavior";
 import { InventorySystem } from "../economy/InventorySystem";
@@ -55,6 +54,7 @@ export class World {
   private infiniteChunks?: InfiniteChunkManager;
 
   private structureManager!: StructureManager;
+  private stockpileManager!: StockpileManager; // Property
   private reactionProcessor!: ReactionProcessor;
   private agentBehavior!: AgentBehaviorSystem;
   private inventorySystem!: InventorySystem;
@@ -82,6 +82,7 @@ export class World {
   private artifacts!: ArtifactManager;
   private events!: EventManager;
   private materialization!: MaterializationManager;
+  private questManager!: QuestManager;
 
   private flowFields!: FlowFieldManager;
   private lod!: LODManager;
@@ -117,15 +118,23 @@ export class World {
     this.artifacts = new ArtifactManager(this.width, this.height);
     this.events = new EventManager();
     this.materialization = new MaterializationManager();
+    this.questManager = new QuestManager();
 
     this.flowFields = new FlowFieldManager();
     this.lod = new LODManager();
     this.thermostats = new ThermostatBank();
 
     this.structureManager = new StructureManager();
+    this.stockpileManager = new StockpileManager(this.width, this.height);
     this.inventorySystem = new InventorySystem();
-    this.reactionProcessor = new ReactionProcessor(); // Initialize explicitly if not already
-    this.agentBehavior = new AgentBehaviorSystem(this, this.inventorySystem, this.structureManager, this.reactionProcessor);
+    this.reactionProcessor = new ReactionProcessor();
+    this.agentBehavior = new AgentBehaviorSystem(
+      this,
+      this.inventorySystem,
+      this.structureManager,
+      this.reactionProcessor,
+      this.questManager,
+    );
 
     this.registerScheduledTasks();
   }
@@ -158,6 +167,12 @@ export class World {
       rate: "MEDIUM",
       fn: () => this.updateEconomy(),
       priority: 10,
+    });
+    this.scheduler.register({
+      id: "stockpiles",
+      rate: "SLOW",
+      fn: () => this.stockpileManager.applyDecay(),
+      priority: 12,
     });
     this.scheduler.register({
       id: "social",
@@ -313,7 +328,8 @@ export class World {
 
       // Add inventory resources
       for (const [resourceName, amount] of Object.entries(p.inventory)) {
-        totalAvailableResources[resourceName] = (totalAvailableResources[resourceName] || 0) + amount;
+        totalAvailableResources[resourceName] =
+          (totalAvailableResources[resourceName] || 0) + amount;
       }
 
       // Add field resources, ensuring these are also available for reactions
@@ -332,16 +348,32 @@ export class World {
         [FieldType.TRAIL3]: 0,
       };
 
-      totalAvailableResources[FieldType.FOOD] = (totalAvailableResources[FieldType.FOOD] || 0) + fieldsAtLocation[FieldType.FOOD];
-      totalAvailableResources[FieldType.WATER] = (totalAvailableResources[FieldType.WATER] || 0) + fieldsAtLocation[FieldType.WATER];
-      totalAvailableResources[FieldType.TREES] = (totalAvailableResources[FieldType.TREES] || 0) + fieldsAtLocation[FieldType.TREES];
-      totalAvailableResources[FieldType.STONE] = (totalAvailableResources[FieldType.STONE] || 0) + fieldsAtLocation[FieldType.STONE];
+      totalAvailableResources[FieldType.FOOD] =
+        (totalAvailableResources[FieldType.FOOD] || 0) +
+        fieldsAtLocation[FieldType.FOOD];
+      totalAvailableResources[FieldType.WATER] =
+        (totalAvailableResources[FieldType.WATER] || 0) +
+        fieldsAtLocation[FieldType.WATER];
+      totalAvailableResources[FieldType.TREES] =
+        (totalAvailableResources[FieldType.TREES] || 0) +
+        fieldsAtLocation[FieldType.TREES];
+      totalAvailableResources[FieldType.STONE] =
+        (totalAvailableResources[FieldType.STONE] || 0) +
+        fieldsAtLocation[FieldType.STONE];
 
       const availableLabor = p.energy; // Simplification: agent's energy is its available labor
-      const populationHere = this.getFieldValueAt(FieldType.POPULATION, p.x, p.y);
+      const populationHere = this.getFieldValueAt(
+        FieldType.POPULATION,
+        p.x,
+        p.y,
+      );
 
       // Determine available buildings (e.g., workbench, campfire)
-      const nearbyStructures = this.structureManager.getNearbyStructures(p.x, p.y, 5); // search radius of 5
+      const nearbyStructures = this.structureManager.getNearbyStructures(
+        p.x,
+        p.y,
+        5,
+      ); // search radius of 5
       const availableBuildings = new Set<string>();
       for (const s of nearbyStructures) {
         availableBuildings.add(s.type);
@@ -364,11 +396,20 @@ export class World {
         for (const [resourceName, amount] of Object.entries(result.consumed)) {
           // If it's an inventory item, update particle's inventory
           if (p.inventory[resourceName] !== undefined) {
-            p.inventory[resourceName] = Math.max(0, p.inventory[resourceName] - amount);
+            p.inventory[resourceName] = Math.max(
+              0,
+              p.inventory[resourceName] - amount,
+            );
           }
           // If it's a field resource, update the world field
-          else if (Object.values(FieldType).includes(resourceName as FieldType)) {
-            const currentFieldValue = this.getFieldValueAt(resourceName as FieldType, px, py);
+          else if (
+            Object.values(FieldType).includes(resourceName as FieldType)
+          ) {
+            const currentFieldValue = this.getFieldValueAt(
+              resourceName as FieldType,
+              px,
+              py,
+            );
             this.setFieldValueAt(
               resourceName as FieldType,
               px,
@@ -383,7 +424,9 @@ export class World {
         // Produce outputs
         for (const [resourceName, amount] of Object.entries(result.produced)) {
           if (resourceName.startsWith("building_")) {
-            const structureTypeString = resourceName.substring("building_".length);
+            const structureTypeString = resourceName.substring(
+              "building_".length,
+            );
             const structureType = structureTypeString as StructureType;
             const created = this.structureManager.createStructure(
               px,
@@ -398,7 +441,8 @@ export class World {
             }
           } else {
             // It's an inventory item
-            p.inventory[resourceName] = (p.inventory[resourceName] || 0) + amount;
+            p.inventory[resourceName] =
+              (p.inventory[resourceName] || 0) + amount;
           }
         }
         // Deduct labor (energy)
@@ -826,37 +870,10 @@ export class World {
         continue;
       }
 
-      const foodHere = this.getFieldValueAt(FieldType.FOOD, p.x, p.y);
-      const waterHere = this.getFieldValueAt(FieldType.WATER, p.x, p.y);
+      // Variables for unused biological logic removed
 
-      const px = Math.floor(p.x);
-      const py = Math.floor(p.y);
-
-      const maxConsume = 0.02;
-      const actualConsume = Math.min(maxConsume, foodHere * 0.2);
-      const energyGain = actualConsume * lifecycle.consumptionEfficiency;
-      p.energy += energyGain;
-
-      if (actualConsume > 0.001) {
-        if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
-          consumption[idx(px, py, this.width)] += actualConsume;
-        } else {
-          const newFoodValue = Math.max(0, foodHere - actualConsume);
-          this.setFieldValueAt(FieldType.FOOD, p.x, p.y, newFoodValue);
-        }
-      }
-
-      if (waterHere < 0.15) {
-        p.energy -= 0.003 * (1 - waterHere / 0.15); // Sed moderada
-      } else {
-        const waterConsume = Math.min(0.02, waterHere * 0.2);
-        this.setFieldValueAt(
-          FieldType.WATER,
-          p.x,
-          p.y,
-          Math.max(0, waterHere - waterConsume),
-        );
-      }
+      // Automatic osmosis feeding REMOVED. Agents must now Eat manually.
+      // Water consumption REMOVED. Agents must drink manually.
 
       p.energy = Math.min(1.0, Math.max(0, p.energy));
 
@@ -866,32 +883,35 @@ export class World {
         continue;
       }
 
-      if (p.energy > 0.85 && Math.random() < 0.03) {
-        const trailHere = this.getFieldValueAt(FieldType.TRAIL0, p.x, p.y);
-
-        if (
-          this.structureManager.tryCreateStructure(
-            p.x,
-            p.y,
-            trailHere,
-            foodHere,
-            p.energy,
-            p.id,
-            this.tick,
-          )
-        ) {
-          p.energy -= 0.15;
-        }
-      }
-
-      const dir = this.chooseDirectionInfinite(p, weights);
+      // Random structure stamping REMOVED. Agents must Build manually.
 
       const MAX_VELOCITY = 2.0;
       const VELOCITY_DAMPING = 0.85;
       const ACCELERATION = 0.3;
 
-      const targetVx = dir.dx * MAX_VELOCITY;
-      const targetVy = dir.dy * MAX_VELOCITY;
+      let targetVx = 0;
+      let targetVy = 0;
+
+      // 1. Intent-based Movement (Target)
+      if (p.targetX !== undefined && p.targetY !== undefined) {
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 1) {
+          targetVx = (dx / dist) * MAX_VELOCITY;
+          targetVy = (dy / dist) * MAX_VELOCITY;
+        } else {
+          // Arrived
+          p.vx *= 0.1;
+          p.vy *= 0.1;
+        }
+      } else {
+        // 2. Default Gradient Movement (Drift/Explore)
+        const dir = this.chooseDirectionInfinite(p, weights);
+        targetVx = dir.dx * MAX_VELOCITY;
+        targetVy = dir.dy * MAX_VELOCITY;
+      }
 
       p.vx = p.vx * VELOCITY_DAMPING + targetVx * ACCELERATION;
       p.vy = p.vy * VELOCITY_DAMPING + targetVy * ACCELERATION;
@@ -918,9 +938,7 @@ export class World {
         p.vy *= -0.5;
       }
 
-      if (p.energy >= lifecycle.reproductionThreshold) {
-        this.reproduce(p);
-      }
+      // Automatic Reproduction REMOVED. Agents must Reproduce manually.
     }
 
     const foodBuffer = food.getBuffer();
@@ -1260,6 +1278,10 @@ export class World {
     health: number;
   }> {
     return this.structureManager.getStructuresForClient();
+  }
+
+  getStockpiles(): StockpileData[] {
+    return this.stockpileManager.serialize();
   }
 
   getParticleCount(): number {

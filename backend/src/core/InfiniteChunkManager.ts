@@ -228,7 +228,7 @@ export class InfiniteChunkManager {
         const gx = worldX + lx;
         const gy = worldY + ly;
 
-        const temp = this.fractalNoise(
+        let temp = this.fractalNoise(
           this.temperatureNoise,
           gx,
           gy,
@@ -236,6 +236,12 @@ export class InfiniteChunkManager {
           BIOME_NOISE_SCALES.temperature.octaves,
           BIOME_NOISE_SCALES.temperature.persistence,
         );
+
+        // Latitudinal climate bands (Equator at Y=0)
+        // Adjust temperature based on latitude to simulate warmer equator and colder poles
+        const latitude = Math.abs(gy);
+        const globalTemp = Math.max(0, 1 - latitude * 0.0002); // 0 at 5000 blocks away
+        temp = temp * 0.5 + globalTemp * 0.5;
 
         const moisture = this.fractalNoise(
           this.moistureNoise,
@@ -246,7 +252,7 @@ export class InfiniteChunkManager {
           BIOME_NOISE_SCALES.moisture.persistence,
         );
 
-        const elevation = this.fractalNoise(
+        let elevation = this.fractalNoise(
           this.elevationNoise,
           gx,
           gy,
@@ -264,6 +270,14 @@ export class InfiniteChunkManager {
           BIOME_NOISE_SCALES.continentality.persistence,
         );
 
+        let riverValue = this.getRiverValue(gx, gy, elevation);
+
+        // Carve valleys: reduce elevation where river is strong
+        // This simulates erosion and ensures rivers sit in depressions
+        if (riverValue > 0) {
+          elevation = Math.max(0, elevation - riverValue * 0.15);
+        }
+
         let biome = this.biomeResolver.resolveBiome(
           temp,
           moisture,
@@ -271,7 +285,6 @@ export class InfiniteChunkManager {
           continentality,
         );
 
-        const riverValue = this.getRiverValue(gx, gy, elevation);
         if (riverValue > 0.3) {
           biome = BiomeType.RIVER;
         }

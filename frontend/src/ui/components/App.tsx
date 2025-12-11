@@ -5,6 +5,8 @@ import { ControlPanel } from "./ControlPanel";
 import { DialogOverlay } from "./DialogOverlay";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
+import { EntityDetailsModal } from "./EntityDetailsModal";
+import { Particle } from "../../types";
 
 interface AppProps {
   client: WebSocketClient;
@@ -12,6 +14,21 @@ interface AppProps {
 }
 
 export const App: React.FC<AppProps> = ({ client, renderer }) => {
+  const [selectedEntity, setSelectedEntity] = React.useState<Particle | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    renderer.onEntitySelected = (entity) => {
+      setSelectedEntity(entity);
+    };
+
+    // Cleanup
+    return () => {
+      renderer.onEntitySelected = undefined;
+    };
+  }, [renderer]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -26,6 +43,11 @@ export const App: React.FC<AppProps> = ({ client, renderer }) => {
       >
         <DialogOverlay client={client} renderer={renderer} />
         <ControlPanel client={client} renderer={renderer} />
+        <EntityDetailsModal
+          open={!!selectedEntity}
+          entity={selectedEntity}
+          onClose={() => setSelectedEntity(null)}
+        />
       </Box>
     </ThemeProvider>
   );

@@ -37,7 +37,8 @@ async function main() {
   // Conectar al backend - usa /ws relativo para funcionar via nginx proxy
   const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl =
-    import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:3001`;
+    import.meta.env.VITE_WS_URL ||
+    `${wsProtocol}//${window.location.hostname}:3001`;
   const client = new WebSocketClient(wsUrl);
 
   // Inicializar UI (React)
@@ -70,7 +71,9 @@ async function main() {
 
   client.on(ServerMessageType.FIELD_UPDATE, (data) => {
     if (data.fields) {
-      renderer.updateFields(data.fields as Partial<Record<FieldType, number[]>>);
+      renderer.updateFields(
+        data.fields as Partial<Record<FieldType, number[]>>,
+      );
     }
   });
 

@@ -29,9 +29,7 @@ export class Field {
   }
 
   private static createSharedArray(size: number): Float32Array {
-    const buffer = new SharedArrayBuffer(
-      size * Float32Array.BYTES_PER_ELEMENT,
-    );
+    const buffer = new SharedArrayBuffer(size * Float32Array.BYTES_PER_ELEMENT);
     return new Float32Array(buffer);
   }
 
@@ -185,10 +183,7 @@ export class Field {
    * Paso combinado de difusión y decay
    */
   diffuseDecayStep(): void {
-    if (
-      this.config.diffusion > 0 ||
-      this.config.decay > 0
-    ) {
+    if (this.config.diffusion > 0 || this.config.decay > 0) {
       const usedGPU = gpuBridge.tryDiffuseDecay({
         width: this.width,
         height: this.height,

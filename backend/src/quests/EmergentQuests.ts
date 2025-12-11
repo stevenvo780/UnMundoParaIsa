@@ -519,6 +519,25 @@ export class QuestManager {
     return this.quests.get(id);
   }
 
+  /**
+   * Encontrar la misión activa más cercana
+   */
+  getNearestActiveQuest(x: number, y: number): Quest | null {
+    let nearest: Quest | null = null;
+    let minDistSq = Infinity;
+
+    for (const quest of this.quests.values()) {
+      if (quest.status !== QuestStatus.ACTIVE) continue;
+
+      const distSq = (quest.targetX - x) ** 2 + (quest.targetY - y) ** 2;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
+        nearest = quest;
+      }
+    }
+    return nearest;
+  }
+
   getAllQuests(): Quest[] {
     return Array.from(this.quests.values());
   }

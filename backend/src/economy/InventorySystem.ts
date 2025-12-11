@@ -50,7 +50,10 @@ export class InventorySystem {
 
     const weightPerUnit = RESOURCE_WEIGHTS[resource] || 0.1;
     const currentWeight = this.calculateWeight(agent.inventory);
-    const availableWeight = Math.max(0, this.config.maxCarryWeight - currentWeight);
+    const availableWeight = Math.max(
+      0,
+      this.config.maxCarryWeight - currentWeight,
+    );
 
     const maxAmountByWeight = availableWeight / weightPerUnit;
     const amountToAdd = Math.min(amount, maxAmountByWeight);
@@ -66,7 +69,11 @@ export class InventorySystem {
    * Retorna true si se pudo remover la cantidad completa
    */
   removeItem(agent: Particle, resource: string, amount: number): boolean {
-    if (!agent.inventory || !agent.inventory[resource] || agent.inventory[resource] < amount) {
+    if (
+      !agent.inventory ||
+      !agent.inventory[resource] ||
+      agent.inventory[resource] < amount
+    ) {
       return false;
     }
 
@@ -98,7 +105,12 @@ export class InventorySystem {
   /**
    * Transferir recurso entre agentes
    */
-  transfer(from: Particle, to: Particle, resource: string, amount: number): number {
+  transfer(
+    from: Particle,
+    to: Particle,
+    resource: string,
+    amount: number,
+  ): number {
     if (!this.hasItem(from, resource, amount)) return 0;
 
     const added = this.addItem(to, resource, amount);

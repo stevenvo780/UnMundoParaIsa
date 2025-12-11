@@ -32,9 +32,7 @@ export class Advector {
   private static gpuBridge = GPUComputeBridge.getInstance();
 
   private static createSharedArray(size: number): Float32Array {
-    const buffer = new SharedArrayBuffer(
-      size * Float32Array.BYTES_PER_ELEMENT,
-    );
+    const buffer = new SharedArrayBuffer(size * Float32Array.BYTES_PER_ELEMENT);
     return new Float32Array(buffer);
   }
 

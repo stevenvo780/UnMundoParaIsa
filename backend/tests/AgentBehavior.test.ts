@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AgentBehaviorSystem } from "./AgentBehavior";
-import { World } from "./World";
-import { InventorySystem } from "../economy/InventorySystem";
-import { StructureManager } from "./StructureManager";
-import { ReactionProcessor } from "../economy/Reactions";
-import { AgentState, FieldType, Particle } from "../types";
+import { AgentBehaviorSystem } from "../src/core/AgentBehavior";
+import { World } from "../src/core/World";
+import { InventorySystem } from "../src/economy/InventorySystem";
+import { StructureManager } from "../src/core/StructureManager";
+import { ReactionProcessor } from "../src/economy/Reactions";
+import { AgentState, FieldType, Particle } from "../src/types";
+
+import { QuestManager } from "../src/quests/EmergentQuests";
 
 // Mocks
 const mockWorld = {
@@ -25,8 +27,12 @@ const mockStructureManager = {
 } as unknown as StructureManager;
 
 const mockReactionProcessor = {
-  performAction: vi.fn()
+  processCell: vi.fn()
 } as unknown as ReactionProcessor;
+
+const mockQuestManager = {
+  getNearestActiveQuest: vi.fn(),
+} as unknown as QuestManager;
 
 describe("AgentBehaviorSystem", () => {
   let behaviorSystem: AgentBehaviorSystem;
@@ -37,7 +43,8 @@ describe("AgentBehaviorSystem", () => {
       mockWorld,
       mockInventorySystem,
       mockStructureManager,
-      mockReactionProcessor
+      mockReactionProcessor,
+      mockQuestManager
     );
 
     agent = {
@@ -55,6 +62,8 @@ describe("AgentBehaviorSystem", () => {
     };
 
     vi.clearAllMocks();
+    (mockStructureManager.getNearbyStructures as any).mockReturnValue([]);
+    (mockQuestManager.getNearestActiveQuest as any).mockReturnValue(null);
   });
 
   describe("IDLE State", () => {
@@ -95,19 +104,19 @@ describe("AgentBehaviorSystem", () => {
       agent.energy = 0.3; // Gathering food
 
       // Mock reaction result
-      (mockReactionProcessor.performAction as any).mockReturnValue({
+      (mockReactionProcessor.processCell as any).mockReturnValue([{
         executed: true,
         consumed: { [FieldType.FOOD]: 0.1 },
         produced: { food: 1 },
         laborUsed: 0.1
-      });
+      }]);
 
       // Mock field value
       (mockWorld.getFieldValueAt as any).mockReturnValue(1.0);
 
       behaviorSystem.update(agent);
 
-      expect(mockReactionProcessor.performAction).toHaveBeenCalled();
+      expect(mockReactionProcessor.processCell).toHaveBeenCalled();
       expect(mockWorld.setFieldValueAt).toHaveBeenCalled();
     });
   });

@@ -1,4 +1,4 @@
-import type {} from "@webgpu/types";
+/// <reference types="@webgpu/types" />
 import { parentPort } from "node:worker_threads";
 import { create, globals } from "webgpu";
 import {
@@ -11,7 +11,8 @@ import {
 
 const WORKGROUP_SIZE = 16;
 
-if (!parentPort) {
+const port = parentPort;
+if (!port) {
   throw new Error("GPU worker must be started as a worker thread");
 }
 
@@ -20,7 +21,7 @@ const navigatorRef = { gpu: create([]) };
 
 const adapter = await navigatorRef.gpu.requestAdapter();
 if (!adapter) {
-  parentPort.postMessage({
+  port.postMessage({
     type: "gpu-error",
     error: "No compatible GPU adapter found",
   } satisfies GPUWorkerErrorMessage);
@@ -29,21 +30,15 @@ if (!adapter) {
 
 const device = await adapter.requestDevice();
 
-parentPort.postMessage({
+port.postMessage({
   type: "gpu-ready",
-  adapterInfo: adapter.adapterInfo
-    ? {
-        name: adapter.adapterInfo.device,
-        vendor: adapter.adapterInfo.vendor,
-      }
-    : undefined,
 });
 
-parentPort.on("message", (message: GPUWorkerRequest) => {
+port.on("message", (message: GPUWorkerRequest) => {
   handleMessage(message).catch((error: unknown) => {
     const err =
       error instanceof Error ? error.message : `Unknown GPU error: ${error}`;
-    parentPort.postMessage({
+    port.postMessage({
       type: "gpu-error",
       error: err,
       jobId: message.id,
@@ -66,7 +61,7 @@ async function handleMessage(message: GPUWorkerRequest): Promise<void> {
       signalJob(message.signal, true);
       break;
     default:
-      throw new Error(`Unsupported GPU job type: ${message.type}`);
+      throw new Error("Unsupported GPU job type");
   }
 }
 

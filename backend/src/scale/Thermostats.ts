@@ -50,49 +50,49 @@ const DEFAULT_CONFIGS: Record<ThermostatType, Partial<ThermostatConfig>> = {
     target: 500,
     min: 50,
     max: 2000,
-    kP: 0.1,
-    kI: 0.01,
-    kD: 0.05,
+    kP: 0.01, // Reduced by 10x
+    kI: 0.001, // Reduced by 10x
+    kD: 0.005, // Reduced by 10x
   },
   [ThermostatType.RESOURCES]: {
     target: 0.6,
-    min: 0.2,
+    min: 0.1, // Relaxed minimum
     max: 1.0,
-    kP: 0.2,
-    kI: 0.02,
-    kD: 0.1,
+    kP: 0.02, // Reduced
+    kI: 0.002,
+    kD: 0.005,
   },
   [ThermostatType.ENERGY]: {
-    target: 50,
-    min: 20,
-    max: 100,
-    kP: 0.15,
-    kI: 0.015,
-    kD: 0.08,
-  },
-  [ThermostatType.TENSION]: {
-    target: 0.3,
-    min: 0.0,
-    max: 0.8,
-    kP: 0.3,
-    kI: 0.03,
-    kD: 0.15,
-  },
-  [ThermostatType.DIVERSITY]: {
     target: 0.7,
     min: 0.3,
     max: 1.0,
-    kP: 0.1,
-    kI: 0.005,
+    kP: 0.01,
+    kI: 0.001,
+    kD: 0.005,
+  },
+  [ThermostatType.TENSION]: {
+    target: 0.2,
+    min: 0.0,
+    max: 0.8,
+    kP: 0.1, // Keep this relatively high to prevent total chaos too quickly?
+    kI: 0.01,
     kD: 0.05,
+  },
+  [ThermostatType.DIVERSITY]: {
+    target: 0.5,
+    min: 0.1,
+    max: 1.0,
+    kP: 0.01,
+    kI: 0.001,
+    kD: 0.005,
   },
   [ThermostatType.ACTIVITY]: {
     target: 0.5,
     min: 0.1,
     max: 1.0,
-    kP: 0.2,
-    kI: 0.02,
-    kD: 0.1,
+    kP: 0.01,
+    kI: 0.001,
+    kD: 0.005,
   },
 };
 

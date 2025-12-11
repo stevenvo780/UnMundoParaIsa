@@ -87,6 +87,19 @@ export interface Particle {
   energy: number; // 0-1: energía vital
   seed: number; // Semilla genética (define comportamiento)
   alive: boolean;
+  inventory?: Record<string, number>;
+  state?: AgentState;
+  currentAction?: string;
+}
+
+export enum AgentState {
+  IDLE = "IDLE",
+  GATHERING = "GATHERING",
+  WORKING = "WORKING",
+  WANDERING = "WANDERING",
+  MOVING = "MOVING",
+  FLEEING = "FLEEING",
+  RESTING = "RESTING",
 }
 
 // Estado extendido para interpolación en frontend

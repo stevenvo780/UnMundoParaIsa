@@ -99,10 +99,7 @@ export class GPUComputeBridge {
   }
 
   tryAdvectResource(params: AdvectParams): boolean {
-    if (
-      !this.isReady() ||
-      params.width * params.height < this.minElements
-    ) {
+    if (!this.isReady() || params.width * params.height < this.minElements) {
       return false;
     }
 
@@ -138,12 +135,7 @@ export class GPUComputeBridge {
       return false;
     }
 
-    const waitResult = Atomics.wait(
-      signalArray,
-      0,
-      0,
-      this.waitTimeoutMs,
-    );
+    const waitResult = Atomics.wait(signalArray, 0, 0, this.waitTimeoutMs);
 
     if (waitResult === "timed-out") {
       Logger.warn("[GPU] Job timed out, disabling GPU worker");
@@ -164,14 +156,11 @@ export class GPUComputeBridge {
 
     try {
       const importUrl = new URL(
-        import.meta.url.endsWith(".ts")
-          ? "./GPUWorker.ts"
-          : "./GPUWorker.js",
+        import.meta.url.endsWith(".ts") ? "./GPUWorker.ts" : "./GPUWorker.js",
         import.meta.url,
       );
 
       this.worker = new Worker(importUrl, {
-        type: "module",
         execArgv: import.meta.url.endsWith(".ts")
           ? ["--loader", "tsx"]
           : undefined,
