@@ -63,6 +63,24 @@ export const DEFAULT_FIELD_CONFIGS: Record<FieldType, FieldConfig> = {
   [FieldType.LABOR]: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
 };
 
+export enum AgentState {
+  IDLE = "idle",
+  WANDERING = "wandering",
+  GATHERING = "gathering",
+  WORKING = "working",
+  RESTING = "resting",
+  MOVING = "moving",
+  FLEEING = "fleeing",
+  BUILDING = "building",
+}
+
+export interface AgentMemory {
+  lastFoodLocation?: { x: number; y: number };
+  lastWaterLocation?: { x: number; y: number };
+  homeLocation?: { x: number; y: number };
+  targetStructureId?: number;
+}
+
 export interface Particle {
   id: number;
   x: number;
@@ -75,6 +93,10 @@ export interface Particle {
   seed: number;
   alive: boolean;
   lastReproductionTick?: number;
+  state: AgentState;
+  inventory: Record<string, number>;
+  memory: AgentMemory;
+  currentAction?: string;
 }
 
 export interface LifecycleConfig {

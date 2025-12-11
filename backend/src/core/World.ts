@@ -18,6 +18,11 @@ import {
 
 import { DemandManager } from "../economy/Demand";
 import { ResourceFlowSystem } from "../economy/Advection";
+import {
+  ReactionProcessor,
+  DEFAULT_REACTIONS,
+  Reaction,
+} from "../economy/Reactions";
 
 import { getSignature, SignatureField } from "../social/Signatures";
 import { CommunityDetector } from "../social/Communities";
@@ -37,7 +42,10 @@ import { ThermostatBank } from "../scale/Thermostats";
 import { InfiniteChunkManager } from "./InfiniteChunkManager";
 import { CHUNK_SIZE } from "./Chunk";
 
-import { StructureManager } from "./StructureManager";
+import { StructureManager, StructureType } from "./StructureManager";
+import { AgentBehaviorSystem } from "./AgentBehavior";
+import { InventorySystem } from "../economy/InventorySystem";
+import { AgentState } from "../types";
 
 export class World {
   readonly width: number;
@@ -47,6 +55,9 @@ export class World {
   private infiniteChunks?: InfiniteChunkManager;
 
   private structureManager!: StructureManager;
+  private reactionProcessor!: ReactionProcessor;
+  private agentBehavior!: AgentBehaviorSystem;
+  private inventorySystem!: InventorySystem;
 
   private fields: Map<FieldType, Field> = new Map();
   private particles: Particle[] = [];
@@ -112,6 +123,9 @@ export class World {
     this.thermostats = new ThermostatBank();
 
     this.structureManager = new StructureManager();
+    this.inventorySystem = new InventorySystem();
+    this.reactionProcessor = new ReactionProcessor(); // Initialize explicitly if not already
+    this.agentBehavior = new AgentBehaviorSystem(this, this.inventorySystem, this.structureManager, this.reactionProcessor);
 
     this.registerScheduledTasks();
   }
@@ -205,6 +219,7 @@ export class World {
     if (stoneField) resourceFields.set(FieldType.STONE, stoneField.getBuffer());
 
     this.demandManager.update(populationField, resourceFields);
+    this.processCrafting();
 
     const foodDemand = this.demandManager.getDemandField(FieldType.FOOD);
     if (foodDemand) {
@@ -273,6 +288,121 @@ export class World {
           particle.y += Math.sin(angle) * 2;
           particle.energy -= 0.1 * conflict.tension;
         }
+      }
+    }
+  }
+
+  /**
+   * Procesar crafteo y construcción (MEDIUM rate)
+   */
+  private processCrafting(): void {
+    for (const p of this.particles) {
+      if (!p.alive) continue;
+
+      const px = Math.floor(p.x);
+      const py = Math.floor(p.y);
+
+      // Initialize inventory if it doesn't exist
+      if (!p.inventory) {
+        p.inventory = {};
+      }
+
+      // Create a map of ALL available resources for this cell/particle for the reaction processor
+      // This includes particle's inventory and field resources at its location
+      const totalAvailableResources: Record<string, number> = {};
+
+      // Add inventory resources
+      for (const [resourceName, amount] of Object.entries(p.inventory)) {
+        totalAvailableResources[resourceName] = (totalAvailableResources[resourceName] || 0) + amount;
+      }
+
+      // Add field resources, ensuring these are also available for reactions
+      const fieldsAtLocation: Record<FieldType, number> = {
+        [FieldType.FOOD]: this.getFieldValueAt(FieldType.FOOD, p.x, p.y),
+        [FieldType.WATER]: this.getFieldValueAt(FieldType.WATER, p.x, p.y),
+        [FieldType.TREES]: this.getFieldValueAt(FieldType.TREES, p.x, p.y),
+        [FieldType.STONE]: this.getFieldValueAt(FieldType.STONE, p.x, p.y),
+        [FieldType.LABOR]: 0,
+        [FieldType.POPULATION]: 0,
+        [FieldType.COST]: 0,
+        [FieldType.DANGER]: 0,
+        [FieldType.TRAIL0]: 0,
+        [FieldType.TRAIL1]: 0,
+        [FieldType.TRAIL2]: 0,
+        [FieldType.TRAIL3]: 0,
+      };
+
+      totalAvailableResources[FieldType.FOOD] = (totalAvailableResources[FieldType.FOOD] || 0) + fieldsAtLocation[FieldType.FOOD];
+      totalAvailableResources[FieldType.WATER] = (totalAvailableResources[FieldType.WATER] || 0) + fieldsAtLocation[FieldType.WATER];
+      totalAvailableResources[FieldType.TREES] = (totalAvailableResources[FieldType.TREES] || 0) + fieldsAtLocation[FieldType.TREES];
+      totalAvailableResources[FieldType.STONE] = (totalAvailableResources[FieldType.STONE] || 0) + fieldsAtLocation[FieldType.STONE];
+
+      const availableLabor = p.energy; // Simplification: agent's energy is its available labor
+      const populationHere = this.getFieldValueAt(FieldType.POPULATION, p.x, p.y);
+
+      // Determine available buildings (e.g., workbench, campfire)
+      const nearbyStructures = this.structureManager.getNearbyStructures(p.x, p.y, 5); // search radius of 5
+      const availableBuildings = new Set<string>();
+      for (const s of nearbyStructures) {
+        availableBuildings.add(s.type);
+      }
+
+      // Process reactions
+      const reactionResults = this.reactionProcessor.processCell(
+        totalAvailableResources, // Pass the combined resource pool
+        availableLabor,
+        availableBuildings,
+        populationHere,
+        fieldsAtLocation, // Fields are for checking conditions, not direct consumption/production from this map
+      );
+
+      // Apply reaction results back to particle inventory and world fields
+      for (const result of reactionResults) {
+        if (!result.executed) continue;
+
+        // Consume inputs
+        for (const [resourceName, amount] of Object.entries(result.consumed)) {
+          // If it's an inventory item, update particle's inventory
+          if (p.inventory[resourceName] !== undefined) {
+            p.inventory[resourceName] = Math.max(0, p.inventory[resourceName] - amount);
+          }
+          // If it's a field resource, update the world field
+          else if (Object.values(FieldType).includes(resourceName as FieldType)) {
+            const currentFieldValue = this.getFieldValueAt(resourceName as FieldType, px, py);
+            this.setFieldValueAt(
+              resourceName as FieldType,
+              px,
+              py,
+              Math.max(0, currentFieldValue - amount),
+            );
+          }
+          // Note: If a resource is both in inventory and a field, current logic assumes it's primarily consumed from inventory
+          // if present there, otherwise from the field. This might need further refinement based on game design.
+        }
+
+        // Produce outputs
+        for (const [resourceName, amount] of Object.entries(result.produced)) {
+          if (resourceName.startsWith("building_")) {
+            const structureTypeString = resourceName.substring("building_".length);
+            const structureType = structureTypeString as StructureType;
+            const created = this.structureManager.createStructure(
+              px,
+              py,
+              structureType,
+              p.id,
+              this.tick,
+            );
+            if (created) {
+              // Structure created, deduct some energy for the effort
+              p.energy -= 0.1; // Placeholder cost
+            }
+          } else {
+            // It's an inventory item
+            p.inventory[resourceName] = (p.inventory[resourceName] || 0) + amount;
+          }
+        }
+        // Deduct labor (energy)
+        p.energy -= result.laborUsed;
       }
     }
   }
@@ -591,6 +721,9 @@ export class World {
       energy: 0.85,
       seed: 0x57455600,
       alive: true,
+      state: AgentState.IDLE,
+      inventory: {},
+      memory: {},
     });
 
     this.particles.push({
@@ -602,6 +735,9 @@ export class World {
       energy: 0.85,
       seed: 0x00495341,
       alive: true,
+      state: AgentState.IDLE,
+      inventory: {},
+      memory: {},
     });
   }
 
@@ -628,6 +764,9 @@ export class World {
           energy: 0.5 + rng() * 0.3,
           seed: Math.floor(rng() * 0xffffffff),
           alive: true,
+          state: AgentState.IDLE,
+          inventory: {},
+          memory: {},
         });
       }
     }
@@ -1010,6 +1149,9 @@ export class World {
       energy: childEnergy,
       seed: childSeed,
       alive: true,
+      state: AgentState.IDLE,
+      inventory: {},
+      memory: {},
     });
     this.births++;
   }
@@ -1355,16 +1497,16 @@ export class World {
       communityStability:
         allCommunities.length > 0
           ? allCommunities.reduce((s, c) => s + Math.min(1, c.age / 1000), 0) /
-            allCommunities.length
+          allCommunities.length
           : 0,
       cohesion:
         allCommunities.length > 0
           ? allCommunities.reduce(
-              (s, c) => s + c.population / (c.radius * c.radius || 1),
-              0,
-            ) /
-            allCommunities.length /
-            10
+            (s, c) => s + c.population / (c.radius * c.radius || 1),
+            0,
+          ) /
+          allCommunities.length /
+          10
           : 0,
       tension: tensionStats.average,
       conflictsActive: conflicts.length,

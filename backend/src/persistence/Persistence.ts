@@ -5,7 +5,7 @@
 
 import { writeFileSync, readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
-import { Particle } from "../types";
+import { Particle, AgentState } from "../types";
 import { Quest } from "../quests/EmergentQuests";
 import { Logger } from "../utils/Logger";
 
@@ -93,6 +93,9 @@ export function deserializeParticles(
     energy: p.e,
     seed: p.s,
     alive: true,
+    state: AgentState.IDLE,
+    inventory: {},
+    memory: {},
   }));
 }
 

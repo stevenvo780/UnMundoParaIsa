@@ -4,6 +4,9 @@
  */
 
 import { FieldConfig, idx } from "../types";
+import { GPUComputeBridge } from "../gpu/GPUComputeBridge";
+
+const gpuBridge = GPUComputeBridge.getInstance();
 
 export class Field {
   readonly width: number;
@@ -21,8 +24,15 @@ export class Field {
     this.size = width * height;
     this.config = config;
 
-    this.current = new Float32Array(this.size);
-    this.next = new Float32Array(this.size);
+    this.current = Field.createSharedArray(this.size);
+    this.next = Field.createSharedArray(this.size);
+  }
+
+  private static createSharedArray(size: number): Float32Array {
+    const buffer = new SharedArrayBuffer(
+      size * Float32Array.BYTES_PER_ELEMENT,
+    );
+    return new Float32Array(buffer);
   }
 
   /**
@@ -175,6 +185,26 @@ export class Field {
    * Paso combinado de difusión y decay
    */
   diffuseDecayStep(): void {
+    if (
+      this.config.diffusion > 0 ||
+      this.config.decay > 0
+    ) {
+      const usedGPU = gpuBridge.tryDiffuseDecay({
+        width: this.width,
+        height: this.height,
+        diffusion: this.config.diffusion,
+        decay: this.config.decay,
+        maxValue: this.config.maxValue,
+        input: this.current.buffer as SharedArrayBuffer,
+        output: this.next.buffer as SharedArrayBuffer,
+      });
+
+      if (usedGPU) {
+        this.swap();
+        return;
+      }
+    }
+
     this.next.set(this.current);
 
     this.diffuseStep();

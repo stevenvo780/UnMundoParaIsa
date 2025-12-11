@@ -3,6 +3,8 @@
  * Implementa R3: F' = F - v·∇F
  */
 
+import { GPUComputeBridge } from "../gpu/GPUComputeBridge";
+
 export interface AdvectionConfig {
   strength: number;
   maxFlow: number;
@@ -25,6 +27,16 @@ export class Advector {
 
   private velocityX: Float32Array;
   private velocityY: Float32Array;
+  private gpuOutput?: Float32Array;
+
+  private static gpuBridge = GPUComputeBridge.getInstance();
+
+  private static createSharedArray(size: number): Float32Array {
+    const buffer = new SharedArrayBuffer(
+      size * Float32Array.BYTES_PER_ELEMENT,
+    );
+    return new Float32Array(buffer);
+  }
 
   constructor(
     width: number,
@@ -35,8 +47,15 @@ export class Advector {
     this.height = height;
     this.config = { ...DEFAULT_ADVECTION_CONFIG, ...config };
 
-    this.velocityX = new Float32Array(width * height);
-    this.velocityY = new Float32Array(width * height);
+    this.velocityX = Advector.createSharedArray(width * height);
+    this.velocityY = Advector.createSharedArray(width * height);
+  }
+
+  private ensureGPUOutput(): Float32Array {
+    if (!this.gpuOutput) {
+      this.gpuOutput = Advector.createSharedArray(this.width * this.height);
+    }
+    return this.gpuOutput;
   }
 
   /**
@@ -66,6 +85,32 @@ export class Advector {
    * Semi-Lagrangian: traza hacia atrás y muestrea
    */
   advect(resourceField: Float32Array, dt: number = 1.0): Float32Array {
+    if (
+      resourceField.buffer instanceof SharedArrayBuffer &&
+      this.velocityX.buffer instanceof SharedArrayBuffer &&
+      this.velocityY.buffer instanceof SharedArrayBuffer
+    ) {
+      const output = this.ensureGPUOutput();
+      const usedGPU = Advector.gpuBridge.tryAdvectResource({
+        width: this.width,
+        height: this.height,
+        maxFlow: this.config.maxFlow,
+        deltaTime: dt,
+        resourceInput: resourceField.buffer as SharedArrayBuffer,
+        velocityX: this.velocityX.buffer as SharedArrayBuffer,
+        velocityY: this.velocityY.buffer as SharedArrayBuffer,
+        output: output.buffer as SharedArrayBuffer,
+      });
+
+      if (usedGPU) {
+        return output;
+      }
+    }
+
+    return this.advectCPU(resourceField, dt);
+  }
+
+  private advectCPU(resourceField: Float32Array, dt: number): Float32Array {
     const { width, height } = this;
     const { maxFlow } = this.config;
     const result = new Float32Array(resourceField.length);

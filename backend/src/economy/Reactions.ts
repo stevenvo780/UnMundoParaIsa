@@ -3,8 +3,9 @@
  * DSL JSON para definir transformaciones de recursos
  */
 
-import { FieldType } from "../types";
+import { FieldType, Particle } from "../types";
 import { Logger } from "../utils/Logger";
+import { InventorySystem } from "./InventorySystem";
 
 export interface Reaction {
   id: string;
@@ -104,7 +105,7 @@ export interface ReactionResult {
 }
 
 /**
- * ReactionProcessor - Procesa reacciones en una celda
+ * ReactionProcessor - Procesa reacciones
  */
 export class ReactionProcessor {
   private reactions: Reaction[];
@@ -129,124 +130,81 @@ export class ReactionProcessor {
   }
 
   /**
-   * Verificar si una reacción puede ejecutarse
+   * Ejecutar acción basada en agente
    */
-  canExecute(
-    reaction: Reaction,
-    resources: Record<string, number>,
-    labor: number,
-    buildings: Set<string>,
-    population: number,
-    fields: Partial<Record<FieldType, number>>,
-  ): boolean {
-    for (const [resource, amount] of Object.entries(reaction.inputs)) {
-      if ((resources[resource] || 0) < amount) {
-        return false;
-      }
-    }
-
-    if (reaction.requires) {
-      if (reaction.requires.labor && labor < reaction.requires.labor) {
-        return false;
-      }
-
-      if (
-        reaction.requires.building &&
-        !buildings.has(reaction.requires.building)
-      ) {
-        return false;
-      }
-
-      if (
-        reaction.requires.minPopulation &&
-        population < reaction.requires.minPopulation
-      ) {
-        return false;
-      }
-
-      if (reaction.requires.field) {
-        const fieldValue = fields[reaction.requires.field.type] ?? 0;
-        if (fieldValue < reaction.requires.field.minValue) {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Ejecutar una reacción
-   */
-  execute(
-    reaction: Reaction,
-    resources: Record<string, number>,
+  performAction(
+    agent: Particle,
+    reactionId: string,
+    inventorySystem: InventorySystem,
+    fields: Record<string, number>
   ): ReactionResult {
+    const reaction = this.reactions.find(r => r.id === reactionId);
     const result: ReactionResult = {
-      reactionId: reaction.id,
+      reactionId: reactionId,
       executed: false,
       consumed: {},
       produced: {},
-      laborUsed: 0,
+      laborUsed: 0
     };
 
-    for (const [resource, amount] of Object.entries(reaction.inputs)) {
-      const consumed = amount * reaction.rate;
-      resources[resource] = (resources[resource] || 0) - consumed;
-      result.consumed[resource] = consumed;
+    if (!reaction) return result;
+
+    // 1. Check requirements
+    if (reaction.requires) {
+      if (reaction.requires.labor && agent.energy < reaction.requires.labor) return result;
+      if (reaction.requires.field) {
+        const val = fields[reaction.requires.field.type] || 0;
+        if (val < reaction.requires.field.minValue) return result;
+      }
+      // Building check would need location awareness passed in, skipping for now or assumed valid by caller
     }
 
-    for (const [resource, amount] of Object.entries(reaction.outputs)) {
-      const produced = amount * reaction.rate;
-      resources[resource] = (resources[resource] || 0) + produced;
-      result.produced[resource] = produced;
+    // 2. Check inputs
+    for (const [res, amt] of Object.entries(reaction.inputs)) {
+      // If input is a field type (like 'trees'), check fields
+      if (Object.values(FieldType).includes(res as FieldType)) {
+        if ((fields[res] || 0) < amt) return result;
+      } else {
+        // Check inventory
+        if (!inventorySystem.hasItem(agent, res, amt)) return result;
+      }
     }
 
+    // 3. Execute
     if (reaction.requires?.labor) {
-      result.laborUsed = reaction.requires.labor * reaction.rate;
+      agent.energy -= reaction.requires.labor;
+      result.laborUsed = reaction.requires.labor;
+    }
+
+    // Consume
+    for (const [res, amt] of Object.entries(reaction.inputs)) {
+      if (Object.values(FieldType).includes(res as FieldType)) {
+        // Field consumption handled by caller using result.consumed
+        result.consumed[res] = amt;
+      } else {
+        inventorySystem.removeItem(agent, res, amt);
+        result.consumed[res] = amt;
+      }
+    }
+
+    // Produce
+    for (const [res, amt] of Object.entries(reaction.outputs)) {
+      // If starts with building_ it's handled by caller
+      if (res.startsWith("building_")) {
+        result.produced[res] = amt;
+      } else {
+        inventorySystem.addItem(agent, res, amt);
+        result.produced[res] = amt;
+      }
     }
 
     result.executed = true;
     return result;
   }
 
-  /**
-   * Procesar todas las reacciones posibles en una celda
-   */
-  processCell(
-    resources: Record<string, number>,
-    labor: number,
-    buildings: Set<string>,
-    population: number,
-    fields: Record<string, number>,
-  ): ReactionResult[] {
-    const results: ReactionResult[] = [];
-    let availableLabor = labor;
-
-    for (const reaction of this.reactions) {
-      if (
-        !this.canExecute(
-          reaction,
-          resources,
-          availableLabor,
-          buildings,
-          population,
-          fields,
-        )
-      ) {
-        continue;
-      }
-
-      const result = this.execute(reaction, resources);
-      if (result.executed) {
-        results.push(result);
-        availableLabor -= result.laborUsed;
-
-        if (availableLabor <= 0) break;
-      }
-    }
-
-    return results;
+  // Deprecated/Legacy support for cell-based logic if needed, or define empty
+  processCell(): ReactionResult[] {
+    return [];
   }
 }
 
