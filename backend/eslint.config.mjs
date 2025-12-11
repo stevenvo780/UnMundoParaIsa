@@ -1,6 +1,10 @@
 import eslint from "@eslint/js";
 import prettier from "eslint-plugin-prettier";
 import tseslint from "typescript-eslint";
+import path from "path";
+import url from "url";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
@@ -41,7 +45,7 @@ export default tseslint.config(
       parser: tseslint.parser,
       parserOptions: {
         project: "./tsconfig.json",
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: __dirname,
         ecmaVersion: 2022,
         sourceType: "module",
       },

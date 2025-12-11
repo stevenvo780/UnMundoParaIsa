@@ -10,6 +10,7 @@ import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
 import {
   DialogFragment,
+  DialogEmotion,
   ServerMessage,
   ServerMessageType,
 } from "../../types";
@@ -39,17 +40,17 @@ const appearAnimation = keyframes`
   }
 `;
 
-const getEmotionIcon = (emotion?: string) => {
+const getEmotionIcon = (emotion?: DialogEmotion) => {
   switch (emotion) {
-    case "joy":
+    case DialogEmotion.JOY:
       return <WbSunnyIcon sx={{ fontSize: 16, color: "#FDB813" }} />;
-    case "love":
+    case DialogEmotion.LOVE:
       return <FavoriteIcon sx={{ fontSize: 16, color: "#fb2b76" }} />;
-    case "sadness":
+    case DialogEmotion.SADNESS:
       return <CloudIcon sx={{ fontSize: 16, color: "#4a90e2" }} />;
-    case "nostalgia":
+    case DialogEmotion.NOSTALGIA:
       return <SentimentSatisfiedIcon sx={{ fontSize: 16, color: "#909090" }} />;
-    case "neutral":
+    case DialogEmotion.NEUTRAL:
     default:
       return <SentimentNeutralIcon sx={{ fontSize: 16, color: "#666" }} />;
   }

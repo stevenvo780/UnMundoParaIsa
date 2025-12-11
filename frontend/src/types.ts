@@ -215,12 +215,20 @@ export interface DialogFragment {
   id: string;
   text: string;
   speaker?: string;
-  emotion?: "joy" | "nostalgia" | "love" | "sadness" | "neutral";
+  emotion?: DialogEmotion;
   timestamp: number;
   x: number;
   y: number;
   artifactId?: string;
   characterId?: string;
+}
+
+export enum DialogEmotion {
+  JOY = "joy",
+  NOSTALGIA = "nostalgia",
+  LOVE = "love",
+  SADNESS = "sadness",
+  NEUTRAL = "neutral",
 }
 
 export enum ClientMessageType {
@@ -390,7 +398,12 @@ export interface Character {
   name: string;
   x: number;
   y: number;
-  type: "character" | "hero";
+  type: CharacterType;
+}
+
+export enum CharacterType {
+  CHARACTER = "character",
+  HERO = "hero",
 }
 
 export interface ExtendedWorldState extends WorldState {
