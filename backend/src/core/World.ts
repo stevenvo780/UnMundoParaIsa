@@ -17,9 +17,7 @@ import {
 
 import { DemandManager } from "../economy/Demand";
 import { ResourceFlowSystem } from "../economy/Advection";
-import {
-  ReactionProcessor,
-} from "../economy/Reactions";
+import { ReactionProcessor } from "../economy/Reactions";
 import { StockpileManager, StockpileData } from "../economy/Stockpiles"; // Import StockpileManager
 
 import { getSignature, SignatureField } from "../social/Signatures";
@@ -1519,16 +1517,16 @@ export class World {
       communityStability:
         allCommunities.length > 0
           ? allCommunities.reduce((s, c) => s + Math.min(1, c.age / 1000), 0) /
-          allCommunities.length
+            allCommunities.length
           : 0,
       cohesion:
         allCommunities.length > 0
           ? allCommunities.reduce(
-            (s, c) => s + c.population / (c.radius * c.radius || 1),
-            0,
-          ) /
-          allCommunities.length /
-          10
+              (s, c) => s + c.population / (c.radius * c.radius || 1),
+              0,
+            ) /
+            allCommunities.length /
+            10
           : 0,
       tension: tensionStats.average,
       conflictsActive: conflicts.length,

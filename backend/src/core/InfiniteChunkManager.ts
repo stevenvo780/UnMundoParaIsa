@@ -270,7 +270,7 @@ export class InfiniteChunkManager {
           BIOME_NOISE_SCALES.continentality.persistence,
         );
 
-        let riverValue = this.getRiverValue(gx, gy, elevation);
+        const riverValue = this.getRiverValue(gx, gy, elevation);
 
         // Carve valleys: reduce elevation where river is strong
         // This simulates erosion and ensures rivers sit in depressions

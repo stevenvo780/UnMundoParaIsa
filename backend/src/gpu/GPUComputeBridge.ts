@@ -162,7 +162,7 @@ export class GPUComputeBridge {
 
       this.worker = new Worker(importUrl, {
         execArgv: import.meta.url.endsWith(".ts")
-          ? ["--loader", "tsx"]
+          ? ["--import", "tsx/esm"]
           : undefined,
       });
 

@@ -324,7 +324,7 @@ export class AgentBehaviorSystem {
     // Verificar distancia
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-      (agent.y - (agent.targetY || 0)) ** 2,
+        (agent.y - (agent.targetY || 0)) ** 2,
     );
 
     if (dist < 5) {
@@ -350,7 +350,7 @@ export class AgentBehaviorSystem {
     // Logic handled by physics mostly
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-      (agent.y - (agent.targetY || 0)) ** 2,
+        (agent.y - (agent.targetY || 0)) ** 2,
     );
     if (dist < 2) {
       agent.state = AgentState.IDLE;

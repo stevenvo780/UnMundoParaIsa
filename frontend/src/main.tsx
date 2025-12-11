@@ -92,7 +92,7 @@ async function main() {
     }
   });
 
-  client.on(ServerMessageType.METRICS, (data) => {
+  client.on(ServerMessageType.METRICS, (_data) => {
     // Metrics handled by React
   });
 
