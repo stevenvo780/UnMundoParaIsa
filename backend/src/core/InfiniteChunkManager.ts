@@ -318,8 +318,6 @@ export class InfiniteChunkManager {
           chunk.setValue(FieldType.WATER, lx, ly, 0.7 + water * 0.3);
         } else if (biome === BiomeType.BEACH) {
           chunk.setValue(FieldType.WATER, lx, ly, water > 0.5 ? 0.4 : 0);
-        } else if (water > 0.6) {
-          chunk.setValue(FieldType.WATER, lx, ly, (water - 0.6) * 2.5);
         }
 
         const treePotential = this.treeNoise(gx * TREE_SCALE, gy * TREE_SCALE);

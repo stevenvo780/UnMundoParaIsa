@@ -13,6 +13,8 @@ export enum StructureType {
   SETTLEMENT = "settlement",
   STORAGE = "storage",
   WATCHTOWER = "watchtower",
+  WORKBENCH = "workbench",
+  CAMPFIRE = "campfire",
 }
 
 export interface Structure {
@@ -70,6 +72,48 @@ export class StructureManager {
     const cx = Math.floor(x / 32);
     const cy = Math.floor(y / 32);
     return `${cx},${cy}`;
+  }
+
+  /**
+   * Crear estructura explícitamente (e.g. desde crafting)
+   */
+  createStructure(
+    x: number,
+    y: number,
+    type: StructureType,
+    builderId: number,
+    tick: number,
+  ): Structure | null {
+    if (this.hasStructureNear(x, y, this.config.minDistanceBetween)) {
+      return null;
+    }
+
+    const key = this.getSpatialKey(x, y);
+    const existing = this.spatialIndex.get(key);
+    if (existing && existing.size >= this.config.maxStructuresPerChunk) {
+      return null;
+    }
+
+    const structure: Structure = {
+      id: this.structureIdCounter++,
+      type,
+      x,
+      y,
+      health: 1.0, // Construido intencionalmente empieza con salud completa
+      level: 1,
+      createdTick: tick,
+      lastUsedTick: tick,
+      builders: [builderId],
+    };
+
+    this.structures.set(structure.id, structure);
+
+    if (!this.spatialIndex.has(key)) {
+      this.spatialIndex.set(key, new Set());
+    }
+    this.spatialIndex.get(key)!.add(structure.id);
+
+    return structure;
   }
 
   /**
