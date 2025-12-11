@@ -3,10 +3,7 @@
  * Afecta comportamiento de partículas y ambiente
  */
 
-import {
-  BehaviorType,
-  getBehaviorType,
-} from "../biodiversity/BehaviorTypes.js";
+import { BehaviorType, getBehaviorType } from "../biodiversity/BehaviorTypes";
 
 export type TimeOfDay =
   | "dawn"

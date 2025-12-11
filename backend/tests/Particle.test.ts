@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Particle } from "../src/types.js";
+import { Particle } from '../src/types';
 
 /**
  * Helper para crear partículas de prueba

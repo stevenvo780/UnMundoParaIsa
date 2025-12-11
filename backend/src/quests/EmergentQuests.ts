@@ -4,8 +4,8 @@
  * NO son pre-programadas, se generan dinámicamente
  */
 
-import { NarrativeEvent, EventType } from "../narrative/Events.js";
-import { Particle } from "../types.js";
+import { NarrativeEvent, EventType } from "../narrative/Events";
+import { Particle } from "../types";
 
 export type QuestType =
   | "protect_community"
@@ -357,7 +357,6 @@ export class QuestManager {
     const quest = generator(event, tick);
     if (quest) {
       this.quests.set(quest.id, quest);
-      console.log(`[Quests] Nueva quest: ${quest.title}`);
     }
 
     return quest;
@@ -389,7 +388,6 @@ export class QuestManager {
         quest.completedAt = tick;
         quest.progress = 1;
         this.completedQuests.push(quest);
-        console.log(`[Quests] Quest completada: ${quest.title}`);
       }
     }
 

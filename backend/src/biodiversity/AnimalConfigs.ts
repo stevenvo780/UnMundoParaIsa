@@ -8,8 +8,8 @@
  * - Spawning (probability, suitable biomes, group size)
  */
 
-import { AnimalType } from "./AnimalEnums.js";
-import { BiomeType } from "../core/BiomeResolver.js";
+import { AnimalType } from "./AnimalEnums";
+import { BiomeType } from "../core/BiomeResolver";
 
 export interface AnimalConfig {
   type: AnimalType;

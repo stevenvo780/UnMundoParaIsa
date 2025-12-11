@@ -6,7 +6,7 @@
  * de cada partícula deriva de su genética (seed).
  */
 
-import { Particle } from "../types.js";
+import { Particle } from "../types";
 
 export type BehaviorType =
   | "forager"

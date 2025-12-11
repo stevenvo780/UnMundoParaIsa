@@ -3,7 +3,7 @@
  * Aparecen en el mundo cuando se cumplen condiciones
  */
 
-import { ChatFragment, Emotion } from "./ChatParser.js";
+import { ChatFragment, Emotion } from "./ChatParser";
 
 export type ArtifactType =
   | "letter"

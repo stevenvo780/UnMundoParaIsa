@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { CommunityDetector, Community } from "../src/social/Communities.js";
+import { CommunityDetector, Community } from '../src/social/Communities';
 import {
   getSignature,
   seedSimilarity,
   averageSignature,
-} from "../src/social/Signatures.js";
-import { Particle } from "../src/types.js";
+} from '../src/social/Signatures';
+import { Particle } from '../src/types';
 
 describe("Signatures", () => {
   describe("getSignature", () => {

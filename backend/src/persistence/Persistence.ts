@@ -3,8 +3,8 @@
  * Serializa solo lo esencial, el resto se reconstruye
  */
 
-import { Particle } from "../types.js";
-import { Quest } from "../quests/EmergentQuests.js";
+import { Particle } from "../types";
+import { Quest } from "../quests/EmergentQuests";
 
 export interface MinimalParticle {
   x: number;

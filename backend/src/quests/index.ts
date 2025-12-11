@@ -10,4 +10,4 @@ export {
   type QuestReward,
   type QuestManagerConfig,
   QuestManager,
-} from "./EmergentQuests.js";
+} from "./EmergentQuests";

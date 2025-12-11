@@ -3,7 +3,7 @@ import {
   EventManager,
   WorldState,
   NarrativeEvent,
-} from "../src/narrative/Events.js";
+} from '../src/narrative/Events';
 
 function createEmptyWorldState(tick: number): WorldState {
   return {

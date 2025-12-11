@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Field } from "../src/core/Field.js";
-import { FieldConfig } from "../src/types.js";
+import { Field } from '../src/core/Field';
+import { FieldConfig } from '../src/types';
 
 const defaultConfig: FieldConfig = {
   diffusion: 0.1,

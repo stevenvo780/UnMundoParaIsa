@@ -2,8 +2,8 @@
  * ChunkManager - Gestiona grid de chunks con activación/desactivación dinámica
  */
 
-import { Chunk, CHUNK_SIZE } from "./Chunk.js";
-import { FieldType, WORLD, Particle } from "../types.js";
+import { Chunk, CHUNK_SIZE } from "./Chunk";
+import { FieldType, WORLD, Particle } from "../types";
 
 export interface ChunkManagerConfig {
   worldWidth: number;
@@ -47,10 +47,6 @@ export class ChunkManager {
         this.chunks.set(key, new Chunk(cx, cy));
       }
     }
-
-    console.log(
-      `[ChunkManager] Created ${this.chunks.size} chunks (${this.chunksX}x${this.chunksY})`,
-    );
   }
 
   /**

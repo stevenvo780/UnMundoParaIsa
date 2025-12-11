@@ -12,4 +12,4 @@ export {
   saveToFile,
   loadFromFile,
   listSaves,
-} from "./Persistence.js";
+} from "./Persistence";

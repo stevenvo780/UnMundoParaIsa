@@ -9,15 +9,10 @@
  * - Continentality: distancia a masas de agua
  */
 
-import { Chunk, CHUNK_SIZE } from "./Chunk.js";
-import {
-  FieldType,
-  ChunkCoord,
-  ChunkSnapshot,
-  ViewportData,
-} from "../types.js";
+import { Chunk, CHUNK_SIZE } from "./Chunk";
+import { FieldType, ChunkCoord, ChunkSnapshot, ViewportData } from "../types";
 import { createNoise2D, NoiseFunction2D } from "simplex-noise";
-import { BiomeResolver, BiomeType } from "./BiomeResolver.js";
+import { BiomeResolver, BiomeType } from "./BiomeResolver";
 
 function alea(seed: number): () => number {
   let s = seed;
@@ -98,10 +93,6 @@ export class InfiniteChunkManager {
     this.riverNoise2 = createNoise2D(alea(this.config.seed + 201));
 
     this.biomeResolver = new BiomeResolver();
-
-    console.log(
-      `[InfiniteChunkManager] Initialized with seed ${this.config.seed}, biome generation enabled`,
-    );
   }
 
   /**
@@ -129,7 +120,6 @@ export class InfiniteChunkManager {
     if (!chunk) {
       chunk = new Chunk(cx, cy);
       this.chunks.set(key, chunk);
-      console.log(`[InfiniteChunkManager] Created chunk at (${cx}, ${cy})`);
     }
 
     this.chunkAccessTimes.set(key, Date.now());
@@ -432,10 +422,6 @@ export class InfiniteChunkManager {
     const maxCX = Math.ceil(maxX / CHUNK_SIZE) + 1;
     const minCY = Math.floor(minY / CHUNK_SIZE) - 1;
     const maxCY = Math.ceil(maxY / CHUNK_SIZE) + 1;
-
-    console.log(
-      `[InfiniteChunkManager] getChunksForViewport: cx ${minCX}-${maxCX}, cy ${minCY}-${maxCY}`,
-    );
 
     for (let cy = minCY; cy <= maxCY; cy++) {
       for (let cx = minCX; cx <= maxCX; cx++) {

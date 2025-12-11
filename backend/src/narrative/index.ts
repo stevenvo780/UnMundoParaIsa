@@ -8,7 +8,7 @@ export {
   type SemanticFieldConfig,
   SemanticField,
   SemanticFieldManager,
-} from "./SemanticFields.js";
+} from "./SemanticFields";
 
 export {
   type Speaker,
@@ -21,7 +21,7 @@ export {
   detectEmotion,
   parseChatsFromJSON,
   ChatManager,
-} from "./ChatParser.js";
+} from "./ChatParser";
 
 export {
   type Artifact,
@@ -29,7 +29,7 @@ export {
   type ArtifactSpawnCondition,
   type ArtifactStats,
   ArtifactManager,
-} from "./Artifacts.js";
+} from "./Artifacts";
 
 export {
   type EventType,
@@ -40,7 +40,7 @@ export {
   type WorldState,
   type EventStats,
   EventManager,
-} from "./Events.js";
+} from "./Events";
 
 export {
   type EntityType,
@@ -53,4 +53,4 @@ export {
   generateTraits,
   generateTitle,
   MaterializationManager,
-} from "./Materialization.js";
+} from "./Materialization";

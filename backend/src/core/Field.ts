@@ -3,7 +3,7 @@
  * Implementa difusión, decay y crecimiento logístico
  */
 
-import { FieldConfig, idx } from "../types.js";
+import { FieldConfig, idx } from "../types";
 
 export class Field {
   readonly width: number;
@@ -230,7 +230,6 @@ export class Field {
    */
   addOasis(cx: number, cy: number, radius: number, value: number): void {
     const r2 = radius * radius;
-    let pixelsWritten = 0;
 
     for (
       let y = Math.max(0, Math.floor(cy - radius));
@@ -252,16 +251,9 @@ export class Field {
           const newVal = value * factor;
           if (newVal > this.current[i]) {
             this.current[i] = newVal;
-            pixelsWritten++;
           }
         }
       }
-    }
-
-    if (pixelsWritten === 0) {
-      console.log(
-        `[Field] addOasis WARNING: cx=${cx}, cy=${cy}, r=${radius}, field=${this.width}x${this.height} - 0 pixels written!`,
-      );
     }
   }
 

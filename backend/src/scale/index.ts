@@ -9,7 +9,7 @@ export {
   type FlowFieldConfig,
   FlowField,
   FlowFieldManager,
-} from "./FlowFields.js";
+} from "./FlowFields";
 
 export {
   type LODLevel,
@@ -17,7 +17,7 @@ export {
   type FocusPoint,
   type LODRegion,
   LODManager,
-} from "./LOD.js";
+} from "./LOD";
 
 export {
   type ThermostatType,
@@ -27,7 +27,7 @@ export {
   ThermostatBank,
   type WorldParameters,
   WorldBalancer,
-} from "./Thermostats.js";
+} from "./Thermostats";
 
 export {
   type MetricSample,
@@ -36,4 +36,4 @@ export {
   type DashboardData,
   MetricsCollector,
   metrics,
-} from "./Metrics.js";
+} from "./Metrics";

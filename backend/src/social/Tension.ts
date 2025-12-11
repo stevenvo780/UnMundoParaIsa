@@ -4,7 +4,7 @@
  * Alta tensión causa conflicto, migración, muertes
  */
 
-import { SignatureField } from "./Signatures.js";
+import { SignatureField } from "./Signatures";
 
 export interface TensionConfig {
   entropyWeight: number;

@@ -3,8 +3,8 @@
  * Una comunidad es un grupo de celdas con alta población y firma similar
  */
 
-import { Particle } from "../types.js";
-import { averageSignature } from "./Signatures.js";
+import { Particle } from "../types";
+import { averageSignature } from "./Signatures";
 
 export interface Community {
   id: number;

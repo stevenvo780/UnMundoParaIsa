@@ -13,9 +13,9 @@ export {
   getBehaviorName,
   calculateBiodiversity,
   applyBehaviorWeights,
-} from "./BehaviorTypes.js";
+} from "./BehaviorTypes";
 
-export { AnimalType, AnimalState, AnimalTargetType } from "./AnimalEnums.js";
+export { AnimalType, AnimalState, AnimalTargetType } from "./AnimalEnums";
 
 export {
   type AnimalConfig,
@@ -23,4 +23,4 @@ export {
   getAnimalConfig,
   getAllAnimalTypes,
   getAnimalsForBiome,
-} from "./AnimalConfigs.js";
+} from "./AnimalConfigs";

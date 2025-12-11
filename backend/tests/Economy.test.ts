@@ -3,7 +3,7 @@ import {
   DemandField,
   DemandManager,
   DEFAULT_DEMAND_CONFIGS,
-} from "../src/economy/Demand.js";
+} from '../src/economy/Demand';
 
 describe("DemandField", () => {
   let demandField: DemandField;

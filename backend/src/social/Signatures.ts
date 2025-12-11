@@ -4,7 +4,7 @@
  * La firma se descompone en 4 canales (8 bits cada uno)
  */
 
-import { Particle } from "../types.js";
+import { Particle } from "../types";
 
 /**
  * Extraer firma de 4 canales desde seed

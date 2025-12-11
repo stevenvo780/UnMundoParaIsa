@@ -3,8 +3,8 @@
  * Partícula → Personaje → Héroe
  */
 
-import { Particle } from "../types.js";
-import { getSignature } from "../social/Signatures.js";
+import { Particle } from "../types";
+import { getSignature } from "../social/Signatures";
 
 export type EntityType = "particle" | "character" | "hero";
 

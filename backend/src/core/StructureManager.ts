@@ -137,10 +137,6 @@ export class StructureManager {
     }
     this.spatialIndex.get(key)!.add(structure.id);
 
-    console.log(
-      `[Structure] Created ${type} at (${x},${y}) by particle ${particleId}`,
-    );
-
     return structure;
   }
 
@@ -213,9 +209,6 @@ export class StructureManager {
 
     if (s.health >= 0.9 && s.builders.length >= 3 && s.level < 3) {
       s.level++;
-      console.log(
-        `[Structure] ${s.type} at (${s.x},${s.y}) upgraded to level ${s.level}`,
-      );
     }
   }
 
@@ -239,7 +232,6 @@ export class StructureManager {
     for (const id of toRemove) {
       const s = this.structures.get(id);
       if (s) {
-        console.log(`[Structure] ${s.type} at (${s.x},${s.y}) destroyed`);
         const key = this.getSpatialKey(s.x, s.y);
         this.spatialIndex.get(key)?.delete(id);
         this.structures.delete(id);

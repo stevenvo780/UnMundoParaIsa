@@ -6,8 +6,8 @@
 
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer, IncomingMessage, ServerResponse } from "http";
-import { World } from "./core/World.js";
-import { InfiniteChunkManager } from "./core/InfiniteChunkManager.js";
+import { World } from "./core/World";
+import { InfiniteChunkManager } from "./core/InfiniteChunkManager";
 import {
   ServerMessage,
   ClientMessage,
@@ -15,7 +15,7 @@ import {
   Particle,
   ChunkSnapshot,
   ViewportData,
-} from "./types.js";
+} from "./types";
 import {
   getMetrics,
   updateSimulationMetrics,
@@ -28,7 +28,7 @@ import {
   updateFieldMetrics,
   wsConnectionsActive,
   wsMessagesReceived,
-} from "./metrics/prometheus.js";
+} from "./metrics/prometheus";
 
 const PORT = parseInt(process.env.PORT || "3002", 10);
 const METRICS_PORT = parseInt(process.env.METRICS_PORT || "9090", 10);
@@ -53,7 +53,6 @@ console.log(`[Server] Tick interval: ${TICK_MS}ms`);
 world.generate(Date.now());
 
 wss.on("connection", (ws: WebSocket) => {
-  console.log("[Server] Client connected");
   clients.add(ws);
   subscriptions.set(ws, new Set(["food", "water", "trail0", "population"]));
   wsConnectionsActive.inc();
@@ -71,7 +70,6 @@ wss.on("connection", (ws: WebSocket) => {
   });
 
   ws.on("close", () => {
-    console.log("[Server] Client disconnected");
     clients.delete(ws);
     subscriptions.delete(ws);
     clientViewports.delete(ws);
@@ -167,14 +165,7 @@ function sendInit(ws: WebSocket): void {
     height: 600,
   };
 
-  console.log(
-    `[Server] Getting all visible chunks for viewport center (${initialViewport.centerX}, ${initialViewport.centerY})`,
-  );
-
   const initialChunks = infiniteChunks.getChunksForViewport(initialViewport);
-  console.log(
-    `[Server] Got ${initialChunks.length} chunks for initial viewport`,
-  );
 
   const msg: ServerMessage = {
     type: "init",
@@ -187,12 +178,6 @@ function sendInit(ws: WebSocket): void {
   send(ws, msg);
 
   if (initialChunks.length > 0) {
-    console.log(
-      `[Server] Sending ${initialChunks.length} initial chunks: ${initialChunks
-        .slice(0, 5)
-        .map((c) => `(${c.cx},${c.cy})`)
-        .join(", ")}...`,
-    );
     sendChunkData(ws, initialChunks);
   }
 
@@ -260,10 +245,6 @@ function sendChunkData(ws: WebSocket, chunks: ChunkSnapshot[]): void {
 
     send(ws, msg);
   }
-
-  console.log(
-    `[Server] Sent ${chunks.length} chunks in ${Math.ceil(chunks.length / BATCH_SIZE)} batches`,
-  );
 }
 
 function broadcastChunks(chunks: ChunkSnapshot[]): void {
@@ -272,7 +253,6 @@ function broadcastChunks(chunks: ChunkSnapshot[]): void {
   }
 }
 
-const _lastTickTime = Date.now();
 let _tickCount = 0;
 
 function gameLoop(): void {

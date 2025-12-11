@@ -3,9 +3,9 @@
  * Triggers basados en condiciones del mundo
  */
 
-import { ChatFragment, Emotion } from "./ChatParser.js";
-import { Artifact } from "./Artifacts.js";
-import { Particle } from "../types.js";
+import { ChatFragment, Emotion } from "./ChatParser";
+import { Artifact } from "./Artifacts";
+import { Particle } from "../types";
 
 export type EventType =
   | "artifact_discovered"
@@ -138,7 +138,7 @@ export class EventManager {
     this.conditions = [
       {
         type: "artifact_discovered",
-        check: (state, prev) => {
+        check: (state, prev): EventTrigger | null => {
           const newDiscovered = state.artifacts.filter(
             (a) =>
               a.discovered &&
@@ -164,7 +164,7 @@ export class EventManager {
 
       {
         type: "community_formed",
-        check: (state, prev) => {
+        check: (state, prev): EventTrigger | null => {
           const newCommunities = state.communities.filter(
             (c) => !prev.communities.find((p) => p.id === c.id),
           );
@@ -187,7 +187,7 @@ export class EventManager {
 
       {
         type: "mass_birth",
-        check: (state, prev) => {
+        check: (state, prev): EventTrigger | null => {
           if (state.births < 10) return null;
 
           const babies = state.particles.filter(
@@ -214,7 +214,7 @@ export class EventManager {
 
       {
         type: "mass_death",
-        check: (state, prev) => {
+        check: (state, prev): EventTrigger | null => {
           if (state.deaths < 10) return null;
 
           const dead = prev.particles.filter(
@@ -241,7 +241,7 @@ export class EventManager {
 
       {
         type: "conflict_started",
-        check: (state, prev) => {
+        check: (state, prev): EventTrigger | null => {
           const newConflicts = state.conflicts.filter(
             (c) =>
               !prev.conflicts.find(

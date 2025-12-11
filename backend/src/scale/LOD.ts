@@ -3,7 +3,7 @@
  * Ajusta la precisión de simulación según distancia/importancia
  */
 
-import { WORLD } from "../types.js";
+import { WORLD } from "../types";
 
 export type LODLevel = "high" | "medium" | "low" | "dormant";
 
