@@ -148,9 +148,9 @@ export class Renderer {
 
   private initFieldLayers(): void {
     const fieldConfigs: { type: FieldType; color: number; alpha: number }[] = [
-      { type: "food", color: 0x00ff00, alpha: 0.2 },
-      { type: "water", color: 0x0088ff, alpha: 0.2 },
-      { type: "trail0", color: 0xffff00, alpha: 0.15 },
+      { type: FieldType.FOOD, color: 0x00ff00, alpha: 0.2 },
+      { type: FieldType.WATER, color: 0x0088ff, alpha: 0.2 },
+      { type: FieldType.TRAIL0, color: 0xffff00, alpha: 0.15 },
     ];
 
     for (const config of fieldConfigs) {
@@ -470,8 +470,8 @@ export class Renderer {
     this.particles = state.particles;
 
     if (state.fields) {
-      const food = state.fields.get("food");
-      const water = state.fields.get("water");
+      const food = state.fields.get(FieldType.FOOD);
+      const water = state.fields.get(FieldType.WATER);
 
       if (food) this.foodField = food;
       if (water) this.waterField = water;
@@ -772,8 +772,8 @@ export class Renderer {
     }
 
     // Actualizar campos internos
-    const food = fieldMap.get("food");
-    const water = fieldMap.get("water");
+    const food = fieldMap.get(FieldType.FOOD);
+    const water = fieldMap.get(FieldType.WATER);
 
     if (food) {
       this.foodField = food;

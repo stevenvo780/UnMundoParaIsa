@@ -20,19 +20,20 @@ export const WORLD = {
 // Tipos de campos
 // ============================================
 
-export type FieldType =
-  | "food"
-  | "water"
-  | "cost"
-  | "danger"
-  | "trees"
-  | "stone"
-  | "trail0" // Canal de firma 0
-  | "trail1" // Canal de firma 1
-  | "trail2" // Canal de firma 2
-  | "trail3" // Canal de firma 3
-  | "population"
-  | "labor";
+export enum FieldType {
+  FOOD = "food",
+  WATER = "water",
+  COST = "cost",
+  DANGER = "danger",
+  TREES = "trees",
+  STONE = "stone",
+  TRAIL0 = "trail0", // Canal de firma 0
+  TRAIL1 = "trail1", // Canal de firma 1
+  TRAIL2 = "trail2", // Canal de firma 2
+  TRAIL3 = "trail3", // Canal de firma 3
+  POPULATION = "population",
+  LABOR = "labor",
+}
 
 // ============================================
 // Configuración de campos
@@ -47,30 +48,30 @@ export interface FieldConfig {
 }
 
 export const DEFAULT_FIELD_CONFIGS: Record<FieldType, FieldConfig> = {
-  food: {
+  [FieldType.FOOD]: {
     diffusion: 0.01,
     decay: 0.001,
     maxValue: 1.0,
     growthRate: 0.02,
     growthCap: 0.8,
   },
-  water: { diffusion: 0.05, decay: 0.0001, maxValue: 1.0 },
-  cost: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  danger: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
-  trees: {
+  [FieldType.WATER]: { diffusion: 0.05, decay: 0.0001, maxValue: 1.0 },
+  [FieldType.COST]: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  [FieldType.DANGER]: { diffusion: 0.1, decay: 0.05, maxValue: 1.0 },
+  [FieldType.TREES]: {
     diffusion: 0.005,
     decay: 0.0001,
     maxValue: 1.0,
     growthRate: 0.01,
     growthCap: 0.9,
   },
-  stone: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
-  trail0: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail1: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail2: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  trail3: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
-  population: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
-  labor: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
+  [FieldType.STONE]: { diffusion: 0.0, decay: 0.0, maxValue: 1.0 },
+  [FieldType.TRAIL0]: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  [FieldType.TRAIL1]: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  [FieldType.TRAIL2]: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  [FieldType.TRAIL3]: { diffusion: 0.15, decay: 0.1, maxValue: 1.0 },
+  [FieldType.POPULATION]: { diffusion: 0.0, decay: 1.0, maxValue: 100 },
+  [FieldType.LABOR]: { diffusion: 0.05, decay: 0.2, maxValue: 10.0 },
 };
 
 // ============================================
@@ -195,15 +196,17 @@ export function fromIdx(
 // Mensajes WebSocket
 // ============================================
 
-export type ServerMessageType =
-  | "init"
-  | "tick"
-  | "metrics"
-  | "field_update"
-  | "particles_update"
-  | "chunk_data" // Datos de chunks generados
-  | "chunk_unload" // Notificar que chunk fue descargado
-  | "error";
+export enum ServerMessageType {
+  INIT = "init",
+  TICK = "tick",
+  METRICS = "metrics",
+  FIELD_UPDATE = "field_update",
+  PARTICLES_UPDATE = "particles_update",
+  CHUNK_DATA = "chunk_data", // Datos de chunks generados
+  CHUNK_UNLOAD = "chunk_unload", // Notificar que chunk fue descargado
+  DIALOG = "dialog",
+  ERROR = "error",
+}
 
 // Removed duplicate ClientMessageType type alias
 
@@ -232,6 +235,7 @@ export enum ClientMessageType {
   SPAWN_ENTITY = "spawn_entity",
   SPAWN_PARTICLES = "spawn_particles",
   SUBSCRIBE_FIELD = "subscribe_field",
+  REQUEST_CHUNKS = "request_chunks",
   VIEWPORT_UPDATE = "viewport_update",
 }
 
@@ -245,7 +249,7 @@ export interface StructureData {
 }
 
 export interface ServerMessage {
-  type: string;
+  type: ServerMessageType;
   clientId?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   state?: any; // Replace with GameState type

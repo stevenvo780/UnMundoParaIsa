@@ -100,8 +100,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   const toggleField = (type: FieldType, show: boolean) => {
-    if (type === "water") setShowMoisture(show);
-    if (type === "food") setShowNutrients(show);
+    if (type === FieldType.WATER) setShowMoisture(show);
+    if (type === FieldType.FOOD) setShowNutrients(show);
     renderer.toggleFieldVisibility(type);
   };
 
@@ -248,7 +248,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <Checkbox
                   checked={showMoisture}
                   onChange={(e) =>
-                    toggleField("water", e.target.checked)
+                    toggleField(FieldType.WATER, e.target.checked)
                   }
                 />
               }
@@ -259,7 +259,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <Checkbox
                   checked={showNutrients}
                   onChange={(e) =>
-                    toggleField("food", e.target.checked)
+                    toggleField(FieldType.FOOD, e.target.checked)
                   }
                 />
               }

@@ -168,6 +168,7 @@ export enum ServerMessageType {
   PARTICLES_UPDATE = "particles_update",
   CHUNK_DATA = "chunk_data",
   CHUNK_UNLOAD = "chunk_unload",
+  DIALOG = "dialog",
   ERROR = "error",
 }
 
