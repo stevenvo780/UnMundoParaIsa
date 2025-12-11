@@ -3,8 +3,11 @@
  * Serializa solo lo esencial, el resto se reconstruye
  */
 
+import { writeFileSync, readFileSync, existsSync, readdirSync } from "fs";
+import { join } from "path";
 import { Particle } from "../types";
 import { Quest } from "../quests/EmergentQuests";
+import { Logger } from "../utils/Logger";
 
 export interface MinimalParticle {
   x: number;
@@ -227,18 +230,18 @@ export class PersistenceManager {
       const data = JSON.parse(json) as SaveData;
 
       if (!verifyChecksum(data)) {
-        console.error("[Persistence] Checksum inválido");
+        Logger.error("[Persistence] Checksum inválido");
         return null;
       }
 
       if (!data.version) {
-        console.error("[Persistence] Versión no especificada");
+        Logger.error("[Persistence] Versión no especificada");
         return null;
       }
 
       return data;
     } catch (e) {
-      console.error("[Persistence] Error deserializando:", e);
+      Logger.error("[Persistence] Error deserializando:", e);
       return null;
     }
   }
@@ -277,9 +280,6 @@ export class PersistenceManager {
   }
 }
 
-import { writeFileSync, readFileSync, existsSync, readdirSync } from "fs";
-import { join } from "path";
-
 const SAVE_DIR = process.env.SAVE_DIR || "./saves";
 
 /**
@@ -290,10 +290,10 @@ export function saveToFile(filename: string, data: SaveData): boolean {
     const filepath = join(SAVE_DIR, `${filename}.json`);
     const json = JSON.stringify(data, null, 2);
     writeFileSync(filepath, json, "utf-8");
-    console.log(`[Persistence] Guardado: ${filepath} (${json.length} bytes)`);
+    Logger.info(`[Persistence] Guardado: ${filepath} (${json.length} bytes)`);
     return true;
   } catch (e) {
-    console.error("[Persistence] Error guardando:", e);
+    Logger.error("[Persistence] Error guardando:", e);
     return false;
   }
 }
@@ -310,13 +310,13 @@ export function loadFromFile(filename: string): SaveData | null {
     const data = JSON.parse(json) as SaveData;
 
     if (!verifyChecksum(data)) {
-      console.error("[Persistence] Checksum inválido");
+      Logger.error("[Persistence] Checksum inválido");
       return null;
     }
 
     return data;
   } catch (e) {
-    console.error("[Persistence] Error cargando:", e);
+    Logger.error("[Persistence] Error cargando:", e);
     return null;
   }
 }

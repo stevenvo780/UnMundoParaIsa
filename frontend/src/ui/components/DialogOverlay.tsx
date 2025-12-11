@@ -8,7 +8,11 @@ import SentimentSatisfiedIcon from "@mui/icons-material/SentimentSatisfied";
 import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
-import { DialogFragment, ServerMessage } from "../../types";
+import {
+  DialogFragment,
+  ServerMessage,
+  ServerMessageType,
+} from "../../types";
 
 interface DialogOverlayProps {
   client: WebSocketClient;
@@ -141,7 +145,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
 
   useEffect(() => {
     const handleDialog = (data: ServerMessage) => {
-      if (data.type === "dialog" && data.dialog) {
+      if (data.type === ServerMessageType.DIALOG && data.dialog) {
         const fragment = data.dialog;
         setActiveDialogs((prev) => {
           const next = new Map(prev);
@@ -151,9 +155,9 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
       }
     };
 
-    client.on("message", handleDialog);
+    client.on(ServerMessageType.DIALOG, handleDialog);
     return () => {
-      client.off("message", handleDialog);
+      client.off(ServerMessageType.DIALOG, handleDialog);
     };
   }, [client]);
 

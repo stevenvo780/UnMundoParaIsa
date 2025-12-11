@@ -8,6 +8,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { World } from "./core/World";
 import { InfiniteChunkManager } from "./core/InfiniteChunkManager";
+import { Logger } from "./utils/Logger";
 import {
   ServerMessage,
   ClientMessage,
@@ -49,8 +50,8 @@ const clientViewports = new Map<WebSocket, ViewportData>();
 
 const wss = new WebSocketServer({ port: PORT });
 
-console.log(`[Server] WebSocket server started on port ${PORT}`);
-console.log(`[Server] Tick interval: ${TICK_MS}ms`);
+Logger.info(`[Server] WebSocket server started on port ${PORT}`);
+Logger.info(`[Server] Tick interval: ${TICK_MS}ms`);
 
 world.generate(Date.now());
 
@@ -75,7 +76,7 @@ wss.on("connection", (ws: WebSocket) => {
       wsMessagesReceived.inc();
       handleClientMessage(ws, msg);
     } catch (e) {
-      console.error("[Server] Invalid message:", e);
+      Logger.error("[Server] Invalid message:", e);
     }
   });
 
@@ -87,7 +88,7 @@ wss.on("connection", (ws: WebSocket) => {
   });
 
   ws.on("error", (err) => {
-    console.error("[Server] WebSocket error:", err);
+    Logger.error("[Server] WebSocket error:", err);
     clients.delete(ws);
     subscriptions.delete(ws);
     clientViewports.delete(ws);
@@ -267,15 +268,12 @@ function broadcastChunks(chunks: ChunkSnapshot[]): void {
   }
 }
 
-let _tickCount = 0;
-
 function gameLoop(): void {
   const now = Date.now();
 
   if (!world.isPaused()) {
     world.step();
     infiniteChunks.step();
-    _tickCount++;
 
     const particles = world.getParticles();
     const newChunksFromParticles =
@@ -299,7 +297,7 @@ function gameLoop(): void {
     broadcast(tickMsg);
 
     if (world.getTick() % 5 === 0) {
-      for (const [ws, _subs] of subscriptions) {
+      for (const ws of subscriptions.keys()) {
         sendFieldUpdates(ws);
       }
     }
@@ -386,20 +384,20 @@ function sampleParticles(particles: Particle[], maxCount: number): Particle[] {
 }
 
 process.on("SIGINT", () => {
-  console.log("[Server] Shutting down...");
+  Logger.info("[Server] Shutting down...");
 
   for (const client of clients) {
     client.close();
   }
 
   wss.close(() => {
-    console.log("[Server] Closed");
+    Logger.info("[Server] Closed");
     process.exit(0);
   });
 });
 
 process.on("SIGTERM", () => {
-  console.log("[Server] SIGTERM received");
+  Logger.info("[Server] SIGTERM received");
   process.emit("SIGINT", "SIGINT");
 });
 
@@ -433,20 +431,20 @@ const metricsServer = createServer(
 );
 
 metricsServer.listen(METRICS_PORT, () => {
-  console.log(
+  Logger.info(
     `[Server] Prometheus metrics available at http://localhost:${METRICS_PORT}/metrics`,
   );
-  console.log(
+  Logger.info(
     `[Server] Health check available at http://localhost:${METRICS_PORT}/health`,
   );
 });
 
-console.log("[Server] Starting game loop...");
+Logger.info("[Server] Starting game loop...");
 gameLoop();
 
 setInterval(() => {
   const metrics = world.getMetrics();
-  console.log(
+  Logger.info(
     `[Stats] Tick: ${metrics.tick}, ` +
       `Particles: ${metrics.particleCount}, ` +
       `Births: ${metrics.births}, Deaths: ${metrics.deaths}, ` +

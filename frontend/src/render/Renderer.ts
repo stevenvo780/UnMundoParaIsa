@@ -764,11 +764,13 @@ export class Renderer {
     this.structures = structures;
   }
 
-  updateFields(fields: Record<string, number[]>): void {
+  updateFields(fields: Partial<Record<FieldType, number[]>>): void {
     const fieldMap = new Map<FieldType, Float32Array>();
 
-    for (const [key, data] of Object.entries(fields)) {
-      fieldMap.set(key as FieldType, new Float32Array(data));
+    for (const key of Object.keys(fields) as FieldType[]) {
+      const data = fields[key];
+      if (!data) continue;
+      fieldMap.set(key, new Float32Array(data));
     }
 
     // Actualizar campos internos

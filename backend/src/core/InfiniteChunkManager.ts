@@ -525,7 +525,12 @@ export class InfiniteChunkManager {
   serializeChunk(chunk: Chunk, generated: boolean = false): ChunkSnapshot {
     const fields: Partial<Record<FieldType, ArrayBuffer>> = {};
 
-    const activeFields: FieldType[] = [FieldType.FOOD, FieldType.WATER, FieldType.TREES, FieldType.STONE];
+    const activeFields: FieldType[] = [
+      FieldType.FOOD,
+      FieldType.WATER,
+      FieldType.TREES,
+      FieldType.STONE,
+    ];
     for (const type of activeFields) {
       const field = chunk.getField(type);
       if (field) {

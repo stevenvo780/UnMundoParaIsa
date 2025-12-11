@@ -1,7 +1,13 @@
 import "./style.css";
 import { Renderer } from "./render/Renderer";
 import { WebSocketClient } from "./network/WebSocketClient";
-import { ViewportData, ChunkSnapshot, ClientMessageType } from "./types";
+import {
+  ViewportData,
+  ChunkSnapshot,
+  ClientMessageType,
+  ServerMessageType,
+  FieldType,
+} from "./types";
 import { createRoot } from "react-dom/client";
 import { App } from "./ui/components/App";
 
@@ -52,7 +58,7 @@ async function main() {
   });
 
   // Conectar eventos
-  client.on("tick", (data) => {
+  client.on(ServerMessageType.TICK, (data) => {
     if (data.particles) {
       renderer.updateParticles(data.particles);
     }
@@ -62,32 +68,32 @@ async function main() {
     // Tick update for UI is handled within React components via subscription
   });
 
-  client.on("field_update", (data) => {
+  client.on(ServerMessageType.FIELD_UPDATE, (data) => {
     if (data.fields) {
-      renderer.updateFields(data.fields as Record<string, number[]>);
+      renderer.updateFields(data.fields as Partial<Record<FieldType, number[]>>);
     }
   });
 
   // Nuevo: manejar chunks dinámicos
-  client.on("chunk_data", (data) => {
+  client.on(ServerMessageType.CHUNK_DATA, (data) => {
     if (data.chunks) {
       // console.log(`[App] Recibidos ${(data.chunks as ChunkSnapshot[]).length} chunks`);
       renderer.handleChunks(data.chunks as ChunkSnapshot[]);
     }
   });
 
-  client.on("chunk_unload", (data: unknown) => {
+  client.on(ServerMessageType.CHUNK_UNLOAD, (data: unknown) => {
     const unloadData = data as { cx?: number; cy?: number };
     if (unloadData.cx !== undefined && unloadData.cy !== undefined) {
       renderer.handleChunkUnload(unloadData.cx, unloadData.cy);
     }
   });
 
-  client.on("metrics", (data) => {
+  client.on(ServerMessageType.METRICS, (data) => {
     // Metrics handled by React
   });
 
-  client.on("init", (data) => {
+  client.on(ServerMessageType.INIT, (data) => {
     console.log("[App] Recibido estado inicial");
 
     // Ocultar pantalla de carga handled by React/App state if we wanted,

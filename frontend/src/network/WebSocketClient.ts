@@ -7,6 +7,7 @@ import {
   ClientMessage,
   FieldType,
   ClientMessageType,
+  ServerMessageType,
 } from "../types";
 
 type EventHandler = (data: ServerMessage) => void;
@@ -61,7 +62,7 @@ export class WebSocketClient {
       try {
         const msg: ServerMessage = JSON.parse(event.data);
         // Debug: Log chunk messages
-        if (msg.type === "chunk_data") {
+        if (msg.type === ServerMessageType.CHUNK_DATA) {
           console.log(
             `[WS] Recibido chunk_data con ${(msg as { chunks?: unknown[] }).chunks?.length ?? 0} chunks`,
           );

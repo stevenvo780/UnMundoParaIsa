@@ -4,6 +4,7 @@
  */
 
 import { FieldType } from "../types";
+import { Logger } from "../utils/Logger";
 
 export interface Reaction {
   id: string;
@@ -164,8 +165,7 @@ export class ReactionProcessor {
       }
 
       if (reaction.requires.field) {
-        const fieldValue =
-          fields[reaction.requires.field.type] ?? 0;
+        const fieldValue = fields[reaction.requires.field.type] ?? 0;
         if (fieldValue < reaction.requires.field.minValue) {
           return false;
         }
@@ -181,7 +181,6 @@ export class ReactionProcessor {
   execute(
     reaction: Reaction,
     resources: Record<string, number>,
-    _labor: number,
   ): ReactionResult {
     const result: ReactionResult = {
       reactionId: reaction.id,
@@ -238,7 +237,7 @@ export class ReactionProcessor {
         continue;
       }
 
-      const result = this.execute(reaction, resources, availableLabor);
+      const result = this.execute(reaction, resources);
       if (result.executed) {
         results.push(result);
         availableLabor -= result.laborUsed;
@@ -266,7 +265,7 @@ export function loadReactionsFromJSON(json: string): Reaction[] {
     }
     return [];
   } catch (e) {
-    console.error("[Reactions] Error loading from JSON:", e);
+    Logger.error("[Reactions] Error loading from JSON:", e);
     return [];
   }
 }

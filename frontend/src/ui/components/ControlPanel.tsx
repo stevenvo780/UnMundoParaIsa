@@ -23,6 +23,7 @@ import {
   ClientMessageType,
   FieldType,
   ServerMessage,
+  ServerMessageType,
 } from "../../types";
 
 interface ControlPanelProps {
@@ -57,7 +58,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     const handleConnected = () => setConnected(true);
     const handleDisconnected = () => setConnected(false);
 
-    client.on("metrics", handleMetrics);
+    client.on(ServerMessageType.METRICS, handleMetrics);
     client.on("connected", handleConnected);
     client.on("disconnected", handleDisconnected);
 
@@ -70,7 +71,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }, 1000);
 
     return () => {
-      client.off("metrics", handleMetrics);
+      client.off(ServerMessageType.METRICS, handleMetrics);
       client.off("connected", handleConnected);
       client.off("disconnected", handleDisconnected);
       clearInterval(fpsInterval);

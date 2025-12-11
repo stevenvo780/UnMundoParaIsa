@@ -1,3 +1,5 @@
+import { Logger } from "../utils/Logger";
+
 /**
  * Scheduler - Sistema de actualización multi-rate
  * FAST: Cada tick (partículas, trails)
@@ -96,7 +98,7 @@ export class Scheduler {
 
       const elapsed = performance.now() - startTime;
       if (elapsed > budget) {
-        console.warn(
+        Logger.warn(
           `[Scheduler] Budget exceeded at tick ${this.tick}, skipping remaining tasks`,
         );
         break;
@@ -111,7 +113,7 @@ export class Scheduler {
         else if (task.rate === "MEDIUM") mediumRun++;
         else if (task.rate === "SLOW") slowRun++;
       } catch (e) {
-        console.error(`[Scheduler] Error in task ${task.id}:`, e);
+        Logger.error(`[Scheduler] Error in task ${task.id}:`, e);
       }
       const taskEnd = performance.now();
 
