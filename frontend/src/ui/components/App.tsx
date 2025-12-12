@@ -6,7 +6,7 @@ import { DialogOverlay } from "./DialogOverlay";
 import { WebSocketClient } from "../../network/WebSocketClient";
 import { Renderer } from "../../render/Renderer";
 import { EntityDetailsModal } from "./EntityDetailsModal";
-import { Particle } from "../../types";
+import { Particle, ServerMessageType } from "../../types";
 
 interface AppProps {
   client: WebSocketClient;
@@ -14,20 +14,37 @@ interface AppProps {
 }
 
 export const App: React.FC<AppProps> = ({ client, renderer }) => {
-  const [selectedEntity, setSelectedEntity] = React.useState<Particle | null>(
+  const [selectedEntityId, setSelectedEntityId] = React.useState<number | null>(
     null,
   );
+  const [particles, setParticles] = React.useState<Particle[]>([]);
 
   React.useEffect((): (() => void) => {
     renderer.onEntitySelected = (entity): void => {
-      setSelectedEntity(entity);
+      setSelectedEntityId(entity ? entity.id : null);
     };
+
+    // Subscribe to tick updates to get fresh particle data
+    const handleTick = (data: { particles?: Particle[] }): void => {
+      if (data.particles) {
+        setParticles(data.particles);
+      }
+    };
+
+    client.on(ServerMessageType.TICK, handleTick);
 
     // Cleanup
     return (): void => {
       renderer.onEntitySelected = undefined;
+      client.off(ServerMessageType.TICK, handleTick);
     };
-  }, [renderer]);
+  }, [renderer, client]);
+
+  // Find the selected entity from current particles
+  const selectedEntity =
+    selectedEntityId !== null
+      ? particles.find((p) => p.id === selectedEntityId && p.alive) || null
+      : null;
 
   return (
     <ThemeProvider theme={theme}>
@@ -46,7 +63,7 @@ export const App: React.FC<AppProps> = ({ client, renderer }) => {
         <EntityDetailsModal
           open={!!selectedEntity}
           entity={selectedEntity}
-          onClose={() => setSelectedEntity(null)}
+          onClose={() => setSelectedEntityId(null)}
         />
       </Box>
     </ThemeProvider>

@@ -3,7 +3,7 @@
  */
 export * from "@shared/types";
 
-import { Particle, BiomeType } from "@shared/types";
+import { Particle } from "@shared/types";
 
 // ============================================
 // Tipos específicos del Frontend
@@ -18,7 +18,7 @@ export interface ParticleRenderState extends Particle {
 }
 
 // Colores de biomas para renderizado
-// Note: We are keeping this here in case we want to customize colors per frontend theme, 
+// Note: We are keeping this here in case we want to customize colors per frontend theme,
 // though the core color map is now in shared.
 // If shared has BIOME_COLORS, we can use that or override it.
 // Shared types export BIOME_COLORS, so we don't need to redefine it unless we needed different values.

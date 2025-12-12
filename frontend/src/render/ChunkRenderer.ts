@@ -5,7 +5,12 @@
  */
 
 import { Container, Sprite } from "pixi.js";
-import { ChunkSnapshot, BiomeType, BIOME_COLORS, BIOME_ORDER } from "@shared/types";
+import {
+  ChunkSnapshot,
+  BiomeType,
+  BIOME_COLORS,
+  BIOME_ORDER,
+} from "@shared/types";
 import { AssetLoader } from "./AssetLoader";
 
 const TILE_SIZE = 32;

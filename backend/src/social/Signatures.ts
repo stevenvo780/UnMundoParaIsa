@@ -81,14 +81,20 @@ export function averageSignature(
 }
 
 /**
- * Calcular entropía de firmas en una zona
- * Alta entropía = mezcla de diferentes familias
- * Baja entropía = zona homogénea
+ * Entropía de firmas - mide la diversidad de firmas en un grupo
+ *
+ * NOTA MATEMÁTICA: Esta función calcula la VARIANZA de las componentes de firma,
+ * no la entropía de Shannon. La varianza es una medida válida de diversidad
+ * pero tiene interpretación diferente:
+ * - Varianza alta = firmas muy diferentes entre sí
+ * - Varianza baja = firmas similares (grupo homogéneo)
+ *
+ * La normalización es arbitraria (0.25 asume rango [0,1] por canal)
  */
-export function signatureEntropy(
+export function signatureDiversity(
   signatures: Array<[number, number, number, number]>,
 ): number {
-  if (signatures.length < 2) return 0;
+  if (signatures.length === 0) return 0;
 
   let totalVariance = 0;
 
@@ -100,8 +106,12 @@ export function signatureEntropy(
     totalVariance += variance;
   }
 
+  // Normalize to [0, 1] - 0.25 is max variance per channel for [0, 1] range
   return Math.min(1, totalVariance / (4 * 0.25));
 }
+
+// Alias for backward compatibility (deprecated)
+export const signatureEntropy = signatureDiversity;
 
 /**
  * SignatureField - Campo que acumula firmas depositadas

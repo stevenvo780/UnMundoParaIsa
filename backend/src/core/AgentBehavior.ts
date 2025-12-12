@@ -46,6 +46,7 @@ export class AgentBehaviorSystem {
         wealth: 0.0,
         social: 0.5,
         thirst: 0.8, // Start mostly hydrated
+        hunger: 0.8, // Start mostly fed
       };
     }
     if (!agent.ownedStructureIds) {
@@ -56,8 +57,24 @@ export class AgentBehaviorSystem {
     this.handleBiologicalNeeds(agent);
 
     // 1. Goal Planning
-    if (!agent.currentGoal) {
+    const hadNoGoal = !agent.currentGoal;
+    if (hadNoGoal) {
       this.inputPlanning(agent);
+    }
+
+    // Set startedAt timestamp for newly created goals
+    if (hadNoGoal && agent.currentGoal && !agent.currentGoal.startedAt) {
+      agent.currentGoal.startedAt = this.world.getCurrentTick();
+    }
+
+    // Goal timeout: abandon goals that take too long (1000 ticks = ~50 seconds)
+    const GOAL_TIMEOUT_TICKS = 1000;
+    if (
+      agent.currentGoal?.startedAt &&
+      this.world.getCurrentTick() - agent.currentGoal.startedAt > GOAL_TIMEOUT_TICKS
+    ) {
+      agent.currentGoal = undefined; // Clear stale goal
+      agent.state = AgentState.IDLE;
     }
 
     // Emergency interrupt: critically low energy overrides all goals
@@ -65,6 +82,7 @@ export class AgentBehaviorSystem {
       agent.currentGoal = {
         type: "FIND_FOOD",
         priority: 100, // Maximum priority
+        startedAt: this.world.getCurrentTick(),
       };
     }
 
@@ -104,24 +122,37 @@ export class AgentBehaviorSystem {
     if (agent.energy < 0.6 && this.inventorySystem.hasItem(agent, "food", 1)) {
       if (this.inventorySystem.removeItem(agent, "food", 1)) {
         agent.energy = Math.min(1.0, agent.energy + 0.5);
+        // Also satisfy hunger need
+        if (agent.needs) {
+          agent.needs.hunger = Math.min(1.0, agent.needs.hunger + 0.3);
+        }
         agent.currentAction = "Eating";
       }
     }
 
-    // 2. Drink (Automatic if on water - simplify for now)
+    // 2. Drink water to satisfy thirst (but NOT energy directly)
+    // Energy comes from food only - this prevents infinite energy from water
     const waterHere = this.world.getFieldValueAt(
       FieldType.WATER,
       agent.x,
       agent.y,
     );
-    if (waterHere > 0.2) {
-      agent.energy = Math.min(1.0, agent.energy + 0.05); // Hydrate small amount
+    if (agent.needs && waterHere > 0.2) {
+      const hydrationAmount = Math.min(0.1, waterHere * 0.15);
+      agent.needs.thirst = Math.min(1.0, agent.needs.thirst + hydrationAmount);
+      // Consume water from field
       this.world.setFieldValueAt(
         FieldType.WATER,
         agent.x,
         agent.y,
         Math.max(0, waterHere - 0.01),
       );
+    }
+
+    // 3. Natural decay of needs over time
+    if (agent.needs) {
+      agent.needs.hunger = Math.max(0, agent.needs.hunger - 0.001);
+      agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.002); // Thirst decays faster
     }
   }
 
@@ -379,7 +410,7 @@ export class AgentBehaviorSystem {
     // Verificar distancia
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-        (agent.y - (agent.targetY || 0)) ** 2,
+      (agent.y - (agent.targetY || 0)) ** 2,
     );
 
     if (dist < 5) {
@@ -405,7 +436,7 @@ export class AgentBehaviorSystem {
     // Logic handled by physics mostly
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-        (agent.y - (agent.targetY || 0)) ** 2,
+      (agent.y - (agent.targetY || 0)) ** 2,
     );
     if (dist < 2) {
       agent.state = AgentState.IDLE;
@@ -586,7 +617,7 @@ export class AgentBehaviorSystem {
 
     const dist = Math.sqrt(
       (agent.x - agent.currentGoal.targetX) ** 2 +
-        (agent.y - agent.currentGoal.targetY) ** 2,
+      (agent.y - agent.currentGoal.targetY) ** 2,
     );
 
     if (dist < 5) {

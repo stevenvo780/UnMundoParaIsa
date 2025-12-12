@@ -41,7 +41,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [metrics, setMetrics] = useState<SimulationMetrics | null>(null);
   const [fps, setFps] = useState(0);
-  const [connected, setConnected] = useState(false);
+  const [_connected, setConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "disconnected" | "reconnecting" | "failed"
+  >("disconnected");
+  const [reconnectInfo, setReconnectInfo] = useState<{
+    attempt: number;
+    maxAttempts: number;
+  } | null>(null);
 
   // Field toggles state
   const [showMoisture, setShowMoisture] = useState(false);
@@ -55,12 +62,37 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       }
     };
 
-    const handleConnected = (): void => setConnected(true);
-    const handleDisconnected = (): void => setConnected(false);
+    const handleConnected = (): void => {
+      setConnected(true);
+      setConnectionStatus("connected");
+      setReconnectInfo(null);
+    };
+
+    const handleDisconnected = (): void => {
+      setConnected(false);
+      setConnectionStatus("disconnected");
+    };
+
+    const handleReconnecting = (data: unknown): void => {
+      const info = data as { attempt?: number; maxAttempts?: number };
+      setConnectionStatus("reconnecting");
+      if (info.attempt && info.maxAttempts) {
+        setReconnectInfo({
+          attempt: info.attempt,
+          maxAttempts: info.maxAttempts,
+        });
+      }
+    };
+
+    const handleMaxReconnect = (): void => {
+      setConnectionStatus("failed");
+    };
 
     client.on(ServerMessageType.METRICS, handleMetrics);
     client.on("connected", handleConnected);
     client.on("disconnected", handleDisconnected);
+    client.on("reconnecting", handleReconnecting);
+    client.on("max_reconnect_reached", handleMaxReconnect);
 
     // FPS Counter
     const fpsInterval = setInterval((): void => {
@@ -74,6 +106,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       client.off(ServerMessageType.METRICS, handleMetrics);
       client.off("connected", handleConnected);
       client.off("disconnected", handleDisconnected);
+      client.off("reconnecting", handleReconnecting);
+      client.off("max_reconnect_reached", handleMaxReconnect);
       clearInterval(fpsInterval);
     };
   }, [client, renderer]);
@@ -164,9 +198,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </Typography>
             <Typography
               variant="body2"
-              color={connected ? "success.main" : "error.main"}
+              color={
+                connectionStatus === "connected"
+                  ? "success.main"
+                  : connectionStatus === "reconnecting"
+                    ? "warning.main"
+                    : "error.main"
+              }
             >
-              {connected ? "Conectado al Servidor" : "Desconectado"}
+              {connectionStatus === "connected" && "Conectado al Servidor"}
+              {connectionStatus === "disconnected" && "Desconectado"}
+              {connectionStatus === "reconnecting" &&
+                `Reconectando... ${reconnectInfo ? `(${reconnectInfo.attempt}/${reconnectInfo.maxAttempts})` : ""}`}
+              {connectionStatus === "failed" &&
+                "Error: Máximo de intentos alcanzado"}
             </Typography>
             <Typography variant="body2">FPS: {fps}</Typography>
             <Typography variant="body2">Tick: {metrics?.tick || 0}</Typography>

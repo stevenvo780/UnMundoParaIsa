@@ -111,13 +111,13 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
                   label={entity.state}
                   color={
                     getStateColor(entity.state as AgentState) as
-                    | "default"
-                    | "primary"
-                    | "secondary"
-                    | "error"
-                    | "info"
-                    | "success"
-                    | "warning"
+                      | "default"
+                      | "primary"
+                      | "secondary"
+                      | "error"
+                      | "info"
+                      | "success"
+                      | "warning"
                   }
                   size="small"
                 />
@@ -143,7 +143,11 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
           {/* Core Needs Section */}
           {entity.needs && (
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Necesidades
               </Typography>
               <Stack spacing={0.5}>
@@ -182,7 +186,11 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
           {/* Goals Section */}
           {entity.currentGoal && (
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Objetivo Actual
               </Typography>
               <Chip
@@ -203,7 +211,11 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
           {/* Ownership Section */}
           {entity.ownedStructureIds && entity.ownedStructureIds.length > 0 && (
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Propiedades
               </Typography>
               <Typography variant="caption">

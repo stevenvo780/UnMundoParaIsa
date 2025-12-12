@@ -1,13 +1,13 @@
 import { Application, Container, Graphics, Sprite } from "pixi.js";
-import {
-  ParticleRenderState,
-} from "../types";
+import { ParticleRenderState } from "../types";
 import {
   Particle,
   FieldType,
   WORLD,
   ChunkSnapshot,
   ViewportData,
+  STRUCTURE_COLORS,
+  AgentState,
 } from "@shared/types";
 import { AssetLoader, LoadedAssets } from "./AssetLoader";
 import { ChunkRenderer } from "./ChunkRenderer";
@@ -496,15 +496,7 @@ export class Renderer {
 
     const currentIds = new Set<number>();
 
-    // Colores por tipo de estructura
-    const STRUCTURE_COLORS: Record<string, number> = {
-      camp: 0xd4a574, // Marrón claro
-      shelter: 0x8b4513, // Marrón oscuro
-      settlement: 0xcd853f, // Peru
-      storage: 0xdaa520, // Goldenrod
-      watchtower: 0x708090, // Slate gray
-    };
-
+    // Usar colores centralizados desde shared/types
     for (const s of this.structures) {
       currentIds.add(s.id);
 
@@ -519,7 +511,7 @@ export class Renderer {
 
       // Dibujar estructura
       graphic.clear();
-      const color = STRUCTURE_COLORS[s.type] || 0x888888;
+      const color = STRUCTURE_COLORS[s.type] || STRUCTURE_COLORS.default;
       const size = 8 + s.level * 4; // Tamaño basado en nivel
 
       // Borde
@@ -579,21 +571,26 @@ export class Renderer {
         renderState.alive = p.alive;
       }
 
-      // Interpolación suave hacia la posición objetivo
+      // Interpolación suave hacia la posición objetivo con velocidad adaptativa
       const dx = renderState.x - renderState.displayX;
       const dy = renderState.y - renderState.displayY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Velocidad adaptativa: más rápida para distancias largas
+      const adaptiveSpeed =
+        distance > 50 ? 0.5 : distance > 20 ? 0.35 : INTERPOLATION_SPEED;
 
       // Si la velocidad está disponible, usarla para predicción
       if (renderState.vx !== undefined && renderState.vy !== undefined) {
         // Movimiento predictivo: interpolar con velocidad
         renderState.displayX +=
-          dx * INTERPOLATION_SPEED + (renderState.vx || 0) * 0.3;
+          dx * adaptiveSpeed + (renderState.vx || 0) * 0.3;
         renderState.displayY +=
-          dy * INTERPOLATION_SPEED + (renderState.vy || 0) * 0.3;
+          dy * adaptiveSpeed + (renderState.vy || 0) * 0.3;
       } else {
         // Fallback: interpolación lineal simple
-        renderState.displayX += dx * INTERPOLATION_SPEED;
-        renderState.displayY += dy * INTERPOLATION_SPEED;
+        renderState.displayX += dx * adaptiveSpeed;
+        renderState.displayY += dy * adaptiveSpeed;
       }
 
       let sprite = this.particleSprites.get(p.id);
@@ -627,28 +624,35 @@ export class Renderer {
       const healthScale = 0.8 + (energyPercent / 100) * 0.4;
       sprite.scale.set(healthScale);
 
-      if (energyPercent < 30) {
-        sprite.tint = 0xff6666;
+      // Colorear según estado del agente + energía
+      const stateTint = this.getStateIndicatorColor(p.state as AgentState);
+      if (stateTint !== 0xffffff) {
+        // Estado tiene prioridad si no es neutro
+        sprite.tint = stateTint;
+      } else if (energyPercent < 30) {
+        sprite.tint = 0xff6666; // Baja energía
       } else if (energyPercent < 60) {
-        sprite.tint = 0xffff66;
+        sprite.tint = 0xffff66; // Energía media
       } else {
-        sprite.tint = 0xffffff;
+        sprite.tint = 0xffffff; // Normal
       }
 
       sprite.visible = true;
     }
 
-    // Limpiar sprites y estados de partículas muertas
+    // Limpiar sprites y estados de partículas muertas inmediatamente
+    const toDelete: number[] = [];
     this.particleSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
-        sprite.visible = false;
+        sprite.destroy();
         this.particleRenderStates.delete(id);
-        if (this.particleSprites.size > this.particles.length * 2) {
-          sprite.destroy();
-          this.particleSprites.delete(id);
-        }
+        toDelete.push(id);
       }
     });
+    // Eliminar referencias después de iterar
+    for (const id of toDelete) {
+      this.particleSprites.delete(id);
+    }
   }
 
   private renderFieldOverlays(): void {
@@ -676,6 +680,28 @@ export class Renderer {
         }
       }
     });
+  }
+
+  /**
+   * Obtener color indicador según el estado del agente
+   */
+  private getStateIndicatorColor(
+    state: AgentState | string | undefined,
+  ): number {
+    switch (state) {
+      case AgentState.FLEEING:
+        return 0xff4444; // Rojo - huyendo
+      case AgentState.GATHERING:
+        return 0x44ff44; // Verde - recolectando
+      case AgentState.BUILDING:
+        return 0xffaa44; // Naranja - construyendo
+      case AgentState.WORKING:
+        return 0x44aaff; // Azul - trabajando
+      case AgentState.RESTING:
+        return 0xaaaaff; // Azul claro - descansando
+      default:
+        return 0xffffff; // Blanco - neutro
+    }
   }
 
   setFieldVisible(type: FieldType, visible: boolean): void {

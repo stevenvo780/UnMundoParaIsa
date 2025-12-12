@@ -26,43 +26,55 @@ export interface Reaction {
 
 /**
  * Definición de reacciones por defecto
+ *
+ * IMPORTANTE: Conservación de masa
+ * - Los inputs se consumen del campo o inventario
+ * - Los outputs van al inventario del agente
+ * - efficiency < 1.0 simula pérdidas realistas
+ * - rate = 1.0 para evitar multiplicación mágica
  */
 export const DEFAULT_REACTIONS: Reaction[] = [
-  // Changed: Now requires and consumes from FOOD field for ecological realism
+  // Recolección de comida: toma del campo FOOD, da al inventario
+  // Eficiencia ~75% para simular pérdidas en recolección
   {
     id: "gather_food",
     name: "Recolectar comida",
-    inputs: { food: 0.15 },
-    outputs: { food: 1 },
-    requires: { labor: 0.1, field: { type: FieldType.FOOD, minValue: 0.15 } },
-    rate: 0.5,
+    inputs: { food: 0.2 },
+    outputs: { food: 0.15 },
+    requires: { labor: 0.1, field: { type: FieldType.FOOD, minValue: 0.2 } },
+    rate: 1.0,
     priority: 1,
   },
+  // Recolección de agua: toma del campo WATER, da al inventario
+  // Eficiencia ~80%
   {
     id: "gather_water",
     name: "Recolectar agua",
-    inputs: {},
-    outputs: { water: 1 },
-    requires: { labor: 0.05, field: { type: FieldType.WATER, minValue: 0.3 } },
-    rate: 0.8,
+    inputs: { water: 0.15 },
+    outputs: { water: 0.12 },
+    requires: { labor: 0.05, field: { type: FieldType.WATER, minValue: 0.15 } },
+    rate: 1.0,
     priority: 1,
   },
+  // Talar árboles: consume del campo TREES, produce wood
+  // Eficiencia ~60% (talar es difícil)
   {
     id: "chop_wood",
     name: "Talar árboles",
-    inputs: { trees: 0.2 },
-    outputs: { wood: 1 },
-    requires: { labor: 0.2 },
-    rate: 0.3,
+    inputs: { trees: 0.25 },
+    outputs: { wood: 0.15 },
+    requires: { labor: 0.2, field: { type: FieldType.TREES, minValue: 0.25 } },
+    rate: 1.0,
     priority: 2,
   },
+  // Minar piedra: consume del campo STONE, produce stone_block
   {
     id: "mine_stone",
     name: "Minar piedra",
-    inputs: { stone: 0.1 },
-    outputs: { stone_block: 1 },
-    requires: { labor: 0.3 },
-    rate: 0.2,
+    inputs: { stone: 0.2 },
+    outputs: { stone_block: 0.1 },
+    requires: { labor: 0.3, field: { type: FieldType.STONE, minValue: 0.2 } },
+    rate: 1.0,
     priority: 3,
   },
 

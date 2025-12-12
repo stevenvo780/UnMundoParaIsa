@@ -34,7 +34,7 @@ import { MaterializationManager } from "../narrative/Materialization";
 
 import { FlowFieldManager } from "../scale/FlowFields";
 import { LODManager } from "../scale/LOD";
-import { ThermostatBank } from "../scale/Thermostats";
+import { ThermostatBank, WorldBalancer, ThermostatType } from "../scale/Thermostats";
 import { InfiniteChunkManager } from "./InfiniteChunkManager";
 import { CHUNK_SIZE } from "./Chunk";
 
@@ -85,6 +85,7 @@ export class World {
   private flowFields!: FlowFieldManager;
   private lod!: LODManager;
   private thermostats!: ThermostatBank;
+  private worldBalancer!: WorldBalancer;
 
   constructor(config: Partial<SimulationConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -121,6 +122,7 @@ export class World {
     this.flowFields = new FlowFieldManager();
     this.lod = new LODManager();
     this.thermostats = new ThermostatBank();
+    this.worldBalancer = new WorldBalancer(this.thermostats);
 
     this.structureManager = new StructureManager();
     this.stockpileManager = new StockpileManager(this.width, this.height);
@@ -209,6 +211,13 @@ export class World {
       fn: () => this.structureManager.update(this.tick),
       priority: 23,
     });
+  }
+
+  /**
+   * Get current simulation tick (for agent goal timeout tracking)
+   */
+  getCurrentTick(): number {
+    return this.tick;
   }
 
   /**
@@ -941,21 +950,8 @@ export class World {
         this.reproduce(p);
         p.wantsToReproduce = false; // Clear flag after processing
       }
-
-      // Thirst-based hydration: agents near water satisfy thirst
-      const waterHere = this.getFieldValueAt(FieldType.WATER, p.x, p.y);
-      if (waterHere > 0.2 && p.needs) {
-        // Hydrate based on water availability
-        const hydrationAmount = Math.min(0.1, waterHere * 0.15);
-        p.needs.thirst = Math.min(1.0, p.needs.thirst + hydrationAmount);
-        // Consume some water from the field
-        this.setFieldValueAt(
-          FieldType.WATER,
-          p.x,
-          p.y,
-          Math.max(0, waterHere - 0.005),
-        );
-      }
+      // NOTE: Water consumption and thirst are now handled in AgentBehavior.ts
+      // to avoid duplicate resource consumption
     }
 
     const foodBuffer = food.getBuffer();
@@ -1212,19 +1208,26 @@ export class World {
   /**
    * Producción de comida por árboles (FAST rate) - CICLO ECOLÓGICO
    * Los árboles producen comida cada tick para equilibrar consumo
+   * FIXED: Reducido de 0.03 a 0.003 (10x menos) para evitar saturación
+   * FIXED: Producción ahora depende de agua cercana
    */
   private updateFoodProduction(): void {
     const food = this.getField(FieldType.FOOD)!;
     const trees = this.getField(FieldType.TREES)!;
+    const water = this.getField(FieldType.WATER)!;
 
     const treesBuffer = trees.getBuffer();
     const foodBuffer = food.getBuffer();
+    const waterBuffer = water.getBuffer();
 
-    const productionRate = 0.03;
+    // Reduced from 0.03 to 0.003 to prevent food saturation
+    const baseProductionRate = 0.003;
 
     for (let i = 0; i < treesBuffer.length; i++) {
       if (treesBuffer[i] > 0.01) {
-        const production = treesBuffer[i] * productionRate;
+        // Trees near water produce more (up to 2x), trees without water produce less
+        const waterFactor = Math.min(2.0, 0.5 + waterBuffer[i] * 1.5);
+        const production = treesBuffer[i] * baseProductionRate * waterFactor;
         foodBuffer[i] = Math.min(
           food.config.maxValue,
           foodBuffer[i] + production,
@@ -1536,16 +1539,16 @@ export class World {
       communityStability:
         allCommunities.length > 0
           ? allCommunities.reduce((s, c) => s + Math.min(1, c.age / 1000), 0) /
-            allCommunities.length
+          allCommunities.length
           : 0,
       cohesion:
         allCommunities.length > 0
           ? allCommunities.reduce(
-              (s, c) => s + c.population / (c.radius * c.radius || 1),
-              0,
-            ) /
-            allCommunities.length /
-            10
+            (s, c) => s + c.population / (c.radius * c.radius || 1),
+            0,
+          ) /
+          allCommunities.length /
+          10
           : 0,
       tension: tensionStats.average,
       conflictsActive: conflicts.length,

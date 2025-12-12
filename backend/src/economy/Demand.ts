@@ -38,19 +38,21 @@ export const DEFAULT_DEMAND_CONFIGS: Record<string, DemandConfig> = {
 };
 
 /**
- * Calcular demanda en una celda
- * demand = population * baseNeed * (1 + urgency * scarcity)
+ * Calcular demanda base
+ * FIXED: epsilon ahora es proporcional a need para evitar división por casi-cero
  */
 export function calculateDemand(
   population: number,
   availableResource: number,
   config: DemandConfig,
 ): number {
-  if (population <= 0) return 0;
-
   const need = population * config.baseNeed;
-  const scarcity = Math.max(0, 1 - availableResource / (need + 0.001));
 
+  // Use proportional epsilon to avoid division instability
+  // At least 0.01, or 10% of need, whichever is larger
+  const epsilon = Math.max(0.01, need * 0.1);
+
+  const scarcity = Math.max(0, 1 - availableResource / (need + epsilon));
   const demand = need * (1 + config.urgencyMultiplier * scarcity);
 
   return Math.min(1.0, demand);

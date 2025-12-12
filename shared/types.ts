@@ -97,6 +97,7 @@ export interface AgentNeeds {
   wealth: number; // 0..1 (perception of resources)
   social: number; // 0..1
   thirst: number; // 0..1 (1 = fully hydrated)
+  hunger: number; // 0..1 (1 = fully fed)
 }
 
 export interface AgentGoal {
@@ -107,6 +108,7 @@ export interface AgentGoal {
   targetX?: number;
   targetY?: number;
   data?: Record<string, any>;
+  startedAt?: number; // Tick when goal was created, for timeout cleanup
 }
 
 export interface AgentMemory {
@@ -385,3 +387,26 @@ export const BIOME_COLORS: Record<BiomeType, number> = {
 };
 
 export const BIOME_ORDER: BiomeType[] = Object.values(BiomeType);
+
+// ============================================
+// Colores de estructuras (centralizados)
+// ============================================
+
+export const STRUCTURE_COLORS: Record<string, number> = {
+  camp: 0xd4a574, // Marrón claro
+  shelter: 0x8b4513, // Marrón oscuro
+  settlement: 0xcd853f, // Peru
+  storage: 0xdaa520, // Goldenrod
+  watchtower: 0x708090, // Slate gray
+  farm: 0x228b22, // Forest green
+  mine: 0x696969, // Dim gray
+  workbench: 0xa0522d, // Sienna
+  default: 0x888888, // Gris por defecto
+};
+
+// ============================================
+// Configuración de renderizado
+// ============================================
+
+export const MAX_PARTICLES_PER_TICK = 1000; // Máximo de partículas enviadas por tick
+

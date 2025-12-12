@@ -18,6 +18,7 @@ import {
   ViewportData,
   ServerMessageType,
   ClientMessageType,
+  MAX_PARTICLES_PER_TICK,
 } from "./types";
 import {
   getMetrics,
@@ -290,7 +291,9 @@ function gameLoop(): void {
       type: ServerMessageType.TICK,
       tick: world.getTick(),
       particles:
-        particles.length <= 1000 ? particles : sampleParticles(particles, 1000),
+        particles.length <= MAX_PARTICLES_PER_TICK
+          ? particles
+          : sampleParticles(particles, MAX_PARTICLES_PER_TICK),
       structures: world.getStructures(),
     };
 

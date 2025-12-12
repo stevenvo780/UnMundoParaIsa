@@ -87,7 +87,7 @@ export class StructureManager {
     type: StructureType,
     builderId: number,
     tick: number,
-    ownerId?: number
+    ownerId?: number,
   ): Structure | null {
     if (this.hasStructureNear(x, y, this.config.minDistanceBetween)) {
       return null;

@@ -68,12 +68,20 @@ export class WebSocketClient {
    */
   private tryReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.emit("max_reconnect_reached", {} as ServerMessage);
       return;
     }
 
     this.reconnectAttempts++;
     const delay =
       this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+
+    // Emitir evento de reconexión con información del intento
+    this.emit("reconnecting", {
+      attempt: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
+      nextDelayMs: delay,
+    } as unknown as ServerMessage);
 
     setTimeout(() => {
       if (!this.connected) {
