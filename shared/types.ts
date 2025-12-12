@@ -96,6 +96,7 @@ export interface AgentNeeds {
   comfort: number; // 0..1
   wealth: number; // 0..1 (perception of resources)
   social: number; // 0..1
+  thirst: number; // 0..1 (1 = fully hydrated)
 }
 
 export interface AgentGoal {
@@ -137,6 +138,7 @@ export interface Particle {
   needs?: AgentNeeds;
   currentGoal?: AgentGoal;
   ownedStructureIds?: number[];
+  wantsToReproduce?: boolean; // Flag for World to process reproduction
 }
 
 // ============================================

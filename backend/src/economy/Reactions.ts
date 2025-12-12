@@ -28,12 +28,13 @@ export interface Reaction {
  * Definición de reacciones por defecto
  */
 export const DEFAULT_REACTIONS: Reaction[] = [
+  // Changed: Now requires and consumes from FOOD field for ecological realism
   {
     id: "gather_food",
     name: "Recolectar comida",
-    inputs: {},
+    inputs: { food: 0.15 },
     outputs: { food: 1 },
-    requires: { labor: 0.1 },
+    requires: { labor: 0.1, field: { type: FieldType.FOOD, minValue: 0.15 } },
     rate: 0.5,
     priority: 1,
   },

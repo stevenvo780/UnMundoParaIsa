@@ -49,6 +49,7 @@ export class AgentBehaviorSystem {
         comfort: 0.5,
         wealth: 0.0,
         social: 0.5,
+        thirst: 0.8, // Start mostly hydrated
       };
     }
     if (!agent.ownedStructureIds) {
@@ -61,6 +62,14 @@ export class AgentBehaviorSystem {
     // 1. Goal Planning
     if (!agent.currentGoal) {
       this.inputPlanning(agent);
+    }
+
+    // Emergency interrupt: critically low energy overrides all goals
+    if (agent.energy < 0.25 && agent.currentGoal?.type !== "FIND_FOOD") {
+      agent.currentGoal = {
+        type: "FIND_FOOD",
+        priority: 100 // Maximum priority
+      };
     }
 
     // 2. Goal Execution
@@ -123,10 +132,10 @@ export class AgentBehaviorSystem {
   private handleReproduction(agent: Particle): void {
     if (agent.energy > 0.9 && this.inventorySystem.hasItem(agent, "food", 5)) {
       if (Math.random() < 0.05) {
-        // Trigger World reproduction
-        // We need to expose reproduction or call it via event
-        // For now, let's just deduct cost and assume World handles population limits if we had a method
-        // But World.reproduce is private. We should probably make it public or trigger via flag
+        // Mark intention for World to process
+        agent.wantsToReproduce = true;
+        // Consume food cost upfront
+        this.inventorySystem.removeItem(agent, "food", 3);
       }
     }
   }
@@ -418,9 +427,12 @@ export class AgentBehaviorSystem {
   private inputPlanning(agent: Particle): void {
     if (!agent.needs) return;
 
-    // Decay needs
-    agent.needs.shelter = Math.max(0, agent.needs.shelter - 0.0001);
-    agent.needs.comfort = Math.max(0, agent.needs.comfort - 0.0001);
+    // Decay needs - faster decay creates more emergent pressure
+    agent.needs.shelter = Math.max(0, agent.needs.shelter - 0.002);
+    agent.needs.comfort = Math.max(0, agent.needs.comfort - 0.002);
+    agent.needs.wealth = Math.max(0, agent.needs.wealth - 0.001);
+    agent.needs.social = Math.max(0, agent.needs.social - 0.0005);
+    agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.003); // Thirst decays faster than other needs
 
     // 0. Survival Need (Food/Water)
     if (agent.energy < 0.4) {
@@ -534,7 +546,8 @@ export class AgentBehaviorSystem {
       if (structure) {
         this.inventorySystem.removeItem(agent, "wood", woodNeeded);
         agent.currentAction = "Built Shelter";
-        if (agent.needs) agent.needs.shelter = 1.0;
+        // Gradual satisfaction instead of instant
+        if (agent.needs) agent.needs.shelter = Math.min(1.0, agent.needs.shelter + 0.4);
         agent.currentGoal = undefined; // Goal complete
       } else {
         // Can't build here, move
@@ -550,7 +563,8 @@ export class AgentBehaviorSystem {
       agent.state = AgentState.GATHERING;
       this.handleGathering(agent);
       if (this.inventorySystem.hasItem(agent, "wood", 5)) {
-        if (agent.needs) agent.needs.wealth = 1.0; // Satisfied for now
+        // Gradual satisfaction instead of instant
+        if (agent.needs) agent.needs.wealth = Math.min(1.0, agent.needs.wealth + 0.3);
         agent.currentGoal = undefined;
       }
     } else {

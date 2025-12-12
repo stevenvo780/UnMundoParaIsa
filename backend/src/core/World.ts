@@ -936,7 +936,26 @@ export class World {
         p.vy *= -0.5;
       }
 
-      // Automatic Reproduction REMOVED. Agents must Reproduce manually.
+      // Process agent reproduction flag (set by AgentBehavior)
+      if (p.wantsToReproduce) {
+        this.reproduce(p);
+        p.wantsToReproduce = false; // Clear flag after processing
+      }
+
+      // Thirst-based hydration: agents near water satisfy thirst
+      const waterHere = this.getFieldValueAt(FieldType.WATER, p.x, p.y);
+      if (waterHere > 0.2 && p.needs) {
+        // Hydrate based on water availability
+        const hydrationAmount = Math.min(0.1, waterHere * 0.15);
+        p.needs.thirst = Math.min(1.0, p.needs.thirst + hydrationAmount);
+        // Consume some water from the field
+        this.setFieldValueAt(
+          FieldType.WATER,
+          p.x,
+          p.y,
+          Math.max(0, waterHere - 0.005),
+        );
+      }
     }
 
     const foodBuffer = food.getBuffer();
@@ -1517,16 +1536,16 @@ export class World {
       communityStability:
         allCommunities.length > 0
           ? allCommunities.reduce((s, c) => s + Math.min(1, c.age / 1000), 0) /
-            allCommunities.length
+          allCommunities.length
           : 0,
       cohesion:
         allCommunities.length > 0
           ? allCommunities.reduce(
-              (s, c) => s + c.population / (c.radius * c.radius || 1),
-              0,
-            ) /
-            allCommunities.length /
-            10
+            (s, c) => s + c.population / (c.radius * c.radius || 1),
+            0,
+          ) /
+          allCommunities.length /
+          10
           : 0,
       tension: tensionStats.average,
       conflictsActive: conflicts.length,
