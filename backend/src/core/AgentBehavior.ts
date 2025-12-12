@@ -2,11 +2,7 @@
  * AgentBehavior - Sistema de comportamiento (Cerebro)
  * Implementa una Máquina de Estados Finitos (FSM) para los agentes
  */
-import {
-  Particle,
-  AgentState,
-  FieldType,
-} from "../types";
+import { Particle, AgentState, FieldType } from "../types";
 import { World } from "./World";
 import { InventorySystem } from "../economy/InventorySystem";
 import { StructureManager, StructureType } from "./StructureManager";
@@ -68,7 +64,7 @@ export class AgentBehaviorSystem {
     if (agent.energy < 0.25 && agent.currentGoal?.type !== "FIND_FOOD") {
       agent.currentGoal = {
         type: "FIND_FOOD",
-        priority: 100 // Maximum priority
+        priority: 100, // Maximum priority
       };
     }
 
@@ -214,7 +210,7 @@ export class AgentBehaviorSystem {
     if (agent.currentGoal?.type === "GATHER_RESOURCES") {
       targetType = FieldType.TREES; // Simplification: Wealth = Wood
     } else if (agent.currentGoal?.type === "BUILD_SHELTER") {
-      targetType = FieldType.TREES; // Need wood for shelter 
+      targetType = FieldType.TREES; // Need wood for shelter
     } else if (agent.currentGoal?.type === "FIND_FOOD") {
       targetType = FieldType.FOOD;
     } else {
@@ -383,7 +379,7 @@ export class AgentBehaviorSystem {
     // Verificar distancia
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-      (agent.y - (agent.targetY || 0)) ** 2,
+        (agent.y - (agent.targetY || 0)) ** 2,
     );
 
     if (dist < 5) {
@@ -409,7 +405,7 @@ export class AgentBehaviorSystem {
     // Logic handled by physics mostly
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-      (agent.y - (agent.targetY || 0)) ** 2,
+        (agent.y - (agent.targetY || 0)) ** 2,
     );
     if (dist < 2) {
       agent.state = AgentState.IDLE;
@@ -438,7 +434,7 @@ export class AgentBehaviorSystem {
     if (agent.energy < 0.4) {
       agent.currentGoal = {
         type: "FIND_FOOD",
-        priority: 20
+        priority: 20,
       };
       return;
     }
@@ -447,26 +443,34 @@ export class AgentBehaviorSystem {
     if (agent.needs.shelter < 0.3) {
       // Need shelter
       // Check if owns shelter
-      const ownedStructures = this.structureManager.getStructuresByOwner(agent.id);
-      const hasShelter = ownedStructures.some(s => s.type === StructureType.SHELTER || s.type === StructureType.CAMP);
+      const ownedStructures = this.structureManager.getStructuresByOwner(
+        agent.id,
+      );
+      const hasShelter = ownedStructures.some(
+        (s) =>
+          s.type === StructureType.SHELTER || s.type === StructureType.CAMP,
+      );
 
       if (hasShelter) {
         // Go to shelter
-        const shelter = ownedStructures.find(s => s.type === StructureType.SHELTER || s.type === StructureType.CAMP);
+        const shelter = ownedStructures.find(
+          (s) =>
+            s.type === StructureType.SHELTER || s.type === StructureType.CAMP,
+        );
         if (shelter) {
           agent.currentGoal = {
             type: "GO_HOME",
             priority: 10,
             targetId: shelter.id,
             targetX: shelter.x,
-            targetY: shelter.y
+            targetY: shelter.y,
           };
         }
       } else {
         // Build shelter
         agent.currentGoal = {
           type: "BUILD_SHELTER",
-          priority: 10
+          priority: 10,
         };
       }
       return;
@@ -477,7 +481,7 @@ export class AgentBehaviorSystem {
       // Gather resources
       agent.currentGoal = {
         type: "GATHER_RESOURCES",
-        priority: 5
+        priority: 5,
       };
     }
   }
@@ -526,7 +530,7 @@ export class AgentBehaviorSystem {
         agent.currentAction = "Gathering Wood for Shelter";
         this.handleGathering(agent); // Reuse existing gathering logic
       } else {
-        // Inventory full but no wood? Dump something? 
+        // Inventory full but no wood? Dump something?
         // For now, fail goal.
         agent.currentGoal = undefined;
       }
@@ -540,14 +544,15 @@ export class AgentBehaviorSystem {
         StructureType.SHELTER,
         agent.id,
         Date.now(), // approximation of tick
-        agent.id // owner
+        agent.id, // owner
       );
 
       if (structure) {
         this.inventorySystem.removeItem(agent, "wood", woodNeeded);
         agent.currentAction = "Built Shelter";
         // Gradual satisfaction instead of instant
-        if (agent.needs) agent.needs.shelter = Math.min(1.0, agent.needs.shelter + 0.4);
+        if (agent.needs)
+          agent.needs.shelter = Math.min(1.0, agent.needs.shelter + 0.4);
         agent.currentGoal = undefined; // Goal complete
       } else {
         // Can't build here, move
@@ -564,7 +569,8 @@ export class AgentBehaviorSystem {
       this.handleGathering(agent);
       if (this.inventorySystem.hasItem(agent, "wood", 5)) {
         // Gradual satisfaction instead of instant
-        if (agent.needs) agent.needs.wealth = Math.min(1.0, agent.needs.wealth + 0.3);
+        if (agent.needs)
+          agent.needs.wealth = Math.min(1.0, agent.needs.wealth + 0.3);
         agent.currentGoal = undefined;
       }
     } else {
@@ -580,7 +586,7 @@ export class AgentBehaviorSystem {
 
     const dist = Math.sqrt(
       (agent.x - agent.currentGoal.targetX) ** 2 +
-      (agent.y - agent.currentGoal.targetY) ** 2
+        (agent.y - agent.currentGoal.targetY) ** 2,
     );
 
     if (dist < 5) {
