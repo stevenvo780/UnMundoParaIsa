@@ -7,7 +7,6 @@ import {
   ClientMessage,
   FieldType,
   ClientMessageType,
-  ServerMessageType,
 } from "../types";
 
 type EventHandler = (data: ServerMessage) => void;
@@ -33,40 +32,30 @@ export class WebSocketClient {
       this.ws.close();
     }
 
-    console.log(`[WS] Conectando a ${this.url}...`);
-    console.log(`[WS] Full WebSocket URL being used: ${this.url}`);
     this.ws = new WebSocket(this.url);
 
-    this.ws.onopen = () => {
-      console.log("[WS] Conectado");
+    this.ws.onopen = (): void => {
       this.connected = true;
       this.reconnectAttempts = 0;
       this.emit("connected", {} as ServerMessage);
     };
 
-    this.ws.onclose = () => {
-      console.log("[WS] Desconectado");
+    this.ws.onclose = (): void => {
       this.connected = false;
       this.emit("disconnected", {} as ServerMessage);
       this.tryReconnect();
     };
 
-    this.ws.onerror = (err) => {
+    this.ws.onerror = (err: Event): void => {
       console.error("[WS] Error:", err);
       this.emit("error", {
         error: "WebSocket error",
       } as unknown as ServerMessage);
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = (event: MessageEvent<string>): void => {
       try {
-        const msg: ServerMessage = JSON.parse(event.data);
-        // Debug: Log chunk messages
-        if (msg.type === ServerMessageType.CHUNK_DATA) {
-          console.log(
-            `[WS] Recibido chunk_data con ${(msg as { chunks?: unknown[] }).chunks?.length ?? 0} chunks`,
-          );
-        }
+        const msg = JSON.parse(event.data) as ServerMessage;
         this.emit(msg.type, msg);
       } catch (e) {
         console.error("[WS] Error parseando mensaje:", e);
@@ -79,17 +68,12 @@ export class WebSocketClient {
    */
   private tryReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[WS] Máximo de intentos de reconexión alcanzado");
       return;
     }
 
     this.reconnectAttempts++;
     const delay =
       this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
-
-    console.log(
-      `[WS] Reconectando en ${delay}ms (intento ${this.reconnectAttempts})...`,
-    );
 
     setTimeout(() => {
       if (!this.connected) {
@@ -137,8 +121,6 @@ export class WebSocketClient {
   send(msg: ClientMessage): void {
     if (this.ws && this.connected) {
       this.ws.send(JSON.stringify(msg));
-    } else {
-      console.warn("[WS] No conectado, mensaje no enviado");
     }
   }
 

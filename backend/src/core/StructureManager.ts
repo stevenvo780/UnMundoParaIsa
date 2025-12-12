@@ -27,6 +27,7 @@ export interface Structure {
   createdTick: number;
   lastUsedTick: number;
   builders: number[];
+  ownerId?: number;
 }
 
 export interface StructureConfig {
@@ -61,6 +62,9 @@ export class StructureManager {
 
   private spatialIndex: Map<string, Set<number>> = new Map();
 
+  // Index for ownership
+  private ownerIndex: Map<number, Set<number>> = new Map();
+
   constructor(config: Partial<StructureConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
@@ -83,6 +87,7 @@ export class StructureManager {
     type: StructureType,
     builderId: number,
     tick: number,
+    ownerId?: number
   ): Structure | null {
     if (this.hasStructureNear(x, y, this.config.minDistanceBetween)) {
       return null;
@@ -104,6 +109,7 @@ export class StructureManager {
       createdTick: tick,
       lastUsedTick: tick,
       builders: [builderId],
+      ownerId: ownerId ?? builderId, // Default to builder as owner if not specified
     };
 
     this.structures.set(structure.id, structure);
@@ -112,6 +118,14 @@ export class StructureManager {
       this.spatialIndex.set(key, new Set());
     }
     this.spatialIndex.get(key)!.add(structure.id);
+
+    // Update owner index
+    if (structure.ownerId !== undefined) {
+      if (!this.ownerIndex.has(structure.ownerId)) {
+        this.ownerIndex.set(structure.ownerId, new Set());
+      }
+      this.ownerIndex.get(structure.ownerId)!.add(structure.id);
+    }
 
     return structure;
   }
@@ -278,6 +292,12 @@ export class StructureManager {
       if (s) {
         const key = this.getSpatialKey(s.x, s.y);
         this.spatialIndex.get(key)?.delete(id);
+
+        // Cleanup owner index
+        if (s.ownerId !== undefined) {
+          this.ownerIndex.get(s.ownerId)?.delete(id);
+        }
+
         this.structures.delete(id);
       }
     }
@@ -336,6 +356,7 @@ export class StructureManager {
       y: s.y,
       level: s.level,
       health: s.health,
+      ownerId: s.ownerId,
     }));
   }
 
@@ -348,5 +369,40 @@ export class StructureManager {
       byType[s.type] = (byType[s.type] || 0) + 1;
     }
     return { total: this.structures.size, byType };
+  }
+
+  /**
+   * Obtener estructuras por dueño
+   */
+  getStructuresByOwner(ownerId: number): Structure[] {
+    const ids = this.ownerIndex.get(ownerId);
+    if (!ids) return [];
+
+    const results: Structure[] = [];
+    for (const id of ids) {
+      const s = this.structures.get(id);
+      if (s) results.push(s);
+    }
+    return results;
+  }
+
+  /**
+   * Asignar dueño a estructura
+   */
+  assignOwner(structureId: number, ownerId: number): void {
+    const s = this.structures.get(structureId);
+    if (!s) return;
+
+    // Remove from old owner if exists
+    if (s.ownerId !== undefined) {
+      this.ownerIndex.get(s.ownerId)?.delete(structureId);
+    }
+
+    s.ownerId = ownerId;
+
+    if (!this.ownerIndex.has(ownerId)) {
+      this.ownerIndex.set(ownerId, new Set());
+    }
+    this.ownerIndex.get(ownerId)!.add(structureId);
   }
 }

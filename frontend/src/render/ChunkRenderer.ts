@@ -4,15 +4,8 @@
  * Soporta biomas con colores distintivos
  */
 
-import { Container, Graphics, Sprite, Texture } from "pixi.js";
-import {
-  ChunkSnapshot,
-  WORLD,
-  FieldType,
-  BiomeType,
-  BIOME_COLORS,
-  BIOME_ORDER,
-} from "../types";
+import { Container, Sprite } from "pixi.js";
+import { ChunkSnapshot, BiomeType, BIOME_COLORS, BIOME_ORDER } from "../types";
 import { AssetLoader } from "./AssetLoader";
 
 const TILE_SIZE = 32;
@@ -51,14 +44,6 @@ export class ChunkRenderer {
   renderChunk(snapshot: ChunkSnapshot): RenderedChunk {
     const key = this.keyFor(snapshot.cx, snapshot.cy);
 
-    // Debug: mostrar datos del chunk
-    const foodLen = snapshot.fields.food?.length ?? 0;
-    const waterLen = snapshot.fields.water?.length ?? 0;
-    const treesLen = snapshot.fields.trees?.length ?? 0;
-    console.log(
-      `[ChunkRenderer] Rendering chunk (${snapshot.cx}, ${snapshot.cy}) - food:${foodLen} water:${waterLen} trees:${treesLen}`,
-    );
-
     // Si ya existe, actualizarlo
     const existing = this.chunks.get(key);
     if (existing) {
@@ -92,16 +77,13 @@ export class ChunkRenderer {
     this.parentContainer.addChild(container);
     this.chunks.set(key, chunk);
 
-    console.log(
-      `[ChunkRenderer] Rendered chunk (${snapshot.cx}, ${snapshot.cy})`,
-    );
     return chunk;
   }
 
   /**
    * Actualizar chunk existente
    */
-  private updateChunk(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
+  private updateChunk(chunk: RenderedChunk, _snapshot: ChunkSnapshot): void {
     chunk.lastAccessTime = Date.now();
     // Por ahora solo actualizamos el tiempo de acceso
     // Podríamos actualizar campos si cambian significativamente
@@ -369,7 +351,6 @@ export class ChunkRenderer {
     if (chunk) {
       chunk.container.destroy({ children: true });
       this.chunks.delete(key);
-      console.log(`[ChunkRenderer] Unloaded chunk (${cx}, ${cy})`);
     }
   }
 
@@ -379,7 +360,7 @@ export class ChunkRenderer {
   cleanup(maxAge: number = 60000): void {
     const now = Date.now();
 
-    for (const [key, chunk] of this.chunks) {
+    for (const chunk of this.chunks.values()) {
       if (now - chunk.lastAccessTime > maxAge) {
         this.unloadChunk(chunk.cx, chunk.cy);
       }

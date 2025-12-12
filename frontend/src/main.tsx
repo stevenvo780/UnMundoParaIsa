@@ -15,9 +15,7 @@ import { App } from "./ui/components/App";
 // Punto de entrada principal
 // ============================================
 
-async function main() {
-  console.log("[App] Un Mundo Para Isa - Iniciando...");
-
+async function main(): Promise<void> {
   // Obtener el canvas-container específico para el renderer
   const container = document.getElementById("canvas-container");
   if (!container) {
@@ -46,12 +44,10 @@ async function main() {
   if (uiRoot) {
     const root = createRoot(uiRoot);
     root.render(<App client={client} renderer={renderer} />);
-  } else {
-    console.error("UI Root not found!");
   }
 
   // Registrar callback de viewport para chunks dinámicos
-  renderer.onViewportUpdate((viewport: ViewportData) => {
+  renderer.onViewportUpdate((viewport: ViewportData): void => {
     client.send({
       type: ClientMessageType.VIEWPORT_UPDATE,
       viewport,
@@ -59,7 +55,7 @@ async function main() {
   });
 
   // Conectar eventos
-  client.on(ServerMessageType.TICK, (data) => {
+  client.on(ServerMessageType.TICK, (data): void => {
     if (data.particles) {
       renderer.updateParticles(data.particles);
     }
@@ -69,7 +65,7 @@ async function main() {
     // Tick update for UI is handled within React components via subscription
   });
 
-  client.on(ServerMessageType.FIELD_UPDATE, (data) => {
+  client.on(ServerMessageType.FIELD_UPDATE, (data): void => {
     if (data.fields) {
       renderer.updateFields(
         data.fields as Partial<Record<FieldType, number[]>>,
@@ -78,27 +74,25 @@ async function main() {
   });
 
   // Nuevo: manejar chunks dinámicos
-  client.on(ServerMessageType.CHUNK_DATA, (data) => {
+  client.on(ServerMessageType.CHUNK_DATA, (data): void => {
     if (data.chunks) {
       // console.log(`[App] Recibidos ${(data.chunks as ChunkSnapshot[]).length} chunks`);
       renderer.handleChunks(data.chunks as ChunkSnapshot[]);
     }
   });
 
-  client.on(ServerMessageType.CHUNK_UNLOAD, (data: unknown) => {
+  client.on(ServerMessageType.CHUNK_UNLOAD, (data: unknown): void => {
     const unloadData = data as { cx?: number; cy?: number };
     if (unloadData.cx !== undefined && unloadData.cy !== undefined) {
       renderer.handleChunkUnload(unloadData.cx, unloadData.cy);
     }
   });
 
-  client.on(ServerMessageType.METRICS, (_data) => {
+  client.on(ServerMessageType.METRICS, (_data): void => {
     // Metrics handled by React
   });
 
-  client.on(ServerMessageType.INIT, (data) => {
-    console.log("[App] Recibido estado inicial");
-
+  client.on(ServerMessageType.INIT, (data): void => {
     // Ocultar pantalla de carga handled by React/App state if we wanted,
     // but we just removed the loading spinner from HTML so it's fine.
 
@@ -123,10 +117,8 @@ async function main() {
 
   // Iniciar render loop
   renderer.startRenderLoop();
-
-  console.log("[App] Iniciado correctamente");
 }
 
-main().catch((err) => {
+main().catch((err): void => {
   console.error("[App] Error fatal:", err);
 });

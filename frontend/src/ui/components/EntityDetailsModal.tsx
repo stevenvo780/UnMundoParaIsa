@@ -31,7 +31,16 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
     ? Object.entries(entity.inventory)
     : [];
 
-  const getStateColor = (state?: AgentState) => {
+  const getStateColor = (
+    state?: AgentState,
+  ):
+    | "default"
+    | "primary"
+    | "secondary"
+    | "error"
+    | "info"
+    | "success"
+    | "warning" => {
     switch (state) {
       case AgentState.IDLE:
         return "default";

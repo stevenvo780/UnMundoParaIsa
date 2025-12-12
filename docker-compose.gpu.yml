@@ -1,10 +1,20 @@
-# Docker Compose con soporte GPU (NVIDIA Vulkan/WebGPU)
+# Docker Compose con soporte GPU (NVIDIA Vulkan/WebGPU via Dawn)
+# 
+# ⚠️ ESTADO: EXPERIMENTAL - Puede causar SIGSEGV (exit code 139)
+#
+# El paquete 'webgpu' (Dawn) puede tener incompatibilidades con:
+#   - GPUs muy nuevas (RTX 50xx/Blackwell)
+#   - Drivers Vulkan en ciertos entornos Docker
+#
 # Requiere:
 #   - nvidia-container-toolkit instalado en el host
 #   - Driver NVIDIA >= 525.60.13 (para Vulkan 1.3)
 #
 # Verificar GPU disponible: nvidia-smi
+# Verificar Vulkan: vulkaninfo (en el host)
 # Ejecutar: docker-compose -f docker-compose.gpu.yml up --build
+#
+# Si hay crashes, usar docker-compose.yml estándar con DISABLE_GPU=1
 
 services:
   backend:
@@ -20,6 +30,8 @@ services:
       - TICK_MS=50
       # GPU habilitado (comentar para deshabilitar)
       # - DISABLE_GPU=1
+      # Vulkan/XDG runtime para headless
+      - XDG_RUNTIME_DIR=/tmp
     deploy:
       resources:
         reservations:

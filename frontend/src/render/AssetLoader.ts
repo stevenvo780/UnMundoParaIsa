@@ -162,8 +162,6 @@ export class AssetLoader {
   private async doLoad(
     onProgress?: (progress: number) => void,
   ): Promise<LoadedAssets> {
-    console.log("[AssetLoader] Iniciando carga de assets...");
-
     const allAssetPaths: string[] = [];
     allAssetPaths.push(...ASSET_MANIFEST.terrain.forest);
     allAssetPaths.push(...ASSET_MANIFEST.terrain.grassland);
@@ -181,9 +179,9 @@ export class AssetLoader {
 
     Assets.addBundle("world", assetBundle);
 
-    const textures = await Assets.loadBundle("world", (progress) => {
+    const textures = (await Assets.loadBundle("world", (progress) => {
       if (onProgress) onProgress(progress);
-    });
+    })) as Record<string, Texture>;
 
     const loadedAssets: LoadedAssets = {
       terrain: {
@@ -216,19 +214,6 @@ export class AssetLoader {
       const name = itemPath.replace("items/", "").replace(".png", "");
       loadedAssets.items.set(name, textures[itemPath] as Texture);
     }
-
-    console.log("[AssetLoader] Assets cargados:", {
-      terrain:
-        loadedAssets.terrain.forest.length +
-        loadedAssets.terrain.grassland.length,
-      trees:
-        loadedAssets.trees.forest.length + loadedAssets.trees.grassland.length,
-      water: loadedAssets.water.length,
-      characters:
-        loadedAssets.characters.male.length +
-        loadedAssets.characters.female.length,
-      items: loadedAssets.items.size,
-    });
 
     return loadedAssets;
   }

@@ -12,7 +12,7 @@ export default tseslint.config(
       "*.d.ts",
       "vite.config.ts",
       "eslint.config.*",
-      "scripts/**/*.cjs",
+      "scripts/**",
       "public/sw.js",
       "artifacts/**",
       "tests/**",

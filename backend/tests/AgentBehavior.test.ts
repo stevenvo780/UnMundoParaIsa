@@ -24,10 +24,12 @@ const mockInventorySystem = {
 const mockStructureManager = {
   getNearbyStructures: vi.fn(),
   contributeToStructure: vi.fn(),
+  getStructuresByOwner: vi.fn(),
+  createStructure: vi.fn(),
 } as unknown as StructureManager;
 
 const mockReactionProcessor = {
-  processCell: vi.fn()
+  processCell: vi.fn().mockReturnValue([]),
 } as unknown as ReactionProcessor;
 
 const mockQuestManager = {
@@ -63,38 +65,57 @@ describe("AgentBehaviorSystem", () => {
 
     vi.clearAllMocks();
     (mockStructureManager.getNearbyStructures as any).mockReturnValue([]);
+    (mockStructureManager.getStructuresByOwner as any).mockReturnValue([]);
+    (mockStructureManager.createStructure as any).mockReturnValue(null);
     (mockQuestManager.getNearestActiveQuest as any).mockReturnValue(null);
+    (mockInventorySystem.canAddItem as any).mockReturnValue(true);
+    (mockInventorySystem.hasItem as any).mockReturnValue(false);
+    (mockReactionProcessor.processCell as any).mockReturnValue([]);
   });
 
   describe("IDLE State", () => {
     it("should transition to GATHERING if energy is low", () => {
       agent.energy = 0.3; // Low energy
+
+      // Mock successful food gathering
+      (mockReactionProcessor.processCell as any).mockReturnValue([{
+        executed: true,
+        consumed: {},
+        produced: { food: 1 },
+        laborUsed: 0.1
+      }]);
+
       behaviorSystem.update(agent);
       expect(agent.state).toBe(AgentState.GATHERING);
-      expect(agent.currentAction).toBe("Seeking Food");
+      // expect(agent.currentAction).toBe("Seeking Food"); // Old reactive string
+      expect(agent.currentAction).toBe("Gathering food"); // New generic string
     });
 
     it("should transition to GATHERING if inventory has space and no other tasks", () => {
-      agent.energy = 0.8;
-      (mockInventorySystem.canAddItem as any).mockReturnValue(true);
+      // Mock successful wood gathering
+      (mockReactionProcessor.processCell as any).mockReturnValue([{
+        executed: true,
+        consumed: {},
+        produced: { wood: 1 },
+        laborUsed: 0.1
+      }]);
 
       behaviorSystem.update(agent);
 
       expect(agent.state).toBe(AgentState.GATHERING);
-      expect(agent.currentAction).toBe("Gathering Wood");
+      expect(agent.currentAction).toBe("Gathering trees");
     });
 
-    it("should transition to WORKING if has resources and construction site exists", () => {
+    it("should transition to WORKING if resources and construction site exist", () => {
       agent.energy = 0.8;
-      // Has wood
+      (mockInventorySystem.canAddItem as any).mockReturnValue(false); // Force Agent to use resources instead of gathering more
       (mockInventorySystem.hasItem as any).mockReturnValue(true);
-      // Found structure
-      (mockStructureManager.getNearbyStructures as any).mockReturnValue([{ id: 99, x: 20, y: 20, health: 0.5 }]);
-
-      behaviorSystem.update(agent);
+      (mockStructureManager.getNearbyStructures as any).mockReturnValue([
+        { id: 100, x: 12, y: 12, health: 0.5 },
+      ]); behaviorSystem.update(agent);
 
       expect(agent.state).toBe(AgentState.WORKING);
-      expect(agent.memory.targetStructureId).toBe(99);
+      expect(agent.memory.targetStructureId).toBe(100);
     });
   });
 

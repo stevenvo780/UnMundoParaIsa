@@ -24,7 +24,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,graphics,utility
 
 WORKDIR /app
 
-# Copiar package.json e instalar dependencias
+# Copiar package.json e instalar dependencias (tsx está en dependencies)
 COPY backend/package*.json ./
 RUN npm ci
 
@@ -32,6 +32,10 @@ RUN npm ci
 COPY backend/src ./src
 COPY backend/tsconfig.json ./
 
+# Pre-compilar el GPUWorker a JavaScript para que funcione con worker_threads
+RUN npx esbuild src/gpu/GPUWorker.ts --bundle --platform=node --format=esm --outfile=src/gpu/GPUWorker.bundle.js --external:webgpu --external:@webgpu/types
+
 EXPOSE 3001 9090
 
+# Usar tsx para ejecutar TypeScript directamente
 CMD ["npx", "tsx", "src/server.ts"]

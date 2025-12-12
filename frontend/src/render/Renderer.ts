@@ -92,12 +92,7 @@ export class Renderer {
   }
 
   async init(): Promise<void> {
-    console.log("[Renderer] Cargando assets...");
-    this.assets = await this.assetLoader.load((progress) => {
-      console.log(
-        "[AssetLoader] Progreso: " + Math.round(progress * 100) + "%",
-      );
-    });
+    this.assets = await this.assetLoader.load();
 
     this.app = new Application();
 
@@ -143,8 +138,6 @@ export class Renderer {
     this.panX = -this.worldWidth / 2 + this.container.clientWidth / 2;
     this.panY = -this.worldHeight / 2 + this.container.clientHeight / 2;
     this.updateTransform();
-
-    console.log("[Renderer] Inicializado con chunks dinámicos");
   }
 
   private initFieldLayers(): void {
@@ -289,11 +282,6 @@ export class Renderer {
     for (const chunk of chunks) {
       this.chunkRenderer.renderChunk(chunk);
     }
-
-    const stats = this.chunkRenderer.getStats();
-    console.log(
-      `[Renderer] Chunks: ${stats.loaded} loaded, ${stats.sprites} sprites`,
-    );
   }
 
   /**
@@ -331,9 +319,6 @@ export class Renderer {
         this.terrainSprites.push(sprite);
       }
     }
-    console.log(
-      "[Renderer] Generado terreno: " + tilesX + "x" + tilesY + " tiles",
-    );
   }
 
   private generateWater(): void {
@@ -345,21 +330,11 @@ export class Renderer {
     const tilesX = Math.ceil(this.worldWidth / TILE_SIZE);
     const tilesY = Math.ceil(this.worldHeight / TILE_SIZE);
 
-    // Debug: mostrar algunos valores del campo water
-    let debugCount = 0;
-    const debugSamples: string[] = [];
-
     for (let ty = 0; ty < tilesY; ty++) {
       for (let tx = 0; tx < tilesX; tx++) {
         const worldX = tx * TILE_SIZE;
         const worldY = ty * TILE_SIZE;
         const waterValue = this.getFieldValue(this.waterField, worldX, worldY);
-
-        // Debug primeras 5 muestras no-cero
-        if (waterValue > 0 && debugCount < 5) {
-          debugSamples.push(`(${tx},${ty})=${waterValue.toFixed(3)}`);
-          debugCount++;
-        }
 
         if (waterValue > WATER_THRESHOLD) {
           const texture = this.assetLoader.getWaterTile(tx, ty);
@@ -375,15 +350,6 @@ export class Renderer {
         }
       }
     }
-    console.log(
-      `[Renderer] Water samples: ${debugSamples.join(", ") || "NONE"}`,
-    );
-    console.log(
-      `[Renderer] Water field length: ${this.waterField.length}, expected: ${WORLD.GRID_SIZE * WORLD.GRID_SIZE}`,
-    );
-    console.log(
-      "[Renderer] Generados " + this.waterSprites.length + " tiles de agua",
-    );
   }
 
   private generateTrees(): void {
@@ -395,25 +361,11 @@ export class Renderer {
     const tilesX = Math.ceil(this.worldWidth / TILE_SIZE);
     const tilesY = Math.ceil(this.worldHeight / TILE_SIZE);
 
-    // Debug: mostrar algunos valores del campo food
-    let debugCount = 0;
-    const debugSamples: string[] = [];
-    let totalHighFood = 0;
-
     for (let ty = 0; ty < tilesY; ty++) {
       for (let tx = 0; tx < tilesX; tx++) {
         const worldX = tx * TILE_SIZE;
         const worldY = ty * TILE_SIZE;
         const foodValue = this.getFieldValue(this.foodField, worldX, worldY);
-
-        // Contar valores altos
-        if (foodValue > 0.3) totalHighFood++;
-
-        // Debug primeras 5 muestras no-cero
-        if (foodValue > 0 && debugCount < 5) {
-          debugSamples.push(`(${tx},${ty})=${foodValue.toFixed(3)}`);
-          debugCount++;
-        }
 
         const pseudoRandom =
           Math.abs(Math.sin(tx * 12.9898 + ty * 78.233) * 43758.5453) % 1;
@@ -438,13 +390,6 @@ export class Renderer {
         }
       }
     }
-    console.log(
-      `[Renderer] Food samples: ${debugSamples.join(", ") || "NONE"}`,
-    );
-    console.log(
-      `[Renderer] Tiles with food>0.3: ${totalHighFood}/${tilesX * tilesY}`,
-    );
-    console.log("[Renderer] Generados " + this.treeSprites.length + " arboles");
   }
 
   private getFieldValue(
@@ -601,16 +546,6 @@ export class Renderer {
     if (!this.particleLayer || !this.assets) return;
 
     const currentIds = new Set<number>();
-
-    // Debug: mostrar energía promedio (solo una vez cada 100 frames)
-    if (this.particles.length > 0 && this.currentTick % 100 === 0) {
-      const avgEnergy =
-        this.particles.reduce((sum, p) => sum + (p.energy || 0), 0) /
-        this.particles.length;
-      console.log(
-        `[Renderer] Avg energy: ${avgEnergy.toFixed(1)}, particles: ${this.particles.length}`,
-      );
-    }
 
     for (const p of this.particles) {
       if (!p.alive) continue;
@@ -821,34 +756,9 @@ export class Renderer {
 
     if (food) {
       this.foodField = food;
-      // Debug: mostrar rango de valores (sin spread para evitar stack overflow)
-      if (!this._foodDebugShown) {
-        let min = Infinity,
-          max = -Infinity;
-        for (let i = 0; i < food.length; i++) {
-          if (food[i] < min) min = food[i];
-          if (food[i] > max) max = food[i];
-        }
-        console.log(
-          `[Renderer] Food field range: ${min.toFixed(3)} - ${max.toFixed(3)}`,
-        );
-        this._foodDebugShown = true;
-      }
     }
     if (water) {
       this.waterField = water;
-      if (!this._waterDebugShown) {
-        let min = Infinity,
-          max = -Infinity;
-        for (let i = 0; i < water.length; i++) {
-          if (water[i] < min) min = water[i];
-          if (water[i] > max) max = water[i];
-        }
-        console.log(
-          `[Renderer] Water field range: ${min.toFixed(3)} - ${max.toFixed(3)}`,
-        );
-        this._waterDebugShown = true;
-      }
     }
 
     // Generar terreno legacy la primera vez (solo si NO usamos chunks dinámicos)

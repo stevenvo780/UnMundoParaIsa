@@ -18,13 +18,13 @@ export const App: React.FC<AppProps> = ({ client, renderer }) => {
     null,
   );
 
-  React.useEffect(() => {
-    renderer.onEntitySelected = (entity) => {
+  React.useEffect((): (() => void) => {
+    renderer.onEntitySelected = (entity): void => {
       setSelectedEntity(entity);
     };
 
     // Cleanup
-    return () => {
+    return (): void => {
       renderer.onEntitySelected = undefined;
     };
   }, [renderer]);

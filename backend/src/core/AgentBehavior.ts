@@ -2,10 +2,14 @@
  * AgentBehavior - Sistema de comportamiento (Cerebro)
  * Implementa una Máquina de Estados Finitos (FSM) para los agentes
  */
-import { Particle, AgentState, FieldType } from "../types";
+import {
+  Particle,
+  AgentState,
+  FieldType,
+} from "../types";
 import { World } from "./World";
 import { InventorySystem } from "../economy/InventorySystem";
-import { StructureManager } from "./StructureManager";
+import { StructureManager, StructureType } from "./StructureManager";
 import { ReactionProcessor } from "../economy/Reactions";
 import { QuestManager } from "../quests/EmergentQuests";
 
@@ -38,25 +42,55 @@ export class AgentBehaviorSystem {
       agent.memory = agent.memory || {};
     }
 
+    // Initialize emergent properties
+    if (!agent.needs) {
+      agent.needs = {
+        shelter: 0.5,
+        comfort: 0.5,
+        wealth: 0.0,
+        social: 0.5,
+      };
+    }
+    if (!agent.ownedStructureIds) {
+      agent.ownedStructureIds = [];
+    }
+
     // 0. Necesidades Biológicas (Critical)
     this.handleBiologicalNeeds(agent);
 
-    switch (agent.state) {
-      case AgentState.IDLE:
-        this.handleIdle(agent);
-        break;
-      case AgentState.GATHERING:
-        this.handleGathering(agent);
-        break;
-      case AgentState.WORKING:
-        this.handleWorking(agent);
-        break;
-      case AgentState.WANDERING:
-        this.handleWandering(agent);
-        break;
-      case AgentState.MOVING:
-        this.handleMoving(agent);
-        break;
+    // 1. Goal Planning
+    if (!agent.currentGoal) {
+      this.inputPlanning(agent);
+    }
+
+    // 2. Goal Execution
+    if (agent.currentGoal) {
+      this.executeGoal(agent);
+      // If goal is still active (not completed/cleared), return to skip FSM
+      if (agent.currentGoal) {
+        return;
+      }
+    }
+
+    // Fallback to FSM if no goal active (or goal was just cleared)
+    if (!agent.currentGoal) {
+      switch (agent.state) {
+        case AgentState.IDLE:
+          this.handleIdle(agent);
+          break;
+        case AgentState.GATHERING:
+          this.handleGathering(agent);
+          break;
+        case AgentState.WORKING:
+          this.handleWorking(agent);
+          break;
+        case AgentState.WANDERING:
+          this.handleWandering(agent);
+          break;
+        case AgentState.MOVING:
+          this.handleMoving(agent);
+          break;
+      }
     }
   }
 
@@ -165,7 +199,19 @@ export class AgentBehaviorSystem {
   }
 
   private handleGathering(agent: Particle): void {
-    const targetType = agent.energy < 0.4 ? FieldType.FOOD : FieldType.TREES;
+    // If we have a High-Level Goal driving this gathering, respect it
+    let targetType = FieldType.TREES;
+
+    if (agent.currentGoal?.type === "GATHER_RESOURCES") {
+      targetType = FieldType.TREES; // Simplification: Wealth = Wood
+    } else if (agent.currentGoal?.type === "BUILD_SHELTER") {
+      targetType = FieldType.TREES; // Need wood for shelter 
+    } else if (agent.currentGoal?.type === "FIND_FOOD") {
+      targetType = FieldType.FOOD;
+    } else {
+      // Default reactive behavior
+      targetType = agent.energy < 0.4 ? FieldType.FOOD : FieldType.TREES;
+    }
 
     // Prepare combined resources (inventory + fields) for processCell
     const availableResources: Record<string, number> = {};
@@ -301,16 +347,20 @@ export class AgentBehaviorSystem {
       // Check completion
       if (targetType === FieldType.FOOD && agent.energy > 0.9)
         agent.state = AgentState.IDLE;
-      if (
-        targetType === FieldType.TREES &&
-        !this.inventorySystem.canAddItem(agent, "wood", 1)
-      )
-        agent.state = AgentState.IDLE;
+
+      if (targetType === FieldType.TREES) {
+        // If gathering for goal, don't stop just because of inventory check?
+        // No, inventory full check is critical
+        if (!this.inventorySystem.canAddItem(agent, "wood", 1)) {
+          // Full, stop gathering
+          // Let executeGoal handle the 'Full' state
+          agent.state = AgentState.IDLE;
+        }
+      }
     } else {
       // If failed (no resource or no energy)
       if (fieldsAtLocation[targetType] < 0.1) {
-        // Resource depleted, maybe transition?
-        // agent.state = AgentState.WANDERING;
+        // Resource depleted
       }
     }
   }
@@ -324,7 +374,7 @@ export class AgentBehaviorSystem {
     // Verificar distancia
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-        (agent.y - (agent.targetY || 0)) ** 2,
+      (agent.y - (agent.targetY || 0)) ** 2,
     );
 
     if (dist < 5) {
@@ -350,7 +400,7 @@ export class AgentBehaviorSystem {
     // Logic handled by physics mostly
     const dist = Math.sqrt(
       (agent.x - (agent.targetX || 0)) ** 2 +
-        (agent.y - (agent.targetY || 0)) ** 2,
+      (agent.y - (agent.targetY || 0)) ** 2,
     );
     if (dist < 2) {
       agent.state = AgentState.IDLE;
@@ -360,6 +410,183 @@ export class AgentBehaviorSystem {
   private handleWandering(agent: Particle): void {
     if (Math.random() < 0.05) {
       agent.state = AgentState.IDLE;
+    }
+  }
+
+  // --- Emergent Behavior Methods ---
+
+  private inputPlanning(agent: Particle): void {
+    if (!agent.needs) return;
+
+    // Decay needs
+    agent.needs.shelter = Math.max(0, agent.needs.shelter - 0.0001);
+    agent.needs.comfort = Math.max(0, agent.needs.comfort - 0.0001);
+
+    // 0. Survival Need (Food/Water)
+    if (agent.energy < 0.4) {
+      agent.currentGoal = {
+        type: "FIND_FOOD",
+        priority: 20
+      };
+      return;
+    }
+
+    // 1. Shelter Need
+    if (agent.needs.shelter < 0.3) {
+      // Need shelter
+      // Check if owns shelter
+      const ownedStructures = this.structureManager.getStructuresByOwner(agent.id);
+      const hasShelter = ownedStructures.some(s => s.type === StructureType.SHELTER || s.type === StructureType.CAMP);
+
+      if (hasShelter) {
+        // Go to shelter
+        const shelter = ownedStructures.find(s => s.type === StructureType.SHELTER || s.type === StructureType.CAMP);
+        if (shelter) {
+          agent.currentGoal = {
+            type: "GO_HOME",
+            priority: 10,
+            targetId: shelter.id,
+            targetX: shelter.x,
+            targetY: shelter.y
+          };
+        }
+      } else {
+        // Build shelter
+        agent.currentGoal = {
+          type: "BUILD_SHELTER",
+          priority: 10
+        };
+      }
+      return;
+    }
+
+    // 2. Wealth/Resource Need (Gathering)
+    if (agent.needs.wealth < 0.5) {
+      // Gather resources
+      agent.currentGoal = {
+        type: "GATHER_RESOURCES",
+        priority: 5
+      };
+    }
+  }
+
+  private executeGoal(agent: Particle): void {
+    if (!agent.currentGoal) return;
+
+    switch (agent.currentGoal.type) {
+      case "FIND_FOOD":
+        this.executeFindFood(agent);
+        break;
+      case "BUILD_SHELTER":
+        this.executeBuildShelter(agent);
+        break;
+      case "GATHER_RESOURCES":
+        this.executeGatherResources(agent);
+        break;
+      case "GO_HOME":
+        this.executeGoHome(agent);
+        break;
+      default:
+        agent.currentGoal = undefined;
+        break;
+    }
+  }
+
+  private executeFindFood(agent: Particle): void {
+    // Reuse gathering logic but force target
+    agent.state = AgentState.GATHERING;
+    this.handleGathering(agent);
+    // Completion check handled by handleGathering or energy check next tick
+    if (agent.energy > 0.9) {
+      agent.currentGoal = undefined;
+    }
+  }
+
+  private executeBuildShelter(agent: Particle): void {
+    // 1. Check resources
+    const woodNeeded = 5;
+    const hasWood = this.inventorySystem.hasItem(agent, "wood", woodNeeded);
+
+    if (!hasWood) {
+      // Sub-goal: Gather wood
+      if (this.inventorySystem.canAddItem(agent, "wood", 1)) {
+        agent.state = AgentState.GATHERING;
+        agent.currentAction = "Gathering Wood for Shelter";
+        this.handleGathering(agent); // Reuse existing gathering logic
+      } else {
+        // Inventory full but no wood? Dump something? 
+        // For now, fail goal.
+        agent.currentGoal = undefined;
+      }
+    } else {
+      // Has wood, find place to build
+      // Random walk until find suitable spot or just build here if 'empty'
+      // Simply: Build here!
+      const structure = this.structureManager.createStructure(
+        agent.x,
+        agent.y,
+        StructureType.SHELTER,
+        agent.id,
+        Date.now(), // approximation of tick
+        agent.id // owner
+      );
+
+      if (structure) {
+        this.inventorySystem.removeItem(agent, "wood", woodNeeded);
+        agent.currentAction = "Built Shelter";
+        if (agent.needs) agent.needs.shelter = 1.0;
+        agent.currentGoal = undefined; // Goal complete
+      } else {
+        // Can't build here, move
+        agent.state = AgentState.WANDERING;
+        agent.currentAction = "Looking for building site";
+        this.handleWandering(agent);
+      }
+    }
+  }
+
+  private executeGatherResources(agent: Particle): void {
+    if (this.inventorySystem.canAddItem(agent, "wood", 1)) {
+      agent.state = AgentState.GATHERING;
+      this.handleGathering(agent);
+      if (this.inventorySystem.hasItem(agent, "wood", 5)) {
+        if (agent.needs) agent.needs.wealth = 1.0; // Satisfied for now
+        agent.currentGoal = undefined;
+      }
+    } else {
+      agent.currentGoal = undefined; // Full
+    }
+  }
+
+  private executeGoHome(agent: Particle): void {
+    if (!agent.currentGoal?.targetX || !agent.currentGoal?.targetY) {
+      agent.currentGoal = undefined;
+      return;
+    }
+
+    const dist = Math.sqrt(
+      (agent.x - agent.currentGoal.targetX) ** 2 +
+      (agent.y - agent.currentGoal.targetY) ** 2
+    );
+
+    if (dist < 5) {
+      agent.state = AgentState.IDLE;
+      agent.currentAction = "Resting at Home";
+      if (agent.needs) {
+        agent.needs.shelter = Math.min(1.0, agent.needs.shelter + 0.01);
+        agent.needs.comfort = Math.min(1.0, agent.needs.comfort + 0.01);
+      }
+
+      // If fully rested, clear goal
+      if (agent.needs && agent.needs.shelter > 0.95) {
+        agent.currentGoal = undefined;
+      }
+    } else {
+      agent.targetX = agent.currentGoal.targetX;
+      agent.targetY = agent.currentGoal.targetY;
+      agent.state = AgentState.MOVING;
+      this.handleMoving(agent);
+      agent.currentAction = "Going Home";
     }
   }
 }

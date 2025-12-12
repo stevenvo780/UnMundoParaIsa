@@ -40,7 +40,7 @@ const appearAnimation = keyframes`
   }
 `;
 
-const getEmotionIcon = (emotion?: DialogEmotion) => {
+const getEmotionIcon = (emotion?: DialogEmotion): React.JSX.Element => {
   switch (emotion) {
     case DialogEmotion.JOY:
       return <WbSunnyIcon sx={{ fontSize: 16, color: "#FDB813" }} />;
@@ -69,7 +69,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
   const requestRef = useRef<number | undefined>(undefined);
 
   // Use renderer dimensions to project world coordinates to screen coordinates
-  const updatePositions = useCallback(() => {
+  const updatePositions = useCallback((): void => {
     const now = Date.now();
     const newPositions = new Map<
       string,
@@ -144,8 +144,8 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
     };
   }, [updatePositions]);
 
-  useEffect(() => {
-    const handleDialog = (data: ServerMessage) => {
+  useEffect((): (() => void) => {
+    const handleDialog = (data: ServerMessage): void => {
       if (data.type === ServerMessageType.DIALOG && data.dialog) {
         const fragment = data.dialog;
         setActiveDialogs((prev) => {
@@ -157,7 +157,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
     };
 
     client.on(ServerMessageType.DIALOG, handleDialog);
-    return () => {
+    return (): void => {
       client.off(ServerMessageType.DIALOG, handleDialog);
     };
   }, [client]);

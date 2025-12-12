@@ -47,30 +47,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const [showMoisture, setShowMoisture] = useState(false);
   const [showNutrients, setShowNutrients] = useState(false);
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     // Subscribe to events
-    const handleMetrics = (data: ServerMessage) => {
+    const handleMetrics = (data: ServerMessage): void => {
       if (data.metrics) {
         setMetrics(data.metrics);
       }
     };
 
-    const handleConnected = () => setConnected(true);
-    const handleDisconnected = () => setConnected(false);
+    const handleConnected = (): void => setConnected(true);
+    const handleDisconnected = (): void => setConnected(false);
 
     client.on(ServerMessageType.METRICS, handleMetrics);
     client.on("connected", handleConnected);
     client.on("disconnected", handleDisconnected);
 
     // FPS Counter
-    const fpsInterval = setInterval(() => {
+    const fpsInterval = setInterval((): void => {
       const app = renderer.getApp();
       if (app) {
         setFps(Math.round(app.ticker.FPS));
       }
     }, 1000);
 
-    return () => {
+    return (): void => {
       client.off(ServerMessageType.METRICS, handleMetrics);
       client.off("connected", handleConnected);
       client.off("disconnected", handleDisconnected);
@@ -78,7 +78,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     };
   }, [client, renderer]);
 
-  const togglePause = () => {
+  const togglePause = (): void => {
     const newState = !isPaused;
     setIsPaused(newState);
     if (newState) {
@@ -88,11 +88,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   };
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     client.send({ type: ClientMessageType.RESET });
   };
 
-  const handleSpawn = () => {
+  const handleSpawn = (): void => {
     client.send({
       type: ClientMessageType.SPAWN_ENTITY,
       x: 0, // Center
@@ -100,7 +100,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     });
   };
 
-  const toggleField = (type: FieldType, show: boolean) => {
+  const toggleField = (type: FieldType, show: boolean): void => {
     if (type === FieldType.WATER) setShowMoisture(show);
     if (type === FieldType.FOOD) setShowNutrients(show);
     renderer.toggleFieldVisibility(type);

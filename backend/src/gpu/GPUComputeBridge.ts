@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { Worker } from "node:worker_threads";
 import { Logger } from "../utils/Logger";
 import {
@@ -155,15 +156,33 @@ export class GPUComputeBridge {
     if (this.worker || this.destroyed) return;
 
     try {
-      const importUrl = new URL(
-        import.meta.url.endsWith(".ts") ? "./GPUWorker.ts" : "./GPUWorker.js",
-        import.meta.url,
-      );
+      // Prioridad: 1) bundle (Docker GPU), 2) .js (compilado), 3) .ts (desarrollo con tsx)
+      // En Docker GPU existe GPUWorker.bundle.js precompilado con esbuild
+      const bundleUrl = new URL("./GPUWorker.bundle.js", import.meta.url);
+      const jsUrl = new URL("./GPUWorker.js", import.meta.url);
+      const tsUrl = new URL("./GPUWorker.ts", import.meta.url);
 
-      this.worker = new Worker(importUrl, {
-        execArgv: import.meta.url.endsWith(".ts")
-          ? ["--import", "tsx/esm"]
-          : undefined,
+      // Detectar qué archivo usar
+      let workerUrl: URL;
+      let execArgv: string[] | undefined;
+
+      // Verificar si existe el bundle (Docker GPU build)
+      // Usamos import dinámico que ya está importado arriba
+      if (existsSync(bundleUrl.pathname)) {
+        workerUrl = bundleUrl;
+        execArgv = undefined;
+      } else if (!import.meta.url.endsWith(".ts")) {
+        // Entorno compilado sin bundle
+        workerUrl = jsUrl;
+        execArgv = undefined;
+      } else {
+        // Desarrollo local con TypeScript
+        workerUrl = tsUrl;
+        execArgv = ["--import", "tsx/esm"];
+      }
+
+      this.worker = new Worker(workerUrl, {
+        execArgv,
       });
 
       this.worker.on("message", (message: GPUWorkerLifecycleMessage) => {

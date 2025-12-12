@@ -74,11 +74,28 @@ export enum AgentState {
   BUILDING = "building",
 }
 
+export interface AgentNeeds {
+  shelter: number; // 0..1 (1 = fully sheltered)
+  comfort: number; // 0..1
+  wealth: number; // 0..1 (perception of resources)
+  social: number; // 0..1
+}
+
+export interface AgentGoal {
+  type: string; // e.g. "BUILD_SHELTER", "GATHER_RESOURCE"
+  priority: number;
+  targetId?: number;
+  targetX?: number;
+  targetY?: number;
+  data?: Record<string, any>;
+}
+
 export interface AgentMemory {
   lastFoodLocation?: { x: number; y: number };
   lastWaterLocation?: { x: number; y: number };
   homeLocation?: { x: number; y: number };
   targetStructureId?: number;
+  knownStructures?: number[]; // IDs of structures seen
 }
 
 export interface Particle {
@@ -97,6 +114,11 @@ export interface Particle {
   inventory: Record<string, number>;
   memory: AgentMemory;
   currentAction?: string;
+
+  // New emergent properties
+  needs?: AgentNeeds;
+  currentGoal?: AgentGoal;
+  ownedStructureIds?: number[];
 }
 
 export interface LifecycleConfig {
@@ -217,6 +239,7 @@ export interface StructureData {
   y: number;
   level: number;
   health: number;
+  ownerId?: number;
 }
 
 export interface ServerMessage {
