@@ -12,7 +12,7 @@ import {
   Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { Particle, AgentState } from "../../types";
+import { Particle, AgentState } from "@shared/types";
 
 interface EntityDetailsModalProps {
   open: boolean;
@@ -110,14 +110,14 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
                 <Chip
                   label={entity.state}
                   color={
-                    getStateColor(entity.state) as
-                      | "default"
-                      | "primary"
-                      | "secondary"
-                      | "error"
-                      | "info"
-                      | "success"
-                      | "warning"
+                    getStateColor(entity.state as AgentState) as
+                    | "default"
+                    | "primary"
+                    | "secondary"
+                    | "error"
+                    | "info"
+                    | "success"
+                    | "warning"
                   }
                   size="small"
                 />
@@ -137,6 +137,80 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
               sx={{ height: 6, borderRadius: 1 }}
             />
           </Box>
+
+          <Divider />
+
+          {/* Core Needs Section */}
+          {entity.needs && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Necesidades
+              </Typography>
+              <Stack spacing={0.5}>
+                {Object.entries(entity.needs).map(([need, value]) => (
+                  <Box key={need} display="flex" alignItems="center" gap={1}>
+                    <Typography
+                      variant="caption"
+                      sx={{ width: 50, textTransform: "capitalize" }}
+                    >
+                      {need}
+                    </Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={value * 100}
+                      sx={{
+                        flexGrow: 1,
+                        height: 4,
+                        borderRadius: 1,
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor:
+                            value < 0.3
+                              ? "#f44336" // Error/Desperate
+                              : value < 0.6
+                                ? "#ff9800" // Warning
+                                : "#4caf50", // Good
+                        },
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Goals Section */}
+          {entity.currentGoal && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Objetivo Actual
+              </Typography>
+              <Chip
+                label={entity.currentGoal.type}
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ width: "100%", justifyContent: "flex-start", pl: 1 }}
+              />
+              {entity.currentGoal.targetStructureId && (
+                <Typography variant="caption" display="block" mt={0.5}>
+                  Structure ID: {entity.currentGoal.targetStructureId}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* Ownership Section */}
+          {entity.ownedStructureIds && entity.ownedStructureIds.length > 0 && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Propiedades
+              </Typography>
+              <Typography variant="caption">
+                Dueño de {entity.ownedStructureIds.length} estructura(s)
+              </Typography>
+            </Box>
+          )}
 
           <Divider />
 

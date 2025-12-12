@@ -7,7 +7,7 @@ import {
   ClientMessage,
   FieldType,
   ClientMessageType,
-} from "../types";
+} from "@shared/types";
 
 type EventHandler = (data: ServerMessage) => void;
 

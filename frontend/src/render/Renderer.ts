@@ -1,12 +1,14 @@
 import { Application, Container, Graphics, Sprite } from "pixi.js";
 import {
-  Particle,
   ParticleRenderState,
+} from "../types";
+import {
+  Particle,
   FieldType,
   WORLD,
   ChunkSnapshot,
   ViewportData,
-} from "../types";
+} from "@shared/types";
 import { AssetLoader, LoadedAssets } from "./AssetLoader";
 import { ChunkRenderer } from "./ChunkRenderer";
 

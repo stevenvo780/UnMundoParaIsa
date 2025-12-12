@@ -13,7 +13,7 @@ import {
   DialogEmotion,
   ServerMessage,
   ServerMessageType,
-} from "../../types";
+} from "@shared/types";
 
 interface DialogOverlayProps {
   client: WebSocketClient;
@@ -210,7 +210,8 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
             }}
           >
             <Box display="flex" alignItems="center" gap={1}>
-              {fragment.emotion && getEmotionIcon(fragment.emotion)}
+              {fragment.emotion &&
+                getEmotionIcon(fragment.emotion as DialogEmotion)}
               {fragment.speaker && (
                 <Typography
                   variant="caption"

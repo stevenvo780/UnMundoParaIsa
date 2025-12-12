@@ -24,7 +24,7 @@ import {
   FieldType,
   ServerMessage,
   ServerMessageType,
-} from "../../types";
+} from "@shared/types";
 
 interface ControlPanelProps {
   client: WebSocketClient;

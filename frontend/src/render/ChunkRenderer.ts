@@ -5,7 +5,7 @@
  */
 
 import { Container, Sprite } from "pixi.js";
-import { ChunkSnapshot, BiomeType, BIOME_COLORS, BIOME_ORDER } from "../types";
+import { ChunkSnapshot, BiomeType, BIOME_COLORS, BIOME_ORDER } from "@shared/types";
 import { AssetLoader } from "./AssetLoader";
 
 const TILE_SIZE = 32;
@@ -103,11 +103,21 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Obtener bioma para este tile
-        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biomeIndex = this.getBiomeIndex(
+          biomes as number[],
+          tx,
+          ty,
+          snapshot.size,
+        );
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
         const biomeColor = BIOME_COLORS[biome] || 0x7cb342;
 
-        const foodValue = this.getFieldValue(foodField, tx, ty, snapshot.size);
+        const foodValue = this.getFieldValue(
+          foodField as number[],
+          tx,
+          ty,
+          snapshot.size,
+        );
 
         // Seleccionar textura base según bioma
         const isForest =
@@ -178,7 +188,12 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Verificar si el bioma es agua
-        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biomeIndex = this.getBiomeIndex(
+          biomes as number[],
+          tx,
+          ty,
+          snapshot.size,
+        );
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
         const isWaterBiome =
           biome === BiomeType.OCEAN ||
@@ -186,7 +201,7 @@ export class ChunkRenderer {
           biome === BiomeType.RIVER;
 
         const waterValue = this.getFieldValue(
-          waterField,
+          waterField as number[],
           tx,
           ty,
           snapshot.size,
@@ -242,7 +257,12 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Obtener bioma
-        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
+        const biomeIndex = this.getBiomeIndex(
+          biomes as number[],
+          tx,
+          ty,
+          snapshot.size,
+        );
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
 
         // No poner árboles en biomas sin vegetación
@@ -256,9 +276,14 @@ export class ChunkRenderer {
         ];
         if (noTreeBiomes.includes(biome)) continue;
 
-        const foodValue = this.getFieldValue(foodField, tx, ty, snapshot.size);
+        const foodValue = this.getFieldValue(
+          foodField as number[],
+          tx,
+          ty,
+          snapshot.size,
+        );
         const treeValue = treesField
-          ? this.getFieldValue(treesField, tx, ty, snapshot.size)
+          ? this.getFieldValue(treesField as number[], tx, ty, snapshot.size)
           : 0;
 
         // Densidad de árboles por bioma

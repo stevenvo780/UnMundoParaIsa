@@ -15,12 +15,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": "..",
+    "baseUrl": ".",
     "paths": {
       "@shared/*": [
-        "shared/*"
+        "../shared/*"
       ]
     }
   },
