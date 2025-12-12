@@ -7,6 +7,8 @@
  * 3. Las estructuras dan protección/beneficios
  */
 
+import { StructureData } from "../types";
+
 export enum StructureType {
   CAMP = "camp",
   SHELTER = "shelter",
@@ -341,14 +343,7 @@ export class StructureManager {
   /**
    * Serializar estructuras para enviar al cliente
    */
-  getStructuresForClient(): Array<{
-    id: number;
-    type: string;
-    x: number;
-    y: number;
-    level: number;
-    health: number;
-  }> {
+  getStructuresForClient(): StructureData[] {
     return Array.from(this.structures.values()).map((s) => ({
       id: s.id,
       type: s.type,

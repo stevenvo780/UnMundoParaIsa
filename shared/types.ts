@@ -203,6 +203,30 @@ export const DEFAULT_CONFIG: SimulationConfig = {
 // Métricas y Estructuras de Datos
 // ============================================
 
+export interface StructureStats {
+  total: number;
+  byType: Record<string, number>;
+}
+
+export interface BiodiversitySnapshot {
+  behaviorCounts: Record<string, number>;
+  shannonIndex: number;
+  speciesRichness: number;
+  dominantType: string;
+  dominantRatio: number;
+}
+
+export interface EmergenceSnapshot {
+  complexity: number;
+  coherence: number;
+  adaptability: number;
+  sustainability: number;
+  entropy: number;
+  autopoiesis: number;
+  novelty: number;
+  stability: number;
+}
+
 export interface SimulationMetrics {
   tick: number;
   tickTimeMs: number;
@@ -212,6 +236,9 @@ export interface SimulationMetrics {
   fieldAverages: Record<FieldType, number>;
   births: number;
   deaths: number;
+  structureStats?: StructureStats;
+  biodiversity?: BiodiversitySnapshot;
+  emergence?: EmergenceSnapshot;
 }
 
 export interface StructureData {
@@ -409,4 +436,3 @@ export const STRUCTURE_COLORS: Record<string, number> = {
 // ============================================
 
 export const MAX_PARTICLES_PER_TICK = 1000; // Máximo de partículas enviadas por tick
-

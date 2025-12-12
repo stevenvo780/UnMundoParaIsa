@@ -13,6 +13,10 @@ import {
   DEFAULT_CONFIG,
   SimulationMetrics,
   Particle,
+  StructureData,
+  StructureStats,
+  BiodiversitySnapshot,
+  EmergenceSnapshot,
 } from "../types";
 
 import { DemandManager } from "../economy/Demand";
@@ -234,14 +238,7 @@ export class World {
   private updateAgentBehavior(): void {
     for (const p of this.particles) {
       if (!p.alive) continue;
-      const energyBefore = p.energy;
       this.agentBehavior.update(p);
-      const energyAfter = p.energy;
-      if (this.tick < 5 && energyBefore !== energyAfter) {
-        Logger.info(
-          `[AgentBehavior] Tick ${this.tick} P${p.id}: energy ${energyBefore.toFixed(3)} → ${energyAfter.toFixed(3)} (lost ${(energyBefore - energyAfter).toFixed(3)})`,
-        );
-      }
     }
   }
 
@@ -899,11 +896,6 @@ export class World {
       const metabolismReduction = protectionBonus * 0.5;
 
       const metabolismDrain = lifecycle.baseMetabolism * (1 - metabolismReduction);
-      if (this.tick < 20) {
-        Logger.info(
-          `[DEBUG] Tick ${this.tick} P${p.id}: energy=${p.energy.toFixed(3)} metabolismDrain=${metabolismDrain.toFixed(4)}`,
-        );
-      }
       p.energy -= metabolismDrain;
 
       if (p.energy <= 0) {
@@ -1327,14 +1319,7 @@ export class World {
     return this.particles;
   }
 
-  getStructures(): Array<{
-    id: number;
-    type: string;
-    x: number;
-    y: number;
-    level: number;
-    health: number;
-  }> {
+  getStructures(): StructureData[] {
     return this.structureManager.getStructuresForClient();
   }
 
@@ -1390,6 +1375,10 @@ export class World {
       fieldAverages[type] = field.getAverage();
     }
 
+    const structureStats = this.structureManager.getStats();
+    const biodiversity = this.getBiodiversityMetrics();
+    const emergence = this.getEmergenceMetrics();
+
     return {
       tick: this.tick,
       tickTimeMs: this.lastTickTime,
@@ -1399,22 +1388,16 @@ export class World {
       fieldAverages,
       births: this.births,
       deaths: this.deaths,
+      structureStats,
+      biodiversity,
+      emergence,
     };
   }
 
   /**
    * Obtener métricas de emergencia para Prometheus
    */
-  getEmergenceMetrics(): {
-    complexity: number;
-    coherence: number;
-    adaptability: number;
-    sustainability: number;
-    entropy: number;
-    autopoiesis: number;
-    novelty: number;
-    stability: number;
-  } {
+  getEmergenceMetrics(): EmergenceSnapshot {
     const aliveParticles = this.particles.filter((p) => p.alive);
     const count = aliveParticles.length;
 
@@ -1484,13 +1467,7 @@ export class World {
   /**
    * Obtener métricas de biodiversidad
    */
-  getBiodiversityMetrics(): {
-    behaviorCounts: Record<string, number>;
-    shannonIndex: number;
-    speciesRichness: number;
-    dominantType: string;
-    dominantRatio: number;
-  } {
+  getBiodiversityMetrics(): BiodiversitySnapshot {
     const aliveParticles = this.particles.filter((p) => p.alive);
 
     const behaviorCounts: Record<string, number> = {

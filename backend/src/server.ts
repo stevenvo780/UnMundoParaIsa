@@ -337,12 +337,15 @@ function gameLoop(): void {
         tickTimeMs: metrics.tickTimeMs,
         chunksActive: chunkStats.active,
         chunksCached: chunkStats.dormant,
+        structures: metrics.structureStats?.byType,
       });
 
-      const emergenceData = world.getEmergenceMetrics();
+      const emergenceData =
+        metrics.emergence ?? world.getEmergenceMetrics();
       updateEmergenceMetrics(emergenceData);
 
-      const biodiversityData = world.getBiodiversityMetrics();
+      const biodiversityData =
+        metrics.biodiversity ?? world.getBiodiversityMetrics();
       updateBiodiversityMetrics(biodiversityData);
 
       const socialData = world.getSocialMetrics();
