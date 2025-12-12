@@ -48,11 +48,12 @@ export class ChunkRenderer {
    */
   renderChunk(snapshot: ChunkSnapshot): RenderedChunk {
     const key = this.keyFor(snapshot.cx, snapshot.cy);
+    const biomeData = this.normalizeBiomeData(snapshot.biomes);
 
     // Si ya existe, actualizarlo
     const existing = this.chunks.get(key);
     if (existing) {
-      this.updateChunk(existing, snapshot);
+      this.updateChunk(existing, snapshot, biomeData);
       return existing;
     }
 
@@ -74,9 +75,9 @@ export class ChunkRenderer {
     };
 
     // Generar capas
-    this.generateTerrain(chunk, snapshot);
-    this.generateWater(chunk, snapshot);
-    this.generateTrees(chunk, snapshot);
+    this.generateTerrain(chunk, snapshot, biomeData);
+    this.generateWater(chunk, snapshot, biomeData);
+    this.generateTrees(chunk, snapshot, biomeData);
 
     // Añadir al contenedor padre
     this.parentContainer.addChild(container);
@@ -88,19 +89,45 @@ export class ChunkRenderer {
   /**
    * Actualizar chunk existente
    */
-  private updateChunk(chunk: RenderedChunk, _snapshot: ChunkSnapshot): void {
+  private updateChunk(
+    chunk: RenderedChunk,
+    _snapshot: ChunkSnapshot,
+    _biomes?: Uint8Array,
+  ): void {
     chunk.lastAccessTime = Date.now();
     // Por ahora solo actualizamos el tiempo de acceso
     // Podríamos actualizar campos si cambian significativamente
   }
 
   /**
+   * Normalizar data de biomas recibida en el snapshot
+   */
+  private normalizeBiomeData(
+    data: ChunkSnapshot["biomes"],
+  ): Uint8Array | undefined {
+    if (!data) return undefined;
+
+    if (Array.isArray(data)) {
+      return Uint8Array.from(data);
+    }
+
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+
+    return undefined;
+  }
+
+  /**
    * Generar terreno para un chunk con colores de bioma
    */
-  private generateTerrain(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
+  private generateTerrain(
+    chunk: RenderedChunk,
+    snapshot: ChunkSnapshot,
+    biomes?: Uint8Array,
+  ): void {
     const foodField = snapshot.fields.food;
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
-    const biomes = snapshot.biomes;
 
     for (let ty = 0; ty < tilesPerChunk; ty++) {
       for (let tx = 0; tx < tilesPerChunk; tx++) {
@@ -108,12 +135,7 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Obtener bioma para este tile
-        const biomeIndex = this.getBiomeIndex(
-          biomes as number[],
-          tx,
-          ty,
-          snapshot.size,
-        );
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
         const biomeColor = BIOME_COLORS[biome] || 0x7cb342;
 
@@ -158,7 +180,7 @@ export class ChunkRenderer {
    * Obtener índice de bioma para un tile
    */
   private getBiomeIndex(
-    biomes: number[] | undefined,
+    biomes: Uint8Array | undefined,
     tileX: number,
     tileY: number,
     chunkSize: number,
@@ -180,9 +202,12 @@ export class ChunkRenderer {
   /**
    * Generar agua para un chunk (basado en biomas de agua)
    */
-  private generateWater(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
+  private generateWater(
+    chunk: RenderedChunk,
+    snapshot: ChunkSnapshot,
+    biomes?: Uint8Array,
+  ): void {
     const waterField = snapshot.fields.water;
-    const biomes = snapshot.biomes;
     if (!waterField && !biomes) return;
 
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
@@ -193,12 +218,7 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Verificar si el bioma es agua
-        const biomeIndex = this.getBiomeIndex(
-          biomes as number[],
-          tx,
-          ty,
-          snapshot.size,
-        );
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
         const isWaterBiome =
           biome === BiomeType.OCEAN ||
@@ -246,11 +266,13 @@ export class ChunkRenderer {
   /**
    * Generar árboles para un chunk (basado en biomas)
    */
-  private generateTrees(chunk: RenderedChunk, snapshot: ChunkSnapshot): void {
+  private generateTrees(
+    chunk: RenderedChunk,
+    snapshot: ChunkSnapshot,
+    biomes?: Uint8Array,
+  ): void {
     const foodField = snapshot.fields.food;
     const treesField = snapshot.fields.trees;
-    const biomes = snapshot.biomes;
-
     const tilesPerChunk = Math.ceil(snapshot.size / TILE_SIZE);
 
     for (let ty = 0; ty < tilesPerChunk; ty++) {
@@ -262,12 +284,7 @@ export class ChunkRenderer {
         const localY = ty * TILE_SIZE;
 
         // Obtener bioma
-        const biomeIndex = this.getBiomeIndex(
-          biomes as number[],
-          tx,
-          ty,
-          snapshot.size,
-        );
+        const biomeIndex = this.getBiomeIndex(biomes, tx, ty, snapshot.size);
         const biome = BIOME_ORDER[biomeIndex] || BiomeType.GRASSLAND;
 
         // No poner árboles en biomas sin vegetación

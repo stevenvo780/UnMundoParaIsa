@@ -35,14 +35,14 @@ export interface Reaction {
  */
 export const DEFAULT_REACTIONS: Reaction[] = [
   // Recolección de comida: toma del campo FOOD, da al inventario
-  // Eficiencia ~75% para simular pérdidas en recolección
-  // Labor cost reduced to prevent death spiral (was 0.1)
+  // Eficiencia increased to ~80% to allow food stockpiling for reproduction
+  // Field minimum lowered from 0.2 to 0.1
   {
     id: "gather_food",
     name: "Recolectar comida",
-    inputs: { food: 0.2 },
-    outputs: { food: 0.15 },
-    requires: { labor: 0.01, field: { type: FieldType.FOOD, minValue: 0.2 } },
+    inputs: { food: 0.3 },
+    outputs: { food: 0.25 },
+    requires: { labor: 0.01, field: { type: FieldType.FOOD, minValue: 0.1 } },
     rate: 1.0,
     priority: 1,
   },

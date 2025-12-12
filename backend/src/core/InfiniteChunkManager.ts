@@ -23,11 +23,17 @@ function alea(seed: number): () => number {
 }
 
 const BIOME_NOISE_SCALES = {
-  temperature: { scale: 0.006, octaves: 3, persistence: 0.5 },
-  moisture: { scale: 0.008, octaves: 3, persistence: 0.6 },
-  elevation: { scale: 0.004, octaves: 4, persistence: 0.45 },
-  continentality: { scale: 0.003, octaves: 2, persistence: 0.4 },
+  temperature: { scale: 0.0035, octaves: 4, persistence: 0.5 },
+  moisture: { scale: 0.0045, octaves: 4, persistence: 0.55 },
+  elevation: { scale: 0.0025, octaves: 5, persistence: 0.45 },
+  continentality: { scale: 0.0018, octaves: 3, persistence: 0.42 },
 } as const;
+
+const LOCKED_BIOMES = new Set<BiomeType>([
+  BiomeType.OCEAN,
+  BiomeType.LAKE,
+  BiomeType.RIVER,
+]);
 
 export interface InfiniteChunkManagerConfig {
   activationRadius: number;

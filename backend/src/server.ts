@@ -243,15 +243,29 @@ function sendChunkData(ws: WebSocket, chunks: ChunkSnapshot[]): void {
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
 
-    const serializedChunks = batch.map((chunk) => ({
-      ...chunk,
-      fields: Object.fromEntries(
+    const serializedChunks = batch.map((chunk) => {
+      const serializedFields = Object.fromEntries(
         Object.entries(chunk.fields).map(([key, buffer]) => [
           key,
           buffer ? Array.from(new Float32Array(buffer)) : [],
         ]),
-      ),
-    }));
+      );
+
+      let serializedBiomes: number[] | undefined;
+      if (chunk.biomes) {
+        if (Array.isArray(chunk.biomes)) {
+          serializedBiomes = [...chunk.biomes];
+        } else if (chunk.biomes instanceof ArrayBuffer) {
+          serializedBiomes = Array.from(new Uint8Array(chunk.biomes));
+        }
+      }
+
+      return {
+        ...chunk,
+        fields: serializedFields,
+        biomes: serializedBiomes,
+      };
+    });
 
     const msg: ServerMessage = {
       type: ServerMessageType.CHUNK_DATA,

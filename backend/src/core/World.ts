@@ -795,6 +795,7 @@ export class World {
     const centerX = Math.floor(this.width / 2);
     const centerY = Math.floor(this.height / 2);
 
+    // Founders: Stev and Isa
     this.particles.push({
       id: this.particleIdCounter++,
       x: centerX - 3,
@@ -806,7 +807,7 @@ export class World {
       name: "Stev",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 5 }, // Removed starter food to force gathering
+      inventory: { food: 2 },
       memory: {},
     });
 
@@ -821,12 +822,37 @@ export class World {
       name: "Isa",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 5 }, // Removed starter food to force gathering
+      inventory: { food: 2 },
       memory: {},
     });
 
+    // Generate 8 additional starting particles around the center (10 total)
+    const INITIAL_PARTICLE_COUNT = 8;
+    const names = ["Ada", "Leo", "Maya", "Finn", "Zara", "Noah", "Luna", "Kai"];
+    for (let i = 0; i < INITIAL_PARTICLE_COUNT; i++) {
+      const angle = (i / INITIAL_PARTICLE_COUNT) * Math.PI * 2;
+      const dist = 10 + Math.random() * 15;
+      const px = Math.floor(centerX + Math.cos(angle) * dist);
+      const py = Math.floor(centerY + Math.sin(angle) * dist);
+
+      this.particles.push({
+        id: this.particleIdCounter++,
+        x: px,
+        y: py,
+        vx: 0,
+        vy: 0,
+        energy: 0.7 + Math.random() * 0.3,
+        seed: Math.floor(Math.random() * 0xffffffff),
+        name: names[i] || `Agent${i}`,
+        alive: true,
+        state: AgentState.IDLE,
+        inventory: { food: 1 + Math.random() },
+        memory: {},
+      });
+    }
+
     Logger.info(
-      `[World] Generated ${this.particles.length} particles at center (${centerX}, ${centerY}) with energy ${this.particles[0]?.energy}`,
+      `[World] Generated ${this.particles.length} particles at center (${centerX}, ${centerY})`,
     );
   }
 
@@ -1133,20 +1159,22 @@ export class World {
   private reproduce(parent: Particle): void {
     const { lifecycle } = this.config;
 
-    const REPRODUCTION_COOLDOWN = 100;
+    // Reduced cooldown from 100 to 50 ticks for more dynamic population
+    const REPRODUCTION_COOLDOWN = 50;
     if (
       parent.lastReproductionTick &&
       this.tick - parent.lastReproductionTick < REPRODUCTION_COOLDOWN
     ) {
-      Logger.warn(`[Reproduction] Failed: Cooldown active for agent ${parent.id}`);
+      // Silent fail to reduce log spam
       return;
     }
 
     const foodHere = this.getFieldValueAt(FieldType.FOOD, parent.x, parent.y);
     const waterHere = this.getFieldValueAt(FieldType.WATER, parent.x, parent.y);
 
-    if (foodHere < 0.05) {
-      Logger.warn(`[Reproduction] Failed: Low food at ${parent.x},${parent.y} (${foodHere.toFixed(3)})`);
+    // Lowered food requirement from 0.05 to 0.02
+    if (foodHere < 0.02) {
+      // Silent fail - too common to log
       return;
     }
 

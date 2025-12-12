@@ -218,20 +218,34 @@ export class BiomeResolver {
     elevation: number,
     continentality: number,
   ): BiomeType {
-    if (continentality < 0.35) {
+    // Determinar masas de agua combinando elevación con cercanía a la costa
+    const coastProximity = 1 - continentality;
+    const elevationWithCoast =
+      elevation + continentality * 0.25 - coastProximity * 0.05;
+    const seaLevel = 0.28 + coastProximity * 0.12;
+
+    if (elevationWithCoast < seaLevel) {
       return BiomeType.OCEAN;
     }
 
-    if (elevation < 0.48 && moisture > 0.5) {
+    const beachBand = seaLevel + 0.04 + coastProximity * 0.03;
+    if (elevationWithCoast < beachBand) {
+      return BiomeType.BEACH;
+    }
+
+    const lakeMoistureBias =
+      moisture +
+      Math.max(0, 0.5 - elevation) * 0.3 +
+      coastProximity * 0.05;
+    const lakeLevel = Math.max(0.18, 0.32 - continentality * 0.08);
+
+    if (elevation < lakeLevel && lakeMoistureBias > 0.55) {
       return BiomeType.LAKE;
     }
 
-    if (elevation < 0.5 && moisture > 0.55) {
+    const wetlandLevel = lakeLevel + 0.08;
+    if (elevation < wetlandLevel && lakeMoistureBias > 0.52) {
       return BiomeType.WETLAND;
-    }
-
-    if (continentality < 0.42 && elevation < 0.42) {
-      return BiomeType.BEACH;
     }
 
     const candidates = this.walkableBiomes.filter((b) =>

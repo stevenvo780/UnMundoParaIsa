@@ -165,15 +165,15 @@ export class AgentBehaviorSystem {
   }
 
   private handleReproduction(agent: Particle): void {
-    if (agent.energy > 0.4 && this.inventorySystem.hasItem(agent, "food", 0.5)) {
-      if (Math.random() < 0.2) {
+    // Lowered food threshold from 0.5 to 0.2 to match gather_food output (~0.15)
+    // Increased chance from 0.2 to 0.4 for more dynamic population
+    if (agent.energy > 0.5 && this.inventorySystem.hasItem(agent, "food", 0.2)) {
+      if (Math.random() < 0.4) {
         // Mark intention for World to process
         agent.wantsToReproduce = true;
-        // Consume food cost upfront
-        // Consume a bit less than cost to leave some surplus? Or match cost? World cost is field based.
-        // Let's remove 0.3 to match shared/types cost
-        this.inventorySystem.removeItem(agent, "food", 0.3);
-        Logger.info(`[Lifecycle] Agent ${agent.id} wants to reproduce! Energy: ${agent.energy.toFixed(2)}`);
+        // Consume food cost upfront (reduced from 0.3 to 0.15)
+        this.inventorySystem.removeItem(agent, "food", 0.15);
+        Logger.info(`[Lifecycle] Agent ${agent.id} wants to reproduce! Energy: ${agent.energy.toFixed(2)}, Food: ${agent.inventory?.food?.toFixed(2)}`);
       }
     }
   }
@@ -491,6 +491,20 @@ export class AgentBehaviorSystem {
         type: "FIND_FOOD",
         priority: 20,
       };
+      return;
+    }
+
+    // 0.5. Reproduction Stockpile Need
+    // If healthy but poor in food, gather food to reproduce (lowered from 1.0 to 0.3)
+    if (agent.energy > 0.6 && (!agent.inventory?.food || agent.inventory.food < 0.3)) {
+      agent.currentGoal = {
+        type: "FIND_FOOD",
+        priority: 15, // High priority but lower than immediate survival
+      };
+      // Only log occasionally to reduce spam
+      if (Math.random() < 0.05) {
+        Logger.info(`[Goal] Agent ${agent.id} stockpiling food for reproduction. Food: ${agent.inventory?.food?.toFixed(2) || 0}`);
+      }
       return;
     }
 
