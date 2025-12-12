@@ -801,12 +801,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 0.5,
+      energy: 1.0,
       seed: 0x57455600,
       name: "Stev",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 0 }, // Removed starter food to force gathering
+      inventory: { food: 5 }, // Removed starter food to force gathering
       memory: {},
     });
 
@@ -816,12 +816,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 0.5,
+      energy: 1.0,
       seed: 0x50524f4a,
       name: "Isa",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 0 }, // Removed starter food to force gathering
+      inventory: { food: 5 }, // Removed starter food to force gathering
       memory: {},
     });
 

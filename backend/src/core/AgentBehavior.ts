@@ -46,8 +46,8 @@ export class AgentBehaviorSystem {
         comfort: 0.5,
         wealth: 0.0,
         social: 0.5,
-        thirst: 0.5,
-        hunger: 0.5,
+        thirst: 0.8, // Start mostly hydrated
+        hunger: 0.8, // Start mostly fed
       };
     }
     if (!agent.ownedStructureIds) {
@@ -155,8 +155,8 @@ export class AgentBehaviorSystem {
 
     // 3. Natural decay of needs over time
     if (agent.needs) {
-      agent.needs.hunger = Math.max(0, agent.needs.hunger - 0.001);
-      agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.002); // Thirst decays faster
+      agent.needs.hunger = Math.max(0, agent.needs.hunger - 0.005);
+      agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.008); // Thirst decays faster
     }
   }
 
@@ -472,11 +472,11 @@ export class AgentBehaviorSystem {
     if (!agent.needs) return;
 
     // Decay needs - faster decay creates more emergent pressure
-    agent.needs.shelter = Math.max(0, agent.needs.shelter - 0.002);
-    agent.needs.comfort = Math.max(0, agent.needs.comfort - 0.002);
-    agent.needs.wealth = Math.max(0, agent.needs.wealth - 0.001);
-    agent.needs.social = Math.max(0, agent.needs.social - 0.0005);
-    agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.003); // Thirst decays faster than other needs
+    agent.needs.shelter = Math.max(0, agent.needs.shelter - 0.005);
+    agent.needs.comfort = Math.max(0, agent.needs.comfort - 0.005);
+    agent.needs.wealth = Math.max(0, agent.needs.wealth - 0.002);
+    agent.needs.social = Math.max(0, agent.needs.social - 0.001);
+    agent.needs.thirst = Math.max(0, agent.needs.thirst - 0.008); // Thirst decays faster than other needs
 
     // 0. Survival Need (Food/Water)
     if (agent.energy < 0.4) {
