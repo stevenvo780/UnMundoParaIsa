@@ -233,6 +233,8 @@ export class AgentBehaviorSystem {
     // 4. Wander
     agent.state = AgentState.WANDERING;
     agent.currentAction = "Wandering";
+    agent.targetX = undefined;
+    agent.targetY = undefined;
   }
 
   private handleGathering(agent: Particle): void {
@@ -382,8 +384,11 @@ export class AgentBehaviorSystem {
       agent.vy *= 0.5;
 
       // Check completion
-      if (targetType === FieldType.FOOD && agent.energy > 0.9)
+      if (targetType === FieldType.FOOD && agent.energy > 0.9) {
         agent.state = AgentState.IDLE;
+        agent.targetX = undefined;
+        agent.targetY = undefined;
+      }
 
       if (targetType === FieldType.TREES) {
         // If gathering for goal, don't stop just because of inventory check?
@@ -392,6 +397,8 @@ export class AgentBehaviorSystem {
           // Full, stop gathering
           // Let executeGoal handle the 'Full' state
           agent.state = AgentState.IDLE;
+          agent.targetX = undefined;
+          agent.targetY = undefined;
         }
       }
     } else {
@@ -405,6 +412,8 @@ export class AgentBehaviorSystem {
   private handleWorking(agent: Particle): void {
     if (!agent.memory.targetStructureId) {
       agent.state = AgentState.IDLE;
+      agent.targetX = undefined;
+      agent.targetY = undefined;
       return;
     }
 
@@ -426,6 +435,8 @@ export class AgentBehaviorSystem {
       } else {
         // Se acabaron los recursos
         agent.state = AgentState.IDLE;
+        agent.targetX = undefined;
+        agent.targetY = undefined;
       }
     } else {
       // Seguir moviendose
@@ -441,6 +452,8 @@ export class AgentBehaviorSystem {
     );
     if (dist < 2) {
       agent.state = AgentState.IDLE;
+      agent.targetX = undefined;
+      agent.targetY = undefined;
     }
   }
 

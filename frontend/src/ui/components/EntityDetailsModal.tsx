@@ -11,7 +11,7 @@ import {
   LinearProgress,
   Divider,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { Particle, AgentState } from "@shared/types";
 
 interface EntityDetailsModalProps {
@@ -19,6 +19,27 @@ interface EntityDetailsModalProps {
   onClose: () => void;
   entity: Particle | null;
 }
+
+const StatBadge: React.FC<{ label: string; value: React.ReactNode }> = ({
+  label,
+  value,
+}) => (
+  <Box
+    sx={{
+      p: 1,
+      borderRadius: 1,
+      border: "1px solid rgba(255,255,255,0.12)",
+      minWidth: 110,
+    }}
+  >
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+      {value}
+    </Typography>
+  </Box>
+);
 
 export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
   open,
@@ -30,6 +51,38 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
   const inventoryItems = entity.inventory
     ? Object.entries(entity.inventory)
     : [];
+
+  const inventoryLoad = inventoryItems.reduce((sum, [, count]) => sum + count, 0);
+  const speed = Math.hypot(entity.vx ?? 0, entity.vy ?? 0);
+  const headingDeg = Math.atan2(entity.vy ?? 0, entity.vx ?? 0) * (180 / Math.PI);
+  const normalizedHeading = Number.isFinite(headingDeg)
+    ? (headingDeg + 360) % 360
+    : null;
+  const targetDistance =
+    entity.targetX !== undefined && entity.targetY !== undefined
+      ? Math.hypot(entity.targetX - entity.x, entity.targetY - entity.y)
+      : null;
+
+  const memoryPoints = [
+    entity.memory?.homeLocation
+      ? { label: "Hogar", value: entity.memory.homeLocation }
+      : null,
+    entity.memory?.lastFoodLocation
+      ? { label: "Última comida", value: entity.memory.lastFoodLocation }
+      : null,
+    entity.memory?.lastWaterLocation
+      ? { label: "Última agua", value: entity.memory.lastWaterLocation }
+      : null,
+  ].filter(
+    (
+      point,
+    ): point is { label: string; value: { x: number; y: number } } =>
+      Boolean(point),
+  );
+
+  const formatCoord = (coord: { x: number; y: number }): string =>
+    `(${coord.x.toFixed(1)}, ${coord.y.toFixed(1)})`;
+  const knownStructures = entity.memory?.knownStructures?.length ?? 0;
 
   const getStateColor = (
     state?: AgentState,
@@ -63,38 +116,50 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
+      hideBackdrop
       PaperProps={{
         sx: {
           position: "absolute",
-          top: 20,
-          left: 20,
+          top: 96,
+          left: 24,
           m: 0,
-          backgroundColor: "rgba(30, 30, 30, 0.95)",
+          borderRadius: 4,
+          backgroundColor: "rgba(6, 8, 20, 0.96)",
           color: "white",
-          backdropFilter: "blur(4px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.55)",
+          backdropFilter: "blur(10px)",
         },
       }}
-      hideBackdrop
     >
       <DialogTitle
         sx={{
           m: 0,
-          p: 2,
+          p: 3,
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
+          gap: 2,
         }}
       >
-        <Typography variant="h6">Agente #{entity.id}</Typography>
+        <Box>
+          <Typography
+            variant="overline"
+            sx={{ color: "primary.light", letterSpacing: 2 }}
+          >
+            Agente activo
+          </Typography>
+          <Typography variant="h6">#{entity.id}</Typography>
+        </Box>
         <IconButton
-          aria-label="close"
+          aria-label="Cerrar"
           onClick={onClose}
-          sx={{ color: "grey.500" }}
+          sx={{ color: "white", backgroundColor: "rgba(255,255,255,0.08)" }}
           size="small"
         >
-          <CloseIcon />
+          <CloseRoundedIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
       <Divider />
@@ -138,93 +203,177 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
             />
           </Box>
 
+          <Box>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              gutterBottom
+            >
+              Indicadores vitales
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <StatBadge label="Velocidad" value={`${speed.toFixed(2)} u/t`} />
+              <StatBadge
+                label="Dirección"
+                value={
+                  normalizedHeading !== null
+                    ? `${Math.round(normalizedHeading)}°`
+                    : "—"
+                }
+              />
+              <StatBadge
+                label="Carga"
+                value={`${inventoryLoad.toFixed(1)} uds`}
+              />
+              <StatBadge
+                label="Reproducción"
+                value={entity.wantsToReproduce ? "Activa" : "Latente"}
+              />
+            </Stack>
+            {targetDistance !== null && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: "block" }}
+              >
+                Distancia al objetivo: {targetDistance.toFixed(1)}u
+              </Typography>
+            )}
+          </Box>
+
           <Divider />
 
           {/* Core Needs Section */}
           {entity.needs && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Necesidades
-              </Typography>
-              <Stack spacing={0.5}>
-                {Object.entries(entity.needs).map(([need, value]) => (
-                  <Box key={need} display="flex" alignItems="center" gap={1}>
-                    <Typography
-                      variant="caption"
-                      sx={{ width: 50, textTransform: "capitalize" }}
-                    >
-                      {need}
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={value * 100}
-                      sx={{
-                        flexGrow: 1,
-                        height: 4,
-                        borderRadius: 1,
-                        backgroundColor: "rgba(255,255,255,0.1)",
-                        "& .MuiLinearProgress-bar": {
-                          backgroundColor:
-                            value < 0.3
-                              ? "#f44336" // Error/Desperate
-                              : value < 0.6
-                                ? "#ff9800" // Warning
-                                : "#4caf50", // Good
-                        },
-                      }}
-                    />
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
+            <>
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Necesidades
+                </Typography>
+                <Stack spacing={0.5}>
+                  {Object.entries(entity.needs).map(([need, value]) => (
+                    <Box key={need} display="flex" alignItems="center" gap={1}>
+                      <Typography
+                        variant="caption"
+                        sx={{ width: 50, textTransform: "capitalize" }}
+                      >
+                        {need}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={value * 100}
+                        sx={{
+                          flexGrow: 1,
+                          height: 4,
+                          borderRadius: 1,
+                          backgroundColor: "rgba(255,255,255,0.1)",
+                          "& .MuiLinearProgress-bar": {
+                            backgroundColor:
+                              value < 0.3
+                                ? "#f44336"
+                                : value < 0.6
+                                  ? "#ff9800"
+                                  : "#4caf50",
+                          },
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+              <Divider />
+            </>
           )}
 
           {/* Goals Section */}
           {entity.currentGoal && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Objetivo Actual
-              </Typography>
-              <Chip
-                label={entity.currentGoal.type}
-                color="primary"
-                variant="outlined"
-                size="small"
-                sx={{ width: "100%", justifyContent: "flex-start", pl: 1 }}
-              />
-              {entity.currentGoal.targetStructureId && (
-                <Typography variant="caption" display="block" mt={0.5}>
-                  Structure ID: {entity.currentGoal.targetStructureId}
+            <>
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Objetivo Actual
                 </Typography>
-              )}
-            </Box>
+                <Chip
+                  label={entity.currentGoal.type}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{ width: "100%", justifyContent: "flex-start", pl: 1 }}
+                />
+                {entity.currentGoal.targetStructureId && (
+                  <Typography variant="caption" display="block" mt={0.5}>
+                    Structure ID: {entity.currentGoal.targetStructureId}
+                  </Typography>
+                )}
+                {entity.currentGoal.targetX !== undefined &&
+                  entity.currentGoal.targetY !== undefined && (
+                    <Typography variant="caption" display="block">
+                      Destino: ({entity.currentGoal.targetX.toFixed(1)},
+                      {" "}
+                      {entity.currentGoal.targetY.toFixed(1)})
+                    </Typography>
+                  )}
+              </Box>
+              <Divider />
+            </>
+          )}
+
+          {memoryPoints.length > 0 && (
+            <>
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Memoria sensorial
+                </Typography>
+                <Stack spacing={0.5}>
+                  {memoryPoints.map((entry) => (
+                    <Typography key={entry.label} variant="body2">
+                      {entry.label}: {formatCoord(entry.value)}
+                    </Typography>
+                  ))}
+                </Stack>
+                {knownStructures > 0 && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 0.5 }}
+                  >
+                    Conoce {knownStructures} estructura(s)
+                  </Typography>
+                )}
+              </Box>
+              <Divider />
+            </>
           )}
 
           {/* Ownership Section */}
           {entity.ownedStructureIds && entity.ownedStructureIds.length > 0 && (
-            <Box>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                gutterBottom
-              >
-                Propiedades
-              </Typography>
-              <Typography variant="caption">
-                Dueño de {entity.ownedStructureIds.length} estructura(s)
-              </Typography>
-            </Box>
+            <>
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Propiedades
+                </Typography>
+                <Typography variant="caption">
+                  Dueño de {entity.ownedStructureIds.length} estructura(s)
+                </Typography>
+              </Box>
+              <Divider />
+            </>
           )}
-
-          <Divider />
 
           {/* Inventory Section */}
           <Box>
@@ -251,13 +400,28 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
                 Vacío
               </Typography>
             )}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 0.5 }}
+            >
+              Carga total: {inventoryLoad.toFixed(1)} unidades
+            </Typography>
           </Box>
+
+          <Divider />
 
           {/* Info Section */}
           <Box>
             <Typography variant="caption" color="text.secondary">
               Pos: ({entity.x.toFixed(1)}, {entity.y.toFixed(1)}) | Seed:{" "}
               {entity.seed}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              Velocidad: {speed.toFixed(2)} u/t · Rumbo:{" "}
+              {normalizedHeading !== null
+                ? `${Math.round(normalizedHeading)}°`
+                : "—"}
             </Typography>
           </Box>
         </Stack>

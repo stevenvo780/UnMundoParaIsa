@@ -8,6 +8,7 @@ import {
   ViewportData,
   STRUCTURE_COLORS,
   AgentState,
+  StructureData,
 } from "@shared/types";
 import { AssetLoader, LoadedAssets } from "./AssetLoader";
 import { ChunkRenderer } from "./ChunkRenderer";
@@ -29,6 +30,10 @@ interface FieldLayer {
   color: number;
   alpha: number;
 }
+
+export type EntitySelection =
+  | { kind: "particle"; particle: Particle }
+  | { kind: "structure"; structure: StructureData };
 
 export class Renderer {
   private app: Application | null = null;
@@ -60,18 +65,11 @@ export class Renderer {
   private foodField: Float32Array | null = null;
   private waterField: Float32Array | null = null;
   private particles: Particle[] = [];
-  private structures: Array<{
-    id: number;
-    type: string;
-    x: number;
-    y: number;
-    level: number;
-    health: number;
-  }> = [];
+  private structures: StructureData[] = [];
   private currentTick = 0;
 
-  private worldWidth = WORLD.WIDTH;
-  private worldHeight = WORLD.HEIGHT;
+  private worldWidth = WORLD.WIDTH * TILE_SIZE;
+  private worldHeight = WORLD.HEIGHT * TILE_SIZE;
 
   private zoom = 1;
   private panX = 0;
@@ -83,7 +81,7 @@ export class Renderer {
   // Tracking de viewport para chunks dinámicos
   private lastViewportUpdate = 0;
   private onViewportChange?: (viewport: ViewportData) => void;
-  public onEntitySelected?: (particle: Particle | null) => void;
+  public onEntitySelected?: (selection: EntitySelection | null) => void;
 
   // Modo chunks dinámicos - ACTIVADO
   private useChunks = true;
@@ -456,15 +454,13 @@ export class Renderer {
   }
 
   private handleMouseClick(worldX: number, worldY: number): void {
-    // Find closest particle within selection radius
-    let closest: Particle | null = null;
-    let minDist = Infinity;
-    const SELECTION_RADIUS = TILE_SIZE / 2; // Media celda
+    const particleRadius = TILE_SIZE / 2;
+    let closestParticle: Particle | null = null;
+    let minParticleDistSq = Infinity;
 
     for (const p of this.particles) {
       if (!p.alive) continue;
 
-      // Use render state position for accurate hit detection
       const renderState = this.particleRenderStates.get(p.id);
       const px = renderState ? renderState.displayX : p.x;
       const py = renderState ? renderState.displayY : p.y;
@@ -473,14 +469,44 @@ export class Renderer {
       const dy = py - worldY;
       const distSq = dx * dx + dy * dy;
 
-      if (distSq < SELECTION_RADIUS * SELECTION_RADIUS && distSq < minDist) {
-        minDist = distSq;
-        closest = p;
+      if (
+        distSq < particleRadius * particleRadius &&
+        distSq < minParticleDistSq
+      ) {
+        minParticleDistSq = distSq;
+        closestParticle = p;
       }
     }
 
+    let closestStructure: StructureData | null = null;
+    let minStructureDistSq = Infinity;
+
+    for (const s of this.structures) {
+      const dx = s.x - worldX;
+      const dy = s.y - worldY;
+      const distSq = dx * dx + dy * dy;
+      const baseRadius = (8 + s.level * 4) / 2;
+      const radius = Math.max(baseRadius, TILE_SIZE * 0.4);
+
+      if (distSq < radius * radius && distSq < minStructureDistSq) {
+        minStructureDistSq = distSq;
+        closestStructure = s;
+      }
+    }
+
+    let selection: EntitySelection | null = null;
+
+    if (
+      closestParticle &&
+      minParticleDistSq <= minStructureDistSq
+    ) {
+      selection = { kind: "particle", particle: closestParticle };
+    } else if (closestStructure) {
+      selection = { kind: "structure", structure: closestStructure };
+    }
+
     if (this.onEntitySelected) {
-      this.onEntitySelected(closest);
+      this.onEntitySelected(selection);
     }
   }
 
@@ -609,8 +635,9 @@ export class Renderer {
       }
 
       // Usar posición interpolada para renderizado suave
-      sprite.x = renderState.displayX;
-      sprite.y = renderState.displayY;
+      // Convertir de coordenadas de grilla a coordenadas de mundo (pixels)
+      sprite.x = renderState.displayX * TILE_SIZE;
+      sprite.y = renderState.displayY * TILE_SIZE;
 
       const isFemale = p.seed % 2 === 0;
       sprite.texture = this.assetLoader.getCharacterFrame(
@@ -756,16 +783,7 @@ export class Renderer {
     this.particles = particles;
   }
 
-  updateStructures(
-    structures: Array<{
-      id: number;
-      type: string;
-      x: number;
-      y: number;
-      level: number;
-      health: number;
-    }>,
-  ): void {
+  updateStructures(structures: StructureData[]): void {
     this.structures = structures;
   }
 
