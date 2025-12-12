@@ -119,9 +119,10 @@ export class AgentBehaviorSystem {
 
   private handleBiologicalNeeds(agent: Particle): void {
     // 1. Eat if hungry and has food
-    if (agent.energy < 0.6 && this.inventorySystem.hasItem(agent, "food", 1)) {
-      if (this.inventorySystem.removeItem(agent, "food", 1)) {
-        agent.energy = Math.min(1.0, agent.energy + 0.5);
+    // NOTE: threshold reduced from 1 to 0.1 to match gather_food output (~0.15)
+    if (agent.energy < 0.6 && this.inventorySystem.hasItem(agent, "food", 0.1)) {
+      if (this.inventorySystem.removeItem(agent, "food", 0.1)) {
+        agent.energy = Math.min(1.0, agent.energy + 0.15); // Proportional gain for small meals
         // Also satisfy hunger need
         if (agent.needs) {
           agent.needs.hunger = Math.min(1.0, agent.needs.hunger + 0.3);

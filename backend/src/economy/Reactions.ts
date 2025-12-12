@@ -36,12 +36,13 @@ export interface Reaction {
 export const DEFAULT_REACTIONS: Reaction[] = [
   // Recolección de comida: toma del campo FOOD, da al inventario
   // Eficiencia ~75% para simular pérdidas en recolección
+  // Labor cost reduced to prevent death spiral (was 0.1)
   {
     id: "gather_food",
     name: "Recolectar comida",
     inputs: { food: 0.2 },
     outputs: { food: 0.15 },
-    requires: { labor: 0.1, field: { type: FieldType.FOOD, minValue: 0.2 } },
+    requires: { labor: 0.01, field: { type: FieldType.FOOD, minValue: 0.2 } },
     rate: 1.0,
     priority: 1,
   },
@@ -52,7 +53,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Recolectar agua",
     inputs: { water: 0.15 },
     outputs: { water: 0.12 },
-    requires: { labor: 0.05, field: { type: FieldType.WATER, minValue: 0.15 } },
+    requires: { labor: 0.005, field: { type: FieldType.WATER, minValue: 0.15 } },
     rate: 1.0,
     priority: 1,
   },
@@ -63,7 +64,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Talar árboles",
     inputs: { trees: 0.25 },
     outputs: { wood: 0.15 },
-    requires: { labor: 0.2, field: { type: FieldType.TREES, minValue: 0.25 } },
+    requires: { labor: 0.01, field: { type: FieldType.TREES, minValue: 0.25 } },  // Reduced from 0.2
     rate: 1.0,
     priority: 2,
   },
@@ -73,7 +74,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Minar piedra",
     inputs: { stone: 0.2 },
     outputs: { stone_block: 0.1 },
-    requires: { labor: 0.3, field: { type: FieldType.STONE, minValue: 0.2 } },
+    requires: { labor: 0.01, field: { type: FieldType.STONE, minValue: 0.2 } },  // Reduced from 0.3
     rate: 1.0,
     priority: 3,
   },
@@ -83,7 +84,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Hacer tablones",
     inputs: { wood: 2 },
     outputs: { plank: 1.5 },
-    requires: { labor: 0.3, building: "workbench" },
+    requires: { labor: 0.02, building: "workbench" },  // Reduced from 0.3
     rate: 0.4,
     priority: 4,
   },
@@ -92,7 +93,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Cocinar comida",
     inputs: { food: 2, wood: 0.5 },
     outputs: { cooked_food: 1.8 },
-    requires: { labor: 0.2, building: "campfire" },
+    requires: { labor: 0.02, building: "campfire" },  // Reduced from 0.2
     rate: 0.5,
     priority: 3,
   },
@@ -102,7 +103,7 @@ export const DEFAULT_REACTIONS: Reaction[] = [
     name: "Construir refugio",
     inputs: { plank: 10, stone_block: 5 },
     outputs: { building_shelter: 1 },
-    requires: { labor: 2, minPopulation: 3 },
+    requires: { labor: 0.05, minPopulation: 3 },  // Reduced from 2
     rate: 0.1,
     priority: 5,
   },

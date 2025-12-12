@@ -6,6 +6,9 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 
+# Copiar shared types
+COPY shared ../shared
+
 # Copiar código fuente TypeScript
 COPY backend/src ./src
 COPY backend/tsconfig.json ./

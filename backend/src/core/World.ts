@@ -143,6 +143,13 @@ export class World {
    * Registrar tareas con diferentes frecuencias
    */
   private registerScheduledTasks(): void {
+    // Agent AI/Behavior - runs FIRST so agents can eat/gather before metabolism
+    this.scheduler.register({
+      id: "agent-behavior",
+      rate: "FAST",
+      fn: () => this.updateAgentBehavior(),
+      priority: 0,
+    });
     this.scheduler.register({
       id: "particles",
       rate: "FAST",
@@ -159,7 +166,7 @@ export class World {
       id: "food-production",
       rate: "FAST",
       fn: () => this.updateFoodProduction(),
-      priority: 0,
+      priority: 3,
     });
 
     this.scheduler.register({
@@ -218,6 +225,24 @@ export class World {
    */
   getCurrentTick(): number {
     return this.tick;
+  }
+
+  /**
+   * Update agent behavior (AI/decision-making) for all particles
+   * This runs BEFORE metabolism so agents can eat and gather
+   */
+  private updateAgentBehavior(): void {
+    for (const p of this.particles) {
+      if (!p.alive) continue;
+      const energyBefore = p.energy;
+      this.agentBehavior.update(p);
+      const energyAfter = p.energy;
+      if (this.tick < 5 && energyBefore !== energyAfter) {
+        Logger.info(
+          `[AgentBehavior] Tick ${this.tick} P${p.id}: energy ${energyBefore.toFixed(3)} → ${energyAfter.toFixed(3)} (lost ${(energyBefore - energyAfter).toFixed(3)})`,
+        );
+      }
+    }
   }
 
   /**
@@ -308,7 +333,7 @@ export class World {
           const angle = Math.atan2(dy, dx);
           particle.x += Math.cos(angle) * 2;
           particle.y += Math.sin(angle) * 2;
-          particle.energy -= 0.1 * conflict.tension;
+          particle.energy -= 0.001 * conflict.tension; // Reduced from 0.1 to prevent instant death
         }
       }
     }
@@ -452,8 +477,8 @@ export class World {
               (p.inventory[resourceName] || 0) + amount;
           }
         }
-        // Deduct labor (energy)
-        p.energy -= result.laborUsed;
+        // NOTE: Energy deduction removed here - it's handled by AgentBehavior.handleGathering
+        // to avoid double consumption of laborUsed
       }
     }
   }
@@ -790,6 +815,10 @@ export class World {
       inventory: {},
       memory: {},
     });
+
+    Logger.info(
+      `[World] Generated ${this.particles.length} particles at center (${centerX}, ${centerY}) with energy ${this.particles[0]?.energy}`,
+    );
   }
 
   /**
@@ -869,9 +898,18 @@ export class World {
       );
       const metabolismReduction = protectionBonus * 0.5;
 
-      p.energy -= lifecycle.baseMetabolism * (1 - metabolismReduction);
+      const metabolismDrain = lifecycle.baseMetabolism * (1 - metabolismReduction);
+      if (this.tick < 20) {
+        Logger.info(
+          `[DEBUG] Tick ${this.tick} P${p.id}: energy=${p.energy.toFixed(3)} metabolismDrain=${metabolismDrain.toFixed(4)}`,
+        );
+      }
+      p.energy -= metabolismDrain;
 
       if (p.energy <= 0) {
+        Logger.info(
+          `[World] Particle ${p.id} died at tick ${this.tick}, energy=${p.energy.toFixed(3)}`,
+        );
         p.alive = false;
         this.deaths++;
         continue;
