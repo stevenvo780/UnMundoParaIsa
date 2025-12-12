@@ -163,9 +163,10 @@ export class World {
     });
     this.scheduler.register({
       id: "fields",
-      rate: "FAST",
+      rate: "MEDIUM",
       fn: () => this.updateFields(),
       priority: 2,
+      offset: 0,
     });
     this.scheduler.register({
       id: "food-production",
@@ -179,18 +180,21 @@ export class World {
       rate: "MEDIUM",
       fn: () => this.updateEconomy(),
       priority: 10,
+      offset: 2,
     });
     this.scheduler.register({
       id: "stockpiles",
       rate: "SLOW",
       fn: () => this.stockpileManager.applyDecay(),
       priority: 12,
+      offset: 8,
     });
     this.scheduler.register({
       id: "social",
       rate: "MEDIUM",
       fn: () => this.updateSocial(),
       priority: 11,
+      offset: 4,
     });
 
     this.scheduler.register({
@@ -198,30 +202,35 @@ export class World {
       rate: "SLOW",
       fn: () => this.updateTreeGrowth(),
       priority: 19,
+      offset: 1,
     });
     this.scheduler.register({
       id: "narrative",
       rate: "SLOW",
       fn: () => this.updateNarrative(),
       priority: 20,
+      offset: 6,
     });
     this.scheduler.register({
       id: "scale",
       rate: "SLOW",
       fn: () => this.updateScale(),
       priority: 21,
+      offset: 11,
     });
     this.scheduler.register({
       id: "thermostats",
       rate: "SLOW",
       fn: () => this.updateThermostats(),
       priority: 22,
+      offset: 16,
     });
     this.scheduler.register({
       id: "structures",
       rate: "SLOW",
       fn: () => this.structureManager.update(this.tick),
       priority: 23,
+      offset: 13,
     });
   }
 
@@ -792,12 +801,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 1.0,
+      energy: 0.5,
       seed: 0x57455600,
       name: "Stev",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 5 },
+      inventory: { food: 0 }, // Removed starter food to force gathering
       memory: {},
     });
 
@@ -807,12 +816,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 1.0,
-      seed: 0x00495341,
+      energy: 0.5,
+      seed: 0x50524f4a,
       name: "Isa",
       alive: true,
       state: AgentState.IDLE,
-      inventory: { food: 5 },
+      inventory: { food: 0 }, // Removed starter food to force gathering
       memory: {},
     });
 

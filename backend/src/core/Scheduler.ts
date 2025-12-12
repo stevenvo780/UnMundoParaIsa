@@ -22,6 +22,7 @@ export interface ScheduledTask {
   budgetMs?: number;
   lastRun?: number;
   avgTime?: number;
+  offset?: number;
 }
 
 export interface SchedulerConfig {
@@ -94,17 +95,28 @@ export class Scheduler {
     );
 
     for (const task of sortedTasks) {
-      const shouldRun =
-        (task.rate === UpdateRate.FAST && runFast) ||
-        (task.rate === UpdateRate.MEDIUM && runMedium) ||
-        (task.rate === UpdateRate.SLOW && runSlow);
+      const interval =
+        task.rate === UpdateRate.FAST
+          ? this.config.fastInterval
+          : task.rate === UpdateRate.MEDIUM
+            ? this.config.mediumInterval
+            : this.config.slowInterval;
+
+      // Use offset to stagger tasks (default to 0 if undefined)
+      // e.g., if interval is 20 and offset is 5, run at tick 5, 25, 45...
+      const offset = task.offset || 0;
+      const shouldRun = (this.tick + offset) % interval === 0;
 
       if (!shouldRun) continue;
 
       const elapsed = performance.now() - startTime;
       if (elapsed > budget) {
         Logger.warn(
-          `[Scheduler] Budget exceeded at tick ${this.tick}, skipping remaining tasks`,
+          `[Scheduler] Budget exceeded at tick ${this.tick}, skipping remaining tasks. Budget: ${budget}ms, Elapsed: ${elapsed.toFixed(2)}ms`
+        );
+        const slowest = this.getSlowestTasks(3);
+        Logger.warn(
+          `[Scheduler] Slowest tasks: ${JSON.stringify(slowest)}`
         );
         break;
       }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
 import { keyframes } from "@emotion/react";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -14,6 +14,7 @@ import {
   ServerMessage,
   ServerMessageType,
 } from "@shared/types";
+import { alpha } from "../theme";
 
 interface DialogOverlayProps {
   client: WebSocketClient;
@@ -27,6 +28,42 @@ interface ActiveDialog {
 
 const DIALOG_DURATION = 5000;
 const FADE_OUT_DURATION = 1000;
+const DIALOG_VERTICAL_OFFSET = 40;
+const DIALOG_BOUNDARY_PADDING = 24;
+
+interface CanvasMetrics {
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
+const getCanvasMetrics = (renderer: Renderer): CanvasMetrics => {
+  const app = renderer.getApp();
+  const canvas = app?.canvas as HTMLCanvasElement | undefined;
+  if (!canvas) {
+    return { offsetX: 0, offsetY: 0, width: 0, height: 0 };
+  }
+
+  const parentRect = canvas.parentElement?.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+
+  if (parentRect) {
+    return {
+      offsetX: canvasRect.left - parentRect.left,
+      offsetY: canvasRect.top - parentRect.top,
+      width: parentRect.width,
+      height: parentRect.height,
+    };
+  }
+
+  return {
+    offsetX: canvasRect.left,
+    offsetY: canvasRect.top,
+    width: canvasRect.width,
+    height: canvasRect.height,
+  };
+};
 
 // Animations
 const appearAnimation = keyframes`
@@ -40,26 +77,52 @@ const appearAnimation = keyframes`
   }
 `;
 
-const getEmotionIcon = (emotion?: DialogEmotion): React.JSX.Element => {
-  switch (emotion) {
-    case DialogEmotion.JOY:
-      return <WbSunnyIcon sx={{ fontSize: 16, color: "#FDB813" }} />;
-    case DialogEmotion.LOVE:
-      return <FavoriteIcon sx={{ fontSize: 16, color: "#fb2b76" }} />;
-    case DialogEmotion.SADNESS:
-      return <CloudIcon sx={{ fontSize: 16, color: "#4a90e2" }} />;
-    case DialogEmotion.NOSTALGIA:
-      return <SentimentSatisfiedIcon sx={{ fontSize: 16, color: "#909090" }} />;
-    case DialogEmotion.NEUTRAL:
-    default:
-      return <SentimentNeutralIcon sx={{ fontSize: 16, color: "#666" }} />;
-  }
-};
-
 export const DialogOverlay: React.FC<DialogOverlayProps> = ({
   client,
   renderer,
 }) => {
+  const theme = useTheme();
+  const bubbleBackground = alpha(
+    theme.palette.common.white,
+    theme.opacity?.dialog ?? 0.96,
+  );
+  const bubbleBorder = alpha(theme.palette.common.white, theme.opacity?.medium ?? 0.12);
+  const bubbleShadow = `0 20px 40px ${alpha("#000", theme.opacity?.overlay ?? 0.55)}`;
+  const getEmotionIcon = (emotion: DialogEmotion): React.JSX.Element => {
+    switch (emotion) {
+      case DialogEmotion.JOY:
+        return (
+          <WbSunnyIcon
+            sx={{ fontSize: 16, color: theme.palette.emotions.joy }}
+          />
+        );
+      case DialogEmotion.LOVE:
+        return (
+          <FavoriteIcon
+            sx={{ fontSize: 16, color: theme.palette.emotions.love }}
+          />
+        );
+      case DialogEmotion.SADNESS:
+        return (
+          <CloudIcon
+            sx={{ fontSize: 16, color: theme.palette.emotions.sadness }}
+          />
+        );
+      case DialogEmotion.NOSTALGIA:
+        return (
+          <SentimentSatisfiedIcon
+            sx={{ fontSize: 16, color: theme.palette.emotions.nostalgia }}
+          />
+        );
+      case DialogEmotion.NEUTRAL:
+      default:
+        return (
+          <SentimentNeutralIcon
+            sx={{ fontSize: 16, color: theme.palette.emotions.neutral }}
+          />
+        );
+    }
+  };
   const [activeDialogs, setActiveDialogs] = useState<Map<string, ActiveDialog>>(
     new Map(),
   );
@@ -76,6 +139,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
       { x: number; y: number; opacity: number }
     >();
     const toRemove: string[] = [];
+    const canvasMetrics = getCanvasMetrics(renderer);
 
     activeDialogs.forEach((dialog, id) => {
       const elapsed = now - dialog.startTime;
@@ -91,37 +155,25 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
         opacity = 1 - (elapsed - DIALOG_DURATION) / FADE_OUT_DURATION;
       }
 
-      // Project world to screen
-      // Accessing private or internal properties of renderer might be necessary if no public API exists,
-      // but assuming standard PIXI or custom engine camera logic:
-      // We need to know where the "camera" is.
-      // Looking at `Renderer.ts` (implied), it likely has a stage or viewport.
-
-      // Since we don't have direct access to renderer internal camera state easily via props without modification,
-      // we might need to rely on the Renderer instance exposing this.
-      // However, `DialogUI.ts` used `(x - cameraX) * zoom`.
-
-      // Let's attempt to use the renderer's public viewport/stage if available,
-      // or assume the renderer tracks the camera center.
-
-      // TEMPORARY: Assuming renderer has public accessors or we can get it from the container.
-      // If not, we might need to extend Renderer to expose active camera transform.
-      // For now, let's look at how we can get the viewport.
-      // If the renderer uses pixi-viewport, `renderer.viewport` might be accessible.
-
-      // Fallback logic based on previous code:
-      // The previous code had `update(cameraX, cameraY, zoom)`.
-      // We'll need the renderer to tell us this, or we poll it.
-
-      // Inspecting Renderer.ts would be ideal, but let's assume `renderer.worldContainer.position` and `scale`.
-      const world = renderer.getWorldContainer(); // Assuming this exists based on typical Pixi setup
+      // Project world coordinates to the DOM overlay using Pixi's global transform
+      const world = renderer.getWorldContainer();
 
       if (world) {
         const screenPos = world.toGlobal({
           x: dialog.fragment.x,
           y: dialog.fragment.y,
         });
-        newPositions.set(id, { x: screenPos.x, y: screenPos.y - 40, opacity });
+        let x = screenPos.x + canvasMetrics.offsetX;
+        let y = screenPos.y + canvasMetrics.offsetY - DIALOG_VERTICAL_OFFSET;
+
+        if (canvasMetrics.width > 0 && canvasMetrics.height > 0) {
+          const maxX = canvasMetrics.width - DIALOG_BOUNDARY_PADDING;
+          const maxY = canvasMetrics.height - DIALOG_BOUNDARY_PADDING;
+          x = Math.min(Math.max(x, DIALOG_BOUNDARY_PADDING), maxX);
+          y = Math.min(Math.max(y, DIALOG_BOUNDARY_PADDING), maxY);
+        }
+
+        newPositions.set(id, { x, y, opacity });
       }
     });
 
@@ -189,9 +241,11 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
               transform: "translateX(-50%)",
               maxWidth: 200,
               p: 1.5,
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              borderRadius: 2,
-              boxShadow: 2,
+              bgcolor: bubbleBackground,
+              borderRadius: theme.tokens.borderRadius.md,
+              boxShadow: bubbleShadow,
+              border: `1px solid ${bubbleBorder}`,
+              color: theme.palette.text.primary,
               opacity: pos.opacity,
               animation: `${appearAnimation} 0.3s ease-out`,
               display: "flex",
@@ -205,7 +259,7 @@ export const DialogOverlay: React.FC<DialogOverlayProps> = ({
                 transform: "translateX(-50%)",
                 borderLeft: "8px solid transparent",
                 borderRight: "8px solid transparent",
-                borderTop: "8px solid rgba(255, 255, 255, 0.95)",
+                borderTop: `8px solid ${bubbleBackground}`,
               },
             }}
           >

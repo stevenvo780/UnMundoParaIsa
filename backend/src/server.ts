@@ -17,6 +17,7 @@ import {
   ChunkSnapshot,
   ViewportData,
   ServerMessageType,
+  ClientMessageType,
   MAX_PARTICLES_PER_TICK,
 } from "../../shared/types";
 import {

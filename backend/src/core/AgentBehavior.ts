@@ -4,6 +4,7 @@
  */
 import { Particle, AgentState, FieldType } from "@shared/types";
 import { World } from "./World";
+import { Logger } from "../utils/Logger";
 import { InventorySystem } from "../economy/InventorySystem";
 import { StructureManager, StructureType } from "./StructureManager";
 import { ReactionProcessor } from "../economy/Reactions";
@@ -45,8 +46,8 @@ export class AgentBehaviorSystem {
         comfort: 0.5,
         wealth: 0.0,
         social: 0.5,
-        thirst: 0.8, // Start mostly hydrated
-        hunger: 0.8, // Start mostly fed
+        thirst: 0.5,
+        hunger: 0.5,
       };
     }
     if (!agent.ownedStructureIds) {
@@ -128,6 +129,7 @@ export class AgentBehaviorSystem {
           agent.needs.hunger = Math.min(1.0, agent.needs.hunger + 0.3);
         }
         agent.currentAction = "Eating";
+        Logger.info(`[Lifecycle] Agent ${agent.id} ate food. Hunger: ${agent.needs?.hunger.toFixed(2)}`);
       }
     }
 
@@ -148,6 +150,7 @@ export class AgentBehaviorSystem {
         agent.y,
         Math.max(0, waterHere - 0.01),
       );
+      Logger.info(`[Lifecycle] Agent ${agent.id} drank water. Thirst: ${agent.needs.thirst.toFixed(2)}`);
     }
 
     // 3. Natural decay of needs over time
@@ -599,6 +602,7 @@ export class AgentBehaviorSystem {
         if (agent.needs)
           agent.needs.shelter = Math.min(1.0, agent.needs.shelter + 0.4);
         agent.currentGoal = undefined; // Goal complete
+        Logger.info(`[Lifecycle] Agent ${agent.id} built a shelter.`);
       } else {
         // Can't build here, move
         agent.state = AgentState.WANDERING;
@@ -644,6 +648,7 @@ export class AgentBehaviorSystem {
 
       // If fully rested, clear goal
       if (agent.needs && agent.needs.shelter > 0.95) {
+        Logger.info(`[Lifecycle] Agent ${agent.id} finished resting at home.`);
         agent.currentGoal = undefined;
       }
     } else {

@@ -101,7 +101,7 @@ const IndicatorBar: React.FC<{
         sx={{
           height: 4,
           borderRadius: theme.tokens.borderRadius.pill,
-          backgroundColor: alpha('#fff', theme.opacity.light),
+          backgroundColor: alpha('#fff', theme.opacity?.light ?? 0.08),
           mt: 0.5,
         }}
       />
@@ -235,15 +235,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
   const emergence = metrics?.emergence;
   const emergenceIndicators = emergence
     ? [
-        { label: "Complejidad", value: emergence.complexity },
-        { label: "Coherencia", value: emergence.coherence },
-        { label: "Adaptabilidad", value: emergence.adaptability },
-        { label: "Sostenibilidad", value: emergence.sustainability },
-        { label: "Entropía", value: emergence.entropy },
-        { label: "Autopoyesis", value: emergence.autopoiesis },
-        { label: "Novedad", value: emergence.novelty },
-        { label: "Estabilidad", value: emergence.stability },
-      ]
+      { label: "Complejidad", value: emergence.complexity },
+      { label: "Coherencia", value: emergence.coherence },
+      { label: "Adaptabilidad", value: emergence.adaptability },
+      { label: "Sostenibilidad", value: emergence.sustainability },
+      { label: "Entropía", value: emergence.entropy },
+      { label: "Autopoyesis", value: emergence.autopoiesis },
+      { label: "Novedad", value: emergence.novelty },
+      { label: "Estabilidad", value: emergence.stability },
+    ]
     : [];
 
   const environmentIndicators = [
@@ -336,7 +336,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
                     label={`${type} (${count})`}
                     size="small"
                     variant="outlined"
-                    sx={{ borderColor: alpha('#fff', theme.opacity.strong), color: "inherit" }}
+                    sx={{ borderColor: alpha('#fff', theme.opacity?.strong ?? 0.2), color: "inherit" }}
                   />
                 ))}
               </Stack>
@@ -370,7 +370,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
                         label={`${label} · ${percentage}% (${count})`}
                         variant="outlined"
                         sx={{
-                          borderColor: alpha('#fff', theme.opacity.strong),
+                          borderColor: alpha('#fff', theme.opacity?.strong ?? 0.2),
                           color: "inherit",
                         }}
                       />
@@ -526,7 +526,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
         <AppBar
           position="static"
           color="default"
-          sx={{ pointerEvents: "auto", backgroundColor: alpha('#12121a', theme.opacity.appBar) }}
+          sx={{ pointerEvents: "auto", backgroundColor: alpha('#12121a', theme.opacity?.appBar ?? 0.95) }}
         >
           <Toolbar sx={{ flexWrap: "wrap", gap: 2 }}>
             <Box sx={{ minWidth: 200 }}>
@@ -600,7 +600,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
               }
               setActivePanel((prev) => (prev === newValue ? null : (newValue as PanelId)));
             }}
-            sx={{ backgroundColor: alpha('#12121a', theme.opacity.bottomNav), width: "100%" }}
+            sx={{ backgroundColor: alpha('#12121a', theme.opacity?.bottomNav ?? 0.98), width: "100%" }}
           >
             {PANEL_ORDER.map((panel) => (
               <BottomNavigationAction
@@ -622,7 +622,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
         maxWidth="md"
         PaperProps={{
           sx: {
-            backgroundColor: alpha('#12121a', theme.opacity.dialog),
+            backgroundColor: alpha('#12121a', theme.opacity?.dialog ?? 0.96),
             color: "white",
             borderRadius: theme.tokens.borderRadius.lg,
           },
@@ -631,15 +631,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
         <DialogTitle
           sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
         >
-          <Typography variant="h6">
-            {activePanelDefinition?.label || "Panel"}
-          </Typography>
+          {activePanelDefinition?.label || "Panel"}
           <IconButton onClick={() => setActivePanel(null)} sx={{ color: "white" }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent>{activePanel ? renderPanelContent(activePanel) : null}</DialogContent>
-      </Dialog>
+      </Dialog >
     </>
   );
 };
