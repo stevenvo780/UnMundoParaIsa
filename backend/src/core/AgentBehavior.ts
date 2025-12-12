@@ -39,6 +39,8 @@ export class AgentBehaviorSystem {
       agent.memory = agent.memory || {};
     }
 
+
+
     // Initialize emergent properties
     if (!agent.needs) {
       agent.needs = {
@@ -115,6 +117,8 @@ export class AgentBehaviorSystem {
           this.handleMoving(agent);
           break;
       }
+      // Debug: Periodic status log
+
     }
   }
 
@@ -123,7 +127,7 @@ export class AgentBehaviorSystem {
     // NOTE: threshold reduced from 1 to 0.1 to match gather_food output (~0.15)
     if (agent.energy < 0.6 && this.inventorySystem.hasItem(agent, "food", 0.1)) {
       if (this.inventorySystem.removeItem(agent, "food", 0.1)) {
-        agent.energy = Math.min(1.0, agent.energy + 0.15); // Proportional gain for small meals
+        agent.energy = Math.min(1.0, agent.energy + 0.4); // Higher gain to allow surplus
         // Also satisfy hunger need
         if (agent.needs) {
           agent.needs.hunger = Math.min(1.0, agent.needs.hunger + 0.3);
@@ -161,12 +165,15 @@ export class AgentBehaviorSystem {
   }
 
   private handleReproduction(agent: Particle): void {
-    if (agent.energy > 0.7 && this.inventorySystem.hasItem(agent, "food", 3)) {
+    if (agent.energy > 0.4 && this.inventorySystem.hasItem(agent, "food", 0.5)) {
       if (Math.random() < 0.2) {
         // Mark intention for World to process
         agent.wantsToReproduce = true;
         // Consume food cost upfront
-        this.inventorySystem.removeItem(agent, "food", 3);
+        // Consume a bit less than cost to leave some surplus? Or match cost? World cost is field based.
+        // Let's remove 0.3 to match shared/types cost
+        this.inventorySystem.removeItem(agent, "food", 0.3);
+        Logger.info(`[Lifecycle] Agent ${agent.id} wants to reproduce! Energy: ${agent.energy.toFixed(2)}`);
       }
     }
   }

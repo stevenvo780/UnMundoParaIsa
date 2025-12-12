@@ -1138,6 +1138,7 @@ export class World {
       parent.lastReproductionTick &&
       this.tick - parent.lastReproductionTick < REPRODUCTION_COOLDOWN
     ) {
+      Logger.warn(`[Reproduction] Failed: Cooldown active for agent ${parent.id}`);
       return;
     }
 
@@ -1145,6 +1146,7 @@ export class World {
     const waterHere = this.getFieldValueAt(FieldType.WATER, parent.x, parent.y);
 
     if (foodHere < 0.05) {
+      Logger.warn(`[Reproduction] Failed: Low food at ${parent.x},${parent.y} (${foodHere.toFixed(3)})`);
       return;
     }
 
@@ -1153,6 +1155,7 @@ export class World {
     const aliveCount = this.particles.filter((p) => p.alive).length;
     const MAX_GLOBAL_POPULATION = 500;
     if (aliveCount >= MAX_GLOBAL_POPULATION) {
+      Logger.warn(`[Reproduction] Failed: Max global population reached`);
       return;
     }
 
@@ -1165,6 +1168,7 @@ export class World {
 
     const MAX_LOCAL_DENSITY = 25;
     if (localDensity >= MAX_LOCAL_DENSITY) {
+      Logger.warn(`[Reproduction] Failed: High local density (${localDensity})`);
       return;
     }
 
@@ -1178,6 +1182,7 @@ export class World {
       resourceFactor * densityFactor * waterBonus * founderBonus * 0.8;
 
     if (Math.random() > reproductionChance) {
+      Logger.warn(`[Reproduction] Failed: Chance roll failed (Chance: ${reproductionChance.toFixed(3)})`);
       return;
     }
 
@@ -1206,8 +1211,11 @@ export class World {
     const spawnFood = this.getFieldValueAt(FieldType.FOOD, cx, cy);
     if (!this.isValidPosition(cx, cy) || spawnFood < 0.1) {
       parent.energy += lifecycle.reproductionCost * 0.3;
+      Logger.warn(`[Reproduction] Failed: Invalid spawn position or low food at target`);
       return;
     }
+
+    Logger.info(`[Reproduction] SUCCESS! New agent created from parent ${parent.id}`);
 
     const newId = this.particleIdCounter++;
 

@@ -182,10 +182,10 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   tickMs: WORLD.TICK_MS,
   seed: 42,
   lifecycle: {
-    baseMetabolism: 0.005,
+    baseMetabolism: 0.003,
     movementCost: 0.002,
-    reproductionThreshold: 0.7,
-    reproductionCost: 0.45,
+    reproductionThreshold: 0.6,
+    reproductionCost: 0.3,
     consumptionEfficiency: 0.7,
     mutationRate: 0.02,
   },

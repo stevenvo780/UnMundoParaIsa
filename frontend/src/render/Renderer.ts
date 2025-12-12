@@ -16,6 +16,7 @@ import { ChunkRenderer } from "./ChunkRenderer";
 const TILE_SIZE = 32;
 const TREE_DENSITY = 0.15;
 const WATER_THRESHOLD = 0.4;
+const DRAG_THRESHOLD_SQ = 16; // ~4px movement before we treat it as a drag
 
 // Throttle para viewport updates
 const VIEWPORT_UPDATE_THROTTLE_MS = 100;
@@ -75,6 +76,7 @@ export class Renderer {
   private panX = 0;
   private panY = 0;
   private isDragging = false;
+  private isPointerDown = false;
   private lastMouseX = 0;
   private lastMouseY = 0;
 
@@ -188,27 +190,38 @@ export class Renderer {
     });
 
     canvas.addEventListener("mousedown", (e) => {
-      if (e.button === 0) {
-        this.isDragging = true;
-        this.lastMouseX = e.clientX;
-        this.lastMouseY = e.clientY;
-      }
+      if (e.button !== 0) return;
+      this.isPointerDown = true;
+      this.isDragging = false;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
     });
 
     canvas.addEventListener("mousemove", (e) => {
+      if (!this.isPointerDown) return;
+      const dx = e.clientX - this.lastMouseX;
+      const dy = e.clientY - this.lastMouseY;
+
+      if (!this.isDragging) {
+        const distanceSq = dx * dx + dy * dy;
+        if (distanceSq >= DRAG_THRESHOLD_SQ) {
+          this.isDragging = true;
+        }
+      }
+
       if (this.isDragging) {
-        const dx = e.clientX - this.lastMouseX;
-        const dy = e.clientY - this.lastMouseY;
         this.panX += dx;
         this.panY += dy;
-        this.lastMouseX = e.clientX;
-        this.lastMouseY = e.clientY;
         this.updateTransform();
       }
+
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
     });
 
-    canvas.addEventListener("mouseup", (e) => {
-      // Si no hubo arrastre, es un click
+    const handlePointerUp = (e: MouseEvent): void => {
+      if (e.button !== 0 || !this.isPointerDown) return;
+
       if (!this.isDragging) {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -220,9 +233,15 @@ export class Renderer {
 
         this.handleMouseClick(worldX, worldY);
       }
+
+      this.isPointerDown = false;
       this.isDragging = false;
-    });
+    };
+
+    canvas.addEventListener("mouseup", handlePointerUp);
+    window.addEventListener("mouseup", handlePointerUp);
     canvas.addEventListener("mouseleave", () => {
+      this.isPointerDown = false;
       this.isDragging = false;
     });
   }

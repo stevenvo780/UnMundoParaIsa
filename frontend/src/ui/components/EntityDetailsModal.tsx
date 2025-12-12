@@ -23,6 +23,47 @@ interface EntityDetailsModalProps {
   entity: Particle | null;
 }
 
+const BEHAVIOR_ORDER = ["forager", "hunter", "nomad", "settler"] as const;
+type BehaviorKey = (typeof BEHAVIOR_ORDER)[number];
+
+const BEHAVIOR_PROFILES: Record<
+  BehaviorKey,
+  { label: string; description: string; accent: string }
+> = {
+  forager: {
+    label: "Recolector",
+    description:
+      "Prefiere rutas cortas, recolecta comida y agua con poco riesgo.",
+    accent: "#81c784",
+  },
+  hunter: {
+    label: "Cazador",
+    description: "Persigue objetivos distantes y explora zonas peligrosas.",
+    accent: "#ff8a65",
+  },
+  nomad: {
+    label: "Nómada",
+    description: "Se desplaza constantemente y prioriza descubrir territorios.",
+    accent: "#4fc3f7",
+  },
+  settler: {
+    label: "Colonizador",
+    description: "Tiende a estabilizarse y construir estructuras cercanas.",
+    accent: "#ba68c8",
+  },
+};
+
+const getBehaviorProfile = (seed: number): {
+  type: BehaviorKey;
+  label: string;
+  description: string;
+  accent: string;
+} => {
+  const index = (seed >> 4) & 0b11;
+  const key = BEHAVIOR_ORDER[index] ?? "forager";
+  return { type: key, ...BEHAVIOR_PROFILES[key] };
+};
+
 // StatBadge ha sido reemplazado por StatCard importado desde /shared/
 
 export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
@@ -32,6 +73,11 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
 }) => {
   const theme = useTheme();
   if (!entity) return null;
+
+  const behaviorProfile = React.useMemo(
+    () => getBehaviorProfile(entity.seed),
+    [entity.seed],
+  );
 
   const inventoryItems = entity.inventory
     ? Object.entries(entity.inventory)
@@ -130,17 +176,19 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
         }}
       >
         <Box>
-          <Typography
-            variant="overline"
-            sx={{ color: "primary.light", letterSpacing: 2 }}
-          >
-            Agente activo
-          </Typography>
-          <Typography variant="h6">#{entity.id}</Typography>
-        </Box>
-        <IconButton
-          aria-label="Cerrar"
-          onClick={onClose}
+              <Typography
+                variant="overline"
+                sx={{ color: behaviorProfile.accent, letterSpacing: 2 }}
+              >
+                Perfil animal
+              </Typography>
+              <Typography variant="h6">
+                {entity.name ? entity.name : `Animal #${entity.id}`}
+              </Typography>
+            </Box>
+            <IconButton
+              aria-label="Cerrar"
+              onClick={onClose}
           sx={{ color: "white", backgroundColor: alpha('#fff', theme.opacity.light) }}
           size="small"
         >
@@ -401,6 +449,33 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
 
           {/* Info Section */}
           <Box>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              gutterBottom
+            >
+              Perfil del animal
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" mb={0.5}>
+              <Chip
+                label={behaviorProfile.label}
+                size="small"
+                sx={{
+                  borderColor: behaviorProfile.accent,
+                  color: behaviorProfile.accent,
+                }}
+                variant="outlined"
+              />
+              <Chip
+                label={`Firma ${behaviorProfile.type.toUpperCase()}`}
+                size="small"
+                variant="outlined"
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {behaviorProfile.description}
+            </Typography>
+            <Divider sx={{ my: 1.5 }} />
             <Typography variant="caption" color="text.secondary">
               Pos: ({entity.x.toFixed(1)}, {entity.y.toFixed(1)}) | Seed:{" "}
               {entity.seed}

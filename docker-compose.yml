@@ -12,6 +12,10 @@ services:
       - TICK_MS=50
       - DISABLE_GPU=1
     restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./shared:/shared
     networks:
       - mundo-network
 
