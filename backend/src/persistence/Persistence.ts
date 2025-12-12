@@ -5,7 +5,7 @@
 
 import { writeFileSync, readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
-import { Particle, AgentState } from "../types";
+import { Particle, AgentState } from "@shared/types";
 import { Quest } from "../quests/EmergentQuests";
 import { Logger } from "../utils/Logger";
 

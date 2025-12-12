@@ -3,7 +3,9 @@
  * Implementa difusión, decay y crecimiento logístico
  */
 
-import { FieldConfig, idx } from "../types";
+import { FieldConfig } from "@shared/types";
+
+const idx = (x: number, y: number, width: number): number => x + y * width;
 import { GPUComputeBridge } from "../gpu/GPUComputeBridge";
 
 const gpuBridge = GPUComputeBridge.getInstance();

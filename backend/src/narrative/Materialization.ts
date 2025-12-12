@@ -3,7 +3,7 @@
  * Partícula → Personaje → Héroe
  */
 
-import { Particle } from "../types";
+import { Particle } from "@shared/types";
 import { getSignature } from "../social/Signatures";
 
 export enum EntityType {

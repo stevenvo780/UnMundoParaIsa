@@ -3,7 +3,7 @@
  * DSL JSON para definir transformaciones de recursos
  */
 
-import { FieldType } from "../types";
+import { FieldType } from "@shared/types";
 import { Logger } from "../utils/Logger";
 
 export interface Reaction {

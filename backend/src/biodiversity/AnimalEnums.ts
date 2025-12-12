@@ -4,7 +4,7 @@
  *
  * Defines all animal types and states used in the simulation.
  */
-import { FieldType } from "../types";
+import { FieldType } from "@shared/types";
 
 /**
  * Enumeration of animal types.

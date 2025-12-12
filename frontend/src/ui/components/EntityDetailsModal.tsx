@@ -10,9 +10,12 @@ import {
   Chip,
   LinearProgress,
   Divider,
+  useTheme,
 } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { Particle, AgentState } from "@shared/types";
+import { alpha } from "../theme";
+import { StatCard } from "./shared/StatCard";
 
 interface EntityDetailsModalProps {
   open: boolean;
@@ -20,32 +23,14 @@ interface EntityDetailsModalProps {
   entity: Particle | null;
 }
 
-const StatBadge: React.FC<{ label: string; value: React.ReactNode }> = ({
-  label,
-  value,
-}) => (
-  <Box
-    sx={{
-      p: 1,
-      borderRadius: 1,
-      border: "1px solid rgba(255,255,255,0.12)",
-      minWidth: 110,
-    }}
-  >
-    <Typography variant="caption" color="text.secondary">
-      {label}
-    </Typography>
-    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-      {value}
-    </Typography>
-  </Box>
-);
+// StatBadge ha sido reemplazado por StatCard importado desde /shared/
 
 export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
   open,
   onClose,
   entity,
 }) => {
+  const theme = useTheme();
   if (!entity) return null;
 
   const inventoryItems = entity.inventory
@@ -125,11 +110,11 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
           top: 96,
           left: 24,
           m: 0,
-          borderRadius: 4,
-          backgroundColor: "rgba(6, 8, 20, 0.96)",
+          borderRadius: theme.tokens.borderRadius.xl,
+          backgroundColor: alpha(theme.palette.background.default, theme.opacity.dialog),
           color: "white",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.55)",
+          border: `1px solid ${alpha('#fff', theme.opacity.light)}`,
+          boxShadow: `0 25px 60px ${alpha('#000', theme.opacity.overlay)}`,
           backdropFilter: "blur(10px)",
         },
       }}
@@ -156,14 +141,14 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
         <IconButton
           aria-label="Cerrar"
           onClick={onClose}
-          sx={{ color: "white", backgroundColor: "rgba(255,255,255,0.08)" }}
+          sx={{ color: "white", backgroundColor: alpha('#fff', theme.opacity.light) }}
           size="small"
         >
           <CloseRoundedIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
       <Divider />
-      <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.1)" }}>
+      <DialogContent dividers sx={{ borderColor: alpha('#fff', theme.opacity.light) }}>
         <Stack spacing={2}>
           {/* Status Section */}
           <Box>
@@ -212,22 +197,25 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
               Indicadores vitales
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              <StatBadge label="Velocidad" value={`${speed.toFixed(2)} u/t`} />
-              <StatBadge
+              <StatCard label="Velocidad" value={`${speed.toFixed(2)} u/t`} variant="compact" />
+              <StatCard
                 label="Dirección"
                 value={
                   normalizedHeading !== null
                     ? `${Math.round(normalizedHeading)}°`
                     : "—"
                 }
+                variant="compact"
               />
-              <StatBadge
+              <StatCard
                 label="Carga"
                 value={`${inventoryLoad.toFixed(1)} uds`}
+                variant="compact"
               />
-              <StatBadge
+              <StatCard
                 label="Reproducción"
                 value={entity.wantsToReproduce ? "Activa" : "Latente"}
+                variant="compact"
               />
             </Stack>
             {targetDistance !== null && (
@@ -269,15 +257,15 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
                         sx={{
                           flexGrow: 1,
                           height: 4,
-                          borderRadius: 1,
-                          backgroundColor: "rgba(255,255,255,0.1)",
+                          borderRadius: theme.tokens.borderRadius.sm,
+                          backgroundColor: alpha('#fff', theme.opacity.light),
                           "& .MuiLinearProgress-bar": {
                             backgroundColor:
                               value < 0.3
-                                ? "#f44336"
+                                ? theme.palette.error.main
                                 : value < 0.6
-                                  ? "#ff9800"
-                                  : "#4caf50",
+                                  ? theme.palette.warning.main
+                                  : theme.palette.success.main,
                           },
                         }}
                       />
@@ -390,7 +378,7 @@ export const EntityDetailsModal: React.FC<EntityDetailsModalProps> = ({
                     variant="outlined"
                     sx={{
                       color: "white",
-                      borderColor: "rgba(255,255,255,0.3)",
+                      borderColor: alpha('#fff', theme.opacity.border),
                     }}
                   />
                 ))}

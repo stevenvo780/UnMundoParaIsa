@@ -2,7 +2,7 @@
  * AgentBehavior - Sistema de comportamiento (Cerebro)
  * Implementa una Máquina de Estados Finitos (FSM) para los agentes
  */
-import { Particle, AgentState, FieldType } from "../types";
+import { Particle, AgentState, FieldType } from "@shared/types";
 import { World } from "./World";
 import { InventorySystem } from "../economy/InventorySystem";
 import { StructureManager, StructureType } from "./StructureManager";
@@ -158,8 +158,8 @@ export class AgentBehaviorSystem {
   }
 
   private handleReproduction(agent: Particle): void {
-    if (agent.energy > 0.9 && this.inventorySystem.hasItem(agent, "food", 5)) {
-      if (Math.random() < 0.05) {
+    if (agent.energy > 0.7 && this.inventorySystem.hasItem(agent, "food", 3)) {
+      if (Math.random() < 0.2) {
         // Mark intention for World to process
         agent.wantsToReproduce = true;
         // Consume food cost upfront

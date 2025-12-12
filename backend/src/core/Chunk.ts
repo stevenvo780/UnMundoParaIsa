@@ -4,7 +4,7 @@
  */
 
 import { Field } from "./Field";
-import { FieldType, DEFAULT_FIELD_CONFIGS } from "../types";
+import { FieldType, DEFAULT_FIELD_CONFIGS } from "@shared/types";
 import { BiomeType } from "./BiomeResolver";
 
 export const CHUNK_SIZE = 64;

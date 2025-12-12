@@ -3,7 +3,7 @@
  * Precomputa direcciones de movimiento hacia objetivos
  */
 
-import { WORLD, FieldType } from "../types";
+import { WORLD, FieldType } from "@shared/types";
 
 export interface FlowVector {
   dx: number;

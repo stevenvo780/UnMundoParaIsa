@@ -3,7 +3,7 @@
  * Ajusta la precisión de simulación según distancia/importancia
  */
 
-import { WORLD } from "../types";
+import { WORLD } from "@shared/types";
 
 export enum LODLevel {
   HIGH = "high",

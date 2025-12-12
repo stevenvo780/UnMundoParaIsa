@@ -6,7 +6,7 @@
  * de cada partícula deriva de su genética (seed).
  */
 
-import { Particle } from "../types";
+import { Particle } from "@shared/types";
 
 export enum BehaviorType {
   FORAGER = "forager",

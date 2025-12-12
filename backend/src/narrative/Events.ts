@@ -5,7 +5,7 @@
 
 import { ChatFragment, Emotion } from "./ChatParser";
 import { Artifact } from "./Artifacts";
-import { Particle } from "../types";
+import { Particle } from "@shared/types";
 
 export enum EventType {
   ARTIFACT_DISCOVERED = "artifact_discovered",

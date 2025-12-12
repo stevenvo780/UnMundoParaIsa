@@ -175,7 +175,7 @@ export const theme = createTheme({
     },
     // Colores custom
     emotions: emotionColors,
-    structures: structureColors,
+    structures: structureColors as any,
   },
   typography: {
     fontFamily: '"Segoe UI", system-ui, sans-serif',

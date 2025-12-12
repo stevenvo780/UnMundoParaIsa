@@ -5,7 +5,7 @@
  */
 
 import { NarrativeEvent, EventType } from "../narrative/Events";
-import { Particle } from "../types";
+import { Particle } from "@shared/types";
 
 export enum QuestType {
   PROTECT_COMMUNITY = "protect_community",

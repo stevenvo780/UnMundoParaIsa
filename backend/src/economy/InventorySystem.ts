@@ -1,7 +1,7 @@
 /**
  * InventorySystem - Gestión de inventarios de agentes
  */
-import { Particle } from "../types";
+import { Particle } from "@shared/types";
 
 export interface InventoryConfig {
   maxCarryWeight: number;

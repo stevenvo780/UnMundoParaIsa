@@ -3,7 +3,7 @@
  */
 
 import { Chunk, CHUNK_SIZE } from "./Chunk";
-import { FieldType, WORLD, Particle } from "../types";
+import { FieldType, WORLD, Particle } from "@shared/types";
 
 export interface ChunkManagerConfig {
   worldWidth: number;

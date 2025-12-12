@@ -10,7 +10,7 @@
  */
 
 import { Chunk, CHUNK_SIZE } from "./Chunk";
-import { FieldType, ChunkCoord, ChunkSnapshot, ViewportData } from "../types";
+import { FieldType, ChunkCoord, ChunkSnapshot, ViewportData } from "@shared/types";
 import { createNoise2D, NoiseFunction2D } from "simplex-noise";
 import { BiomeResolver, BiomeType } from "./BiomeResolver";
 

@@ -17,9 +17,8 @@ import {
   ChunkSnapshot,
   ViewportData,
   ServerMessageType,
-  ClientMessageType,
   MAX_PARTICLES_PER_TICK,
-} from "./types";
+} from "../../shared/types";
 import {
   getMetrics,
   updateSimulationMetrics,
@@ -318,7 +317,7 @@ function gameLoop(): void {
       const avgEnergy =
         aliveParticles.length > 0
           ? aliveParticles.reduce((sum, p) => sum + (p.energy ?? 0), 0) /
-            aliveParticles.length
+          aliveParticles.length
           : 0;
       const totalEnergy = aliveParticles.reduce(
         (sum, p) => sum + (p.energy ?? 0),
@@ -452,8 +451,8 @@ setInterval(() => {
   const metrics = world.getMetrics();
   Logger.info(
     `[Stats] Tick: ${metrics.tick}, ` +
-      `Particles: ${metrics.particleCount}, ` +
-      `Births: ${metrics.births}, Deaths: ${metrics.deaths}, ` +
-      `Time: ${metrics.tickTimeMs.toFixed(2)}ms`,
+    `Particles: ${metrics.particleCount}, ` +
+    `Births: ${metrics.births}, Deaths: ${metrics.deaths}, ` +
+    `Time: ${metrics.tickTimeMs.toFixed(2)}ms`,
   );
 }, 10000);

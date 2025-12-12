@@ -121,6 +121,7 @@ export interface AgentMemory {
 
 export interface Particle {
   id: number;
+  name?: string;
   x: number;
   y: number;
   vx: number;

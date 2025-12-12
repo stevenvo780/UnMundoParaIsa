@@ -284,10 +284,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
               </Typography>
             )}
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              <SmallStat label="FPS" value={fps} />
-              <SmallStat label="Tick" value={metrics?.tick ?? 0} />
-              <SmallStat label="Chunks" value={metrics?.activeChunks ?? 0} />
-              <SmallStat
+              <StatCard label="FPS" value={fps} />
+              <StatCard label="Tick" value={metrics?.tick ?? 0} />
+              <StatCard label="Chunks" value={metrics?.activeChunks ?? 0} />
+              <StatCard
                 label="Tiempo por tick"
                 value={`${(metrics?.tickTimeMs ?? 0).toFixed(1)} ms`}
               />
@@ -301,13 +301,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
             <Typography variant="subtitle1">Dinámica de agentes</Typography>
             <Divider />
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              <SmallStat
+              <StatCard
                 label="Agentes activos"
                 value={metrics?.particleCount ?? 0}
               />
-              <SmallStat label="Nacimientos" value={metrics?.births ?? 0} />
-              <SmallStat label="Muertes" value={metrics?.deaths ?? 0} />
-              <SmallStat
+              <StatCard label="Nacimientos" value={metrics?.births ?? 0} />
+              <StatCard label="Muertes" value={metrics?.deaths ?? 0} />
+              <StatCard
                 label="Densidad"
                 value={`${(metrics?.totalDensity ?? 0).toFixed(1)} u`}
               />
@@ -336,7 +336,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
                     label={`${type} (${count})`}
                     size="small"
                     variant="outlined"
-                    sx={{ borderColor: "rgba(255,255,255,0.2)", color: "inherit" }}
+                    sx={{ borderColor: alpha('#fff', theme.opacity.strong), color: "inherit" }}
                   />
                 ))}
               </Stack>
@@ -370,7 +370,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
                         label={`${label} · ${percentage}% (${count})`}
                         variant="outlined"
                         sx={{
-                          borderColor: "rgba(255,255,255,0.2)",
+                          borderColor: alpha('#fff', theme.opacity.strong),
                           color: "inherit",
                         }}
                       />
@@ -526,7 +526,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
         <AppBar
           position="static"
           color="default"
-          sx={{ pointerEvents: "auto", backgroundColor: "rgba(18,18,26,0.95)" }}
+          sx={{ pointerEvents: "auto", backgroundColor: alpha('#12121a', theme.opacity.appBar) }}
         >
           <Toolbar sx={{ flexWrap: "wrap", gap: 2 }}>
             <Box sx={{ minWidth: 200 }}>
@@ -600,7 +600,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
               }
               setActivePanel((prev) => (prev === newValue ? null : (newValue as PanelId)));
             }}
-            sx={{ backgroundColor: "rgba(18,18,26,0.98)", width: "100%" }}
+            sx={{ backgroundColor: alpha('#12121a', theme.opacity.bottomNav), width: "100%" }}
           >
             {PANEL_ORDER.map((panel) => (
               <BottomNavigationAction
@@ -622,9 +622,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ client, renderer }) 
         maxWidth="md"
         PaperProps={{
           sx: {
-            backgroundColor: "rgba(18,18,26,0.97)",
+            backgroundColor: alpha('#12121a', theme.opacity.dialog),
             color: "white",
-            borderRadius: 3,
+            borderRadius: theme.tokens.borderRadius.lg,
           },
         }}
       >

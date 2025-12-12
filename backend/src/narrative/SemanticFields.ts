@@ -3,7 +3,7 @@
  * Derivados de los fragmentos de chat y comportamientos de agentes
  */
 
-import { FieldConfig } from "../types";
+import { FieldConfig } from "@shared/types";
 
 export enum SemanticFieldType {
   JOY = "joy",

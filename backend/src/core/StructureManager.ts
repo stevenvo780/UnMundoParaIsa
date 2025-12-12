@@ -7,7 +7,7 @@
  * 3. Las estructuras dan protección/beneficios
  */
 
-import { StructureData } from "../types";
+import { StructureData } from "@shared/types";
 
 export enum StructureType {
   CAMP = "camp",

@@ -11,13 +11,14 @@ import {
   DEFAULT_FIELD_CONFIGS,
   SimulationConfig,
   DEFAULT_CONFIG,
+  AgentState,
   SimulationMetrics,
   Particle,
   StructureData,
-  StructureStats,
+  // StructureStats removed
   BiodiversitySnapshot,
   EmergenceSnapshot,
-} from "../types";
+} from "@shared/types";
 
 import { DemandManager } from "../economy/Demand";
 import { ResourceFlowSystem } from "../economy/Advection";
@@ -46,7 +47,7 @@ import { QuestManager } from "../quests/EmergentQuests";
 import { StructureManager, StructureType } from "./StructureManager";
 import { AgentBehaviorSystem } from "./AgentBehavior";
 import { InventorySystem } from "../economy/InventorySystem";
-import { AgentState } from "../types";
+
 
 export class World {
   readonly width: number;
@@ -791,11 +792,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 0.85,
+      energy: 1.0,
       seed: 0x57455600,
+      name: "Stev",
       alive: true,
       state: AgentState.IDLE,
-      inventory: {},
+      inventory: { food: 5 },
       memory: {},
     });
 
@@ -805,11 +807,12 @@ export class World {
       y: centerY,
       vx: 0,
       vy: 0,
-      energy: 0.85,
+      energy: 1.0,
       seed: 0x00495341,
+      name: "Isa",
       alive: true,
       state: AgentState.IDLE,
-      inventory: {},
+      inventory: { food: 5 },
       memory: {},
     });
 
@@ -1163,7 +1166,7 @@ export class World {
     const densityFactor = 1 - (localDensity / MAX_LOCAL_DENSITY) * 0.4;
 
     const reproductionChance =
-      resourceFactor * densityFactor * waterBonus * founderBonus * 0.12;
+      resourceFactor * densityFactor * waterBonus * founderBonus * 0.8;
 
     if (Math.random() > reproductionChance) {
       return;
@@ -1209,6 +1212,7 @@ export class World {
       vy: 0,
       energy: childEnergy,
       seed: childSeed,
+      name: `Child ${newId}`,
       alive: true,
       state: AgentState.IDLE,
       inventory: {},
